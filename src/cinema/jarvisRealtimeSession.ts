@@ -2,6 +2,9 @@ import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import type { JarvisPhase } from './jarvisAudio';
 import { createRobotVoice, DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
 import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupSound';
+import { SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from './hatcheryTargets';
+import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
+import type { SceneDataResult } from './sceneDataDocument';
 
 export interface RealtimeCallbacks {
   phase(value: JarvisPhase): void;
@@ -12,6 +15,9 @@ export interface RealtimeCallbacks {
   chapter(id: FilmId): void;
   ended(): void;
   connection?(connected: boolean): void;
+  /** Scene data contract entry points; absent when the player is not wired (patches are then refused). */
+  patch?(input: unknown): SceneDataResult;
+  sceneData?(): FilmSceneData;
 }
 interface RealtimeEvent {
   type: string; item_id?: string; transcript?: string; text?: string; delta?: string;
@@ -188,6 +194,11 @@ export class JarvisRealtimeSession {
         if (event.response?.status !== 'completed') { this.pendingChapter = undefined; break; }
         const calls = event.response.output?.filter(item => item.type === 'function_call') ?? [];
         for (const call of calls) {
+          if (call.name === SET_SCENE_OBJECT_VALUES_TOOL.name) {
+            // Value changes apply at once and keep the conversation open, unlike scene navigation.
+            this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(this.applyValues(call.arguments)) } });
+            continue;
+          }
           let chapter: unknown;
           try { chapter = JSON.parse(call.arguments ?? '{}').chapter; } catch { chapter = undefined; }
           const scene = call.name === 'open_scene' ? FILM_CHAPTERS.find(c => c.id === chapter) : undefined;
@@ -205,6 +216,17 @@ export class JarvisRealtimeSession {
         this.callbacks.error('OpenAI 음성 요청을 처리하지 못했습니다. 응답 중지 후 다시 말해 주세요.');
         this.responding = false; this.toPhase('listening'); break;
     }
+  }
+  private applyValues(rawArguments: string | undefined) {
+    let args: unknown;
+    try { args = JSON.parse(rawArguments ?? '{}'); } catch { args = undefined; }
+    const converted = toolCallToPatch(args, this.callbacks.sceneData?.() ?? DEFAULT_FILM_SCENE_DATA);
+    if (!converted.ok) return { ok: false, error: converted.reason };
+    if (!this.callbacks.patch) return { ok: false, error: '이 화면에서는 값 변경을 처리할 수 없습니다.' };
+    const result = this.callbacks.patch(converted.patch);
+    return result.ok
+      ? { ok: true, applied: result.applied, ignored: result.ignored, instruction: '바뀐 값을 한 문장으로 확인해 주세요. 시연 데이터입니다. 화면을 열려면 open_scene을 호출하세요.' }
+      : { ok: false, error: result.reason };
   }
   ask(input: string) {
     const text = input.trim(); if (!text || text.length > 1200) return;

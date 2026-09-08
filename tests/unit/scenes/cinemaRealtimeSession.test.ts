@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JarvisRealtimeSession } from '@/cinema/jarvisRealtimeSession';
+import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
+import type { SceneDataResult } from '@/cinema/sceneDataDocument';
 const startup = vi.hoisted(() => ({ stop: vi.fn(), finished: Promise.resolve() }));
 vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'HATCHERY initializing.', playJarvisStartupSound: () => startup }));
 const stopTrack = vi.fn();
@@ -104,5 +106,33 @@ describe('Realtime lifecycle', () => {
     expect(events).toContainEqual({ type: 'response.cancel' });
     expect(events).toContainEqual({ type: 'output_audio_buffer.clear' });
     session.stop();
+  });
+});
+
+describe('Realtime value commands', () => {
+  const sent = () => channel.send.mock.calls.map(call => JSON.parse(call[0] as string) as { type: string; item?: { output: string } });
+  const valueCall = (args: unknown) => ({ type: 'response.done', response: { status: 'completed',
+    output: [{ type: 'function_call', name: 'set_scene_object_values', call_id: 'v1', arguments: JSON.stringify(args) }] } });
+  it('applies set_scene_object_values at once and keeps the conversation open', async () => {
+    const patch = vi.fn<(input: unknown) => SceneDataResult>(() => ({ ok: true, scene: 'bars', applied: 1, ignored: [] }));
+    const cb = { ...callbacks(), patch, sceneData: () => DEFAULT_FILM_SCENE_DATA };
+    const session = new JarvisRealtimeSession(cb); await session.start('cedar');
+    channel.onmessage?.({ data: JSON.stringify(valueCall({ scene: 'bars', objects: [{ id: 'LINE 02', field: 'value', value: 470 }] })) });
+    expect(patch).toHaveBeenCalledOnce();
+    expect(patch.mock.calls[0][0]).toMatchObject({ scene: 'bars', source: 'hatchery', objects: [{ id: 'LINE-02', value: 470 }] });
+    const outputs = sent().filter(message => message.type === 'conversation.item.create');
+    expect(JSON.parse(outputs.at(-1)!.item!.output)).toMatchObject({ ok: true, applied: 1 });
+    expect(sent().some(message => message.type === 'response.create')).toBe(true);
+    expect(cb.chapter).not.toHaveBeenCalled();
+    expect(stopTrack).not.toHaveBeenCalled();
+  });
+  it('hands invalid arguments back to the model without touching the store', async () => {
+    const patch = vi.fn<(input: unknown) => SceneDataResult>(() => ({ ok: true, scene: 'bars', applied: 1, ignored: [] }));
+    const cb = { ...callbacks(), patch, sceneData: () => DEFAULT_FILM_SCENE_DATA };
+    const session = new JarvisRealtimeSession(cb); await session.start('cedar');
+    channel.onmessage?.({ data: JSON.stringify(valueCall({ scene: 'energy', objects: [{ id: 'power', field: 'value', value: 1 }] })) });
+    expect(patch).not.toHaveBeenCalled();
+    const outputs = sent().filter(message => message.type === 'conversation.item.create');
+    expect(JSON.parse(outputs.at(-1)!.item!.output)).toMatchObject({ ok: false, error: expect.stringContaining('energy') });
   });
 });
