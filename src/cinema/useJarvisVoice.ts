@@ -5,9 +5,11 @@ import { JarvisRealtimeSession } from './jarvisRealtimeSession';
 import type { JarvisAudioFrame, JarvisPhase } from './jarvisAudio';
 import type { FilmId } from './filmProgram';
 import { DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
+import type { HatcheryActions } from './hatcheryTargets';
+import { DEFAULT_FILM_SCENE_DATA } from './filmSceneData';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
-export function useJarvisVoice(onChapter: (id: FilmId) => void) {
+export function useJarvisVoice(onChapter: (id: FilmId) => void, actions?: HatcheryActions) {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [statusError, setStatusError] = useState('');
   const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
@@ -23,8 +25,10 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void) {
   const audioRef = useRef<JarvisAudioFrame>({ phase: 'idle', analyser: null });
   const session = useRef<JarvisRealtimeSession | null>(null);
   const chapter = useRef(onChapter);
-  const local = useJarvisLocalVoice(onChapter, { speakReplies: configured === false });
+  const actionsRef = useRef(actions);
+  const local = useJarvisLocalVoice(onChapter, { speakReplies: configured === false, actions });
   useEffect(() => { chapter.current = onChapter; }, [onChapter]);
+  useEffect(() => { actionsRef.current = actions; }, [actions]);
   useEffect(() => { session.current?.setRobotVoice(robotVoice); }, [robotVoice]);
   useEffect(() => {
     const abort = new AbortController();
@@ -52,6 +56,8 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void) {
       connection: setConnected,
       analyser(value) { audioRef.current.analyser = value; },
       error: setError, transcript: setTranscript, ended: () => setActive(false), chapter: id => chapter.current(id),
+      patch: input => actionsRef.current?.applySceneObjects(input) ?? { ok: false, reason: '이 화면에서는 값 변경을 처리할 수 없습니다.' },
+      sceneData: () => actionsRef.current?.sceneData() ?? DEFAULT_FILM_SCENE_DATA,
       message(role, content, id) {
         setMessages(previous => {
           const next = previous.filter(item => item.id !== id);

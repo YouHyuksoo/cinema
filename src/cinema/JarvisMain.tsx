@@ -19,12 +19,13 @@ import { jarvisOverview } from './jarvisCommands';
 import { JARVIS_PHASE_LABELS } from './jarvisAudio';
 import type { FilmCamera } from './useFilmCamera';
 import type { FilmId } from './filmProgram';
+import type { HatcheryActions } from './hatcheryTargets';
 import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
 
 const overview = jarvisOverview();
-export function JarvisMain({ camera, onChapter }: { camera: FilmCamera; onChapter: (id: FilmId) => void }) {
-  const voice = useJarvisVoice(onChapter);
+export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera; onChapter: (id: FilmId) => void; actions?: HatcheryActions }) {
+  const voice = useJarvisVoice(onChapter, actions);
   const [input, setInput] = useState('');
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
