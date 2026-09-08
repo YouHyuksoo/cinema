@@ -20,9 +20,13 @@ import { DEFAULT_FILM_CHARTS, type FilmChartSettings } from './chartPresentation
 import type { FactoryInteraction } from './smtFactoryInteraction';
 import type { ZoneEnvironmentState } from './zoneEnvironment';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
+import type { MachineSubject } from './machinePresentation';
+import type { SceneDataProvenance } from './sceneDataStore';
+import { applyPcbInspectionLayout, pcbInspectionLayout } from './pcbInspectionLayout';
 
 export { FILM_SECONDS } from './filmProgram';
-type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData) => void;
+export interface MachineRenderOptions { subject?: MachineSubject; provenance?: SceneDataProvenance }
+type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions) => void;
 const renderers: Record<FilmId, Renderer> = {
   wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment, data) => drawWaveFilm(ctx, width, height, time, fonts, insets, data.environment, environment),
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
@@ -32,7 +36,8 @@ const renderers: Record<FilmId, Renderer> = {
     drawBarFilm(ctx, width, height, time, fonts, charts.bars, insets, data.production),
   pie: (ctx, width, height, time, fonts, insets, charts) => drawPieFilm(ctx, width, height, time, fonts, charts.pie, insets),
   corners: drawCornerFilm,
-  machine: (ctx, width, height, time, fonts, insets) => drawTransparentMachineFilm(ctx, width, height, time, fonts, insets),
+  machine: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data, machine) =>
+    drawTransparentMachineFilm(ctx, width, height, time, fonts, insets, machine.subject, data.pcb, machine.provenance),
   network: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProcessNetworkFilm(ctx, width, height, time, fonts, insets, data.network),
   energy: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawEnergyCoreFilm(ctx, width, height, time, fonts, insets, data.energy),
   product: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProductInspectionFilm(ctx, width, height, time, fonts, insets, data.product),
@@ -54,11 +59,11 @@ function resetFilmPaint(ctx: CanvasRenderingContext2D) {
 }
 
 /** Each renderer receives local scene time; playback and progress stay continuous. */
-export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null, data: FilmSceneData = DEFAULT_FILM_SCENE_DATA) {
+export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null, data: FilmSceneData = DEFAULT_FILM_SCENE_DATA, machine: MachineRenderOptions = {}) {
   ctx.save();
   try {
     resetFilmPaint(ctx);
-    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment, data);
+    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment, data, machine);
   } finally {
     // Keep scene paint changes out of subsequent frames and the texture pass.
     ctx.restore();
@@ -66,9 +71,9 @@ export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, hei
 }
 
 function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts,
-  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData) {
+  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions) {
   const { chapter, index, start, localTime } = chapterAt(t);
-  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment, data);
+  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment, data, machine);
 
   // Chapter fades and navigation marks must not inherit an object's local opacity.
   resetFilmPaint(ctx);
@@ -78,6 +83,14 @@ function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: n
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = `rgba(4,11,16,${1 - visible})`; ctx.fillRect(0, 0, width, height);
   ctx.restore();
+  const pcbLayout = chapter.id === 'machine' && machine.subject !== 'car' ? pcbInspectionLayout(width, height, insets) : null;
+  if (pcbLayout?.portrait) {
+    applyPcbInspectionLayout(ctx, pcbLayout);
+    const y = pcbLayout.logicalHeight - 3, span = pcbLayout.logicalWidth - 36;
+    ctx.fillStyle = signalColor(0, .12); ctx.fillRect(18, y, span, .7);
+    ctx.fillStyle = signalColor(0, .55); ctx.fillRect(18, y, span * (start + localTime) / FILM_SECONDS, .7);
+    ctx.restore(); return;
+  }
   ctx.fillStyle = signalColor(0, .12); ctx.fillRect(72, 662, 1136, .7);
   ctx.fillStyle = signalColor(0, .55); ctx.fillRect(72, 662, 1136 * (start + localTime) / FILM_SECONDS, .7);
   let boundary = 0;

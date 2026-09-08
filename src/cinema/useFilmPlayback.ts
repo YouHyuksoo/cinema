@@ -16,10 +16,12 @@ import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData, type FilmSceneDataKey } fr
 import { createSceneDataStore } from './sceneDataStore';
 import { browserStaticSceneDataOptions, loadStaticSceneData } from './staticSceneData';
 import { browserFeedPollingOptions, startFeedPolling, type FeedPollSummary } from './feedPolling';
+import { DEFAULT_MACHINE_SUBJECT, isMachineSubject, type MachineSubject } from './machinePresentation';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
-  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME });
+  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, machineSubject: DEFAULT_MACHINE_SUBJECT as MachineSubject });
+  const [machineSubject, setMachineSubject] = useState<MachineSubject>(DEFAULT_MACHINE_SUBJECT);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -102,7 +104,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       else {
         cameraTime = 3;
-        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, store.get());
+        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, store.get(),
+          { subject: current.machineSubject, provenance: store.provenance('pcb') });
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {
@@ -120,7 +123,14 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment, store]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus, machineSubject,
+    changeMachineSubject(value: MachineSubject) {
+      if (!isMachineSubject(value) || value === clock.current.machineSubject) return;
+      clock.current.machineSubject = value; setMachineSubject(value);
+      if (chapterAt(clock.current.time).chapter.id === 'machine') {
+        clock.current.time = chapterStart('machine'); setPosition(chapterAt(clock.current.time));
+      }
+    },
     resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
     /** Scene data contract entry points: full replacement documents and object patches (see docs/standards/scene-data-contract.md). */
     applySceneDocument: (input: unknown) => store.replace(input),

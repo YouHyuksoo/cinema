@@ -24,6 +24,9 @@ export interface SceneFieldDescriptor {
   optional?: boolean;
   /** Column description for the generated contract tables. */
   description?: string;
+  /** Accepted text codes and their display names, shared by validation and consumers. */
+  allowedValues?: readonly string[];
+  valueLabels?: Readonly<Record<string, string>>;
 }
 export type SceneFieldResult = { ok: true; value: unknown } | { ok: false; reason: string };
 
@@ -33,6 +36,7 @@ const fail = (reason: string): SceneFieldResult => ({ ok: false, reason });
 export function validateSceneField(descriptor: SceneFieldDescriptor, value: unknown): SceneFieldResult {
   const { label, kind, min, max, length } = descriptor;
   if (kind === 'text') {
+    if (descriptor.allowedValues && (typeof value !== 'string' || !descriptor.allowedValues.includes(value))) return fail(`${label}은 ${descriptor.allowedValues.join(', ')} 중 하나여야 합니다.`);
     return typeof value === 'string' && value.trim() ? { ok: true, value } : fail(`${label}은 비어 있지 않은 문자열이어야 합니다.`);
   }
   if (kind === 'number[]') {
@@ -52,7 +56,7 @@ export function formatSceneField(descriptor: SceneFieldDescriptor, value: unknow
   const unit = descriptor.unit ?? '';
   const number = (item: number) => item.toLocaleString('en-US', { minimumFractionDigits: descriptor.decimals ?? 0, maximumFractionDigits: descriptor.decimals ?? 3 });
   if (descriptor.kind === 'number[]') return Array.isArray(value) ? value.filter(finite).map(number).join(', ') : '—';
-  if (descriptor.kind === 'text') return typeof value === 'string' ? value : '—';
+  if (descriptor.kind === 'text') return typeof value === 'string' ? descriptor.valueLabels?.[value] ?? value : '—';
   return finite(value) ? `${number(value)}${unit}` : '—';
 }
 

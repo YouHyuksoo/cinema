@@ -156,7 +156,7 @@ export const domainFeed = (feed: string) => DOMAIN_FEEDS.find(item => item.feed 
 
 const fieldSchema = (field: SceneFieldDescriptor): Record<string, unknown> => {
   const base: Record<string, unknown> = { description: [field.label, field.unit ? `단위 ${field.unit}` : '', field.description ?? ''].filter(Boolean).join(' · ') };
-  if (field.kind === 'text') return { ...base, type: 'string', minLength: 1 };
+  if (field.kind === 'text') return { ...base, type: 'string', minLength: 1, ...(field.allowedValues ? { enum: [...field.allowedValues] } : {}) };
   const number: Record<string, unknown> = { type: 'number', ...(field.min !== undefined ? { minimum: field.min } : {}), ...(field.max !== undefined ? { maximum: field.max } : {}) };
   if (field.kind === 'number[]') return { ...base, type: 'array', items: number, minItems: field.length ?? 1, ...(field.length ? { maxItems: field.length } : {}) };
   return { ...base, ...number };

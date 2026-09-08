@@ -7,9 +7,10 @@ import type { FilmId } from './filmProgram';
 import { DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
 import type { HatcheryActions } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA } from './filmSceneData';
+import type { MachineSubject } from './machinePresentation';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
-export function useJarvisVoice(onChapter: (id: FilmId) => void, actions?: HatcheryActions) {
+export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [statusError, setStatusError] = useState('');
   const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
@@ -55,7 +56,7 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void, actions?: Hatche
       phase(value) { audioRef.current.phase = value; setPhase(value); },
       connection: setConnected,
       analyser(value) { audioRef.current.analyser = value; },
-      error: setError, transcript: setTranscript, ended: () => setActive(false), chapter: id => chapter.current(id),
+      error: setError, transcript: setTranscript, ended: () => setActive(false), chapter: (id, subject) => subject ? chapter.current(id, subject) : chapter.current(id),
       patch: input => actionsRef.current?.applySceneObjects(input) ?? { ok: false, reason: '이 화면에서는 값 변경을 처리할 수 없습니다.' },
       sceneData: () => actionsRef.current?.sceneData() ?? DEFAULT_FILM_SCENE_DATA,
       message(role, content, id) {

@@ -59,10 +59,10 @@ const CHAPTER_ICONS: Record<FilmId, ReactNode> = {
     <circle cx="16" cy="16" r="2" />
   </>,
   machine: <>
-    <rect x="7" y="2" width="18" height="28" rx="4" />
-    <path d="M12 6h8M10 21h12m-12 4h12m-9-4v4m4-4v4m4-4v4" opacity=".6" />
-    <rect x="12" y="10" width="8" height="7" rx="1" />
-    <path d="M10 12h2m8 0h2m-12 3h2m8 0h2m-7-7v2m3-2v2m-3 7v2m3-2v2" />
+    <rect x="3" y="5" width="26" height="22" rx="2" />
+    <rect x="11" y="10" width="10" height="10" rx="1" />
+    <path d="M8 12h3m10 0h3M8 16h3m10 0h3m-10-9v3m4-3v3m-4 10v4m4-4v4M5 8h2m18 16h2" />
+    <circle cx="24" cy="10" r="2" /><path d="m22 12-2 2" />
   </>,
   network: <>
     <path d="m5 8 10 8 12-9M15 16l12 10M5 25l10-9M5 8v17m22-18v19" opacity=".5" />

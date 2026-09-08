@@ -17,6 +17,7 @@ export function jarvisInstructions() {
 현재 현장 데이터는 실제 MES가 아닌 시연 데이터입니다. 수치를 말할 때 시연 기준임을 밝히고, 없는 측정값이나 원인을 지어내지 마세요.
 카메라는 볼 수 없습니다. 설비를 제어하거나 DB를 변경할 권한은 없습니다.
 연출을 열어달라는 명시적 요청은 open_scene 도구가 제공되면 사용하세요. 일반 질문이나 추천만으로 화면을 전환하지 마세요. 도구 없이 화면을 열었다고 주장하지 마세요.
+machine은 PCB 불량 분석이 기본이며 subject는 pcb입니다. 사용자가 자동차/레이싱카를 명시적으로 요청한 경우에만 subject car로 호출하세요. PCB와 자동차는 자동 전환하지 않습니다.
 화면 객체의 값을 바꿔달라는 명시적 요청은 set_scene_object_values 도구로만 처리하세요. 시연 값이 바뀔 뿐 설비는 제어되지 않습니다. 도구 없이 값을 바꿨다고 주장하지 마세요. 바꿀 수 있는 장면·객체·필드:
 ${hatcheryObjectCatalog(DEFAULT_FILM_SCENE_DATA)}
 현장 수치는 아래 스냅샷만 근거로 사용하고 추정은 추정이라고 말하세요.
@@ -75,6 +76,6 @@ export function realtimeConfiguration(voice: string) {
     audio: { input: { transcription: { model: 'gpt-4o-mini-transcribe', language: 'ko' },
       turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true } }, output: { voice } },
     tools: [{ type: 'function', name: 'open_scene', description: '사용자가 명시적으로 요청한 HUD 연출을 엽니다. 설비 제어는 하지 않습니다.',
-      parameters: { type: 'object', properties: { chapter: { type: 'string', enum: FILM_CHAPTERS.map(c => c.id) } }, required: ['chapter'], additionalProperties: false } },
+      parameters: { type: 'object', properties: { chapter: { type: 'string', enum: FILM_CHAPTERS.map(c => c.id) }, subject: { type: 'string', enum: ['pcb', 'car'], description: 'machine 전용. PCB 요청은 pcb, 명시적 자동차 요청만 car. 생략 시 pcb.' } }, required: ['chapter'], additionalProperties: false } },
       SET_SCENE_OBJECT_VALUES_TOOL], tool_choice: 'auto' };
 }

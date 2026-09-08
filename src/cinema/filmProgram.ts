@@ -24,7 +24,7 @@ export const FILM_CHAPTERS = [
   { id: 'bars', title: '막대 비교', subtitle: '라인별 생산 실적 · 목표 · 달성률', duration: FILM_DURATIONS.bars, previewAt: 17 },
   { id: 'pie', title: '파이 구성', subtitle: '라인별 생산 비중 · 수량', duration: FILM_DURATIONS.pie, previewAt: 17 },
   { id: 'corners', title: '코너 전개', subtitle: '생산 달성 · 양품률 · 설비 가동 · 사이클 타임', duration: FILM_DURATIONS.corners, previewAt: 34 },
-  { id: 'machine', title: '투명 설비 분석', subtitle: '레이싱카 · 파워유닛 · 서스펜션 · 브레이크', duration: FILM_DURATIONS.machine, previewAt: 13 },
+  { id: 'machine', title: 'PCB 불량 분석', subtitle: '고정 투명 기판 · 불량 부품 포커스 · 자동차는 설정에서 선택', duration: FILM_DURATIONS.machine, previewAt: 13 },
   { id: 'network', title: '살아 있는 공정망', subtitle: '공정 처리능력 · 대기량 · 병목', duration: FILM_DURATIONS.network, previewAt: 15 },
   { id: 'energy', title: '에너지 파동', subtitle: '전력 · 생산량 · 효율', duration: FILM_DURATIONS.energy, previewAt: 15 },
   { id: 'product', title: '제품 내부 검사', subtitle: '부품 치수 · 오차 · 공차 판정', duration: FILM_DURATIONS.product, previewAt: 17 },

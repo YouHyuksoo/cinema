@@ -11,11 +11,12 @@ export type HatcheryField = SceneFieldDescriptor & { aliases: RegExp };
 const commandField = (field: SceneFieldDescriptor): field is HatcheryField => Boolean(field.patchable && field.aliases);
 export const HATCHERY_FIELDS: Record<HatcheryPatchScene, readonly HatcheryField[]> = Object.fromEntries(
   PATCHABLE_SCENES.map(scene => [scene, SCENE_FIELDS[scene].filter(commandField)])) as unknown as Record<HatcheryPatchScene, readonly HatcheryField[]>;
-export const HATCHERY_SCENE_LABELS: Record<HatcheryPatchScene, string> = { bars: '막대', wave: '환경', network: '공정망', spc: 'SPC' };
+export const HATCHERY_SCENE_LABELS: Record<HatcheryPatchScene, string> = { bars: '막대', wave: '환경', network: '공정망', spc: 'SPC', machine: 'PCB 검사' };
 const NUMBER_REFERENCES: Record<HatcheryPatchScene, RegExp[]> = {
   bars: [/(?:라인|line)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*라인/g],
   wave: [/(?:zone|존|구역)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*구역/g],
   network: [],
+  machine: [],
   spc: [/(?:부분군|sg)[\s\-_]*0?(\d{1,2})(?!\d)/gi],
 };
 const QUESTION = /알려|얼마|몇|뭐|무엇|\?/;
@@ -31,6 +32,7 @@ const aliasPattern = (alias: string) => new RegExp(escape(alias.trim()).replace(
 
 export function hatcheryObjects(data: FilmSceneData, scene: HatcheryPatchScene): HatcheryObject[] {
   switch (scene) {
+    case 'machine': return data.pcb.components.map(component => ({ id: component.id, label: component.label, aliases: [component.id, component.label] }));
     case 'bars': return data.production.lines.map(line => ({ id: line.id, label: line.label, aliases: [line.id, line.label], number: trailingNumber(line.id) ?? trailingNumber(line.label) }));
     case 'wave': return data.environment.zones.map(zone => ({ id: zone.id, label: `${zone.id} ${zone.name}`, aliases: [zone.id, zone.name], number: trailingNumber(zone.id) }));
     case 'network': return data.network.nodes.map(node => ({ id: node.id, label: node.label, aliases: [node.id, node.label, node.code] }));
@@ -60,7 +62,8 @@ function findCandidates(text: string, data: FilmSceneData): Candidate[] {
     for (const object of objects) {
       for (const alias of object.aliases) {
         if (!alias.trim()) continue;
-        const match = aliasPattern(alias).exec(text);
+        const pattern = aliasPattern(alias);
+        const match = (scene === 'machine' ? new RegExp(`(?<![a-z0-9])${pattern.source}(?![a-z0-9])`, 'gi') : pattern).exec(text);
         if (match) push({ scene, object, start: match.index, end: match.index + match[0].length });
       }
     }
@@ -83,7 +86,19 @@ export type HatcheryValueCommand =
   | { kind: 'patch'; patch: SceneObjectPatch; reply: string; chapter: FilmId; label: string; field: HatcheryField }
   | { kind: 'clarify'; reply: string };
 
-const valueText = (field: HatcheryField, value: number | number[], unit: string) => `${formatSceneField(field, value)}${field.unit ? '' : unit}`;
+const valueText = (field: HatcheryField, value: string | number | number[], unit: string) => `${formatSceneField(field, value)}${field.unit ? '' : unit}`;
+
+function enumValue(field: HatcheryField, text: string): string | undefined {
+  // Be conservative: negated or ambiguous verdicts must never silently clear a defect.
+  if (/아니|아님|않|말아|지\s*마|말고|not\b/i.test(text)) return undefined;
+  const matches = field.allowedValues?.filter(value => {
+    const code = new RegExp(`(?<![a-z0-9_])${escape(value)}(?![a-z0-9_])`, 'i');
+    const label = field.valueLabels?.[value];
+    const labelPattern = label ? new RegExp(`(?<![\\p{L}\\p{N}_])${escape(label).replace(/\s+/g, '\\s*')}(?=(?:으로|로|을|를|이|가|은|는)?(?:$|[\\s.,!?]))`, 'iu') : undefined;
+    return code.test(text) || Boolean(label && label.toLowerCase() !== value.toLowerCase() && labelPattern?.test(text));
+  });
+  return matches?.length === 1 ? matches[0] : undefined;
+}
 
 /** Deterministic "change this object's value" sentences; anything else returns null for the other handlers. */
 export function resolveHatcheryValueCommand(input: string, data: FilmSceneData): HatcheryValueCommand | null {
@@ -110,8 +125,8 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
   let remaining = text;
   for (const [start, end] of spans.sort((a, b) => b[0] - a[0])) remaining = remaining.slice(0, start) + ' ' + remaining.slice(end);
   const numbers = (remaining.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter(Number.isFinite);
-  if (!numbers.length) return null;
-  const value = field.kind === 'number[]' ? numbers : numbers[numbers.length - 1];
+  const value = field.kind === 'text' ? enumValue(field, remaining) : field.kind === 'number[]' ? numbers : numbers[numbers.length - 1];
+  if (value === undefined || (Array.isArray(value) && !value.length)) return null;
   const unit = scene === 'bars' ? data.production.unit : scene === 'spc' ? data.spc.unit : '';
   const patch = hatcheryPatch(scene, [{ id: target.object.id, [field.field]: value }]);
   return { kind: 'patch', patch, chapter: scene, label: target.object.label, field,
@@ -135,6 +150,7 @@ export function describeSceneDataResult(command: Extract<HatcheryValueCommand, {
 }
 
 const ALL_FIELDS = [...new Set(HATCHERY_PATCH_SCENES.flatMap(scene => HATCHERY_FIELDS[scene].map(field => field.field)))];
+const ALL_TEXT_VALUES = [...new Set(HATCHERY_PATCH_SCENES.flatMap(scene => HATCHERY_FIELDS[scene].flatMap(field => field.allowedValues ?? [])))];
 /** One function tool shared by the Responses (text) and Realtime (voice) sessions. */
 export const SET_SCENE_OBJECT_VALUES_TOOL = {
   type: 'function', name: 'set_scene_object_values',
@@ -146,7 +162,7 @@ export const SET_SCENE_OBJECT_VALUES_TOOL = {
       objects: { type: 'array', minItems: 1, items: {
         type: 'object',
         properties: { id: { type: 'string' }, field: { type: 'string', enum: ALL_FIELDS },
-          value: { type: 'number' }, values: { type: 'array', items: { type: 'number' } } },
+          value: { anyOf: [{ type: 'number' }, { type: 'string', enum: ALL_TEXT_VALUES }] }, values: { type: 'array', items: { type: 'number' } } },
         required: ['id', 'field'], additionalProperties: false } },
     },
     required: ['scene', 'objects'], additionalProperties: false,
@@ -177,7 +193,7 @@ export function toolCallToPatch(args: unknown, data: FilmSceneData): { ok: true;
 export function hatcheryObjectCatalog(data: FilmSceneData) {
   return HATCHERY_PATCH_SCENES.map(scene => {
     const objects = hatcheryObjects(data, scene);
-    const fields = HATCHERY_FIELDS[scene].map(field => `${field.field}(${field.label}${field.unit ? `, ${field.unit}` : ''}${field.kind === 'number[]' ? ', 숫자 목록' : ''}${field.min !== undefined || field.max !== undefined ? `, 범위 ${field.min ?? ''}~${field.max ?? ''}` : ''})`).join(', ');
+    const fields = HATCHERY_FIELDS[scene].map(field => `${field.field}(${field.label}${field.unit ? `, ${field.unit}` : ''}${field.kind === 'number[]' ? ', 숫자 목록' : ''}${field.allowedValues ? `, ${field.allowedValues.map(value => `${value}=${field.valueLabels?.[value] ?? value}`).join('|')}` : ''}${field.min !== undefined || field.max !== undefined ? `, 범위 ${field.min ?? ''}~${field.max ?? ''}` : ''})`).join(', ');
     const ids = scene === 'spc' && objects.length > 3 ? `${objects[0].id}~${objects[objects.length - 1].id}` : objects.map(object => `${object.id}(${object.label})`).join(', ');
     return `${scene}(${HATCHERY_SCENE_LABELS[scene]}) 필드: ${fields}; 객체: ${ids}`;
   }).join('\n');

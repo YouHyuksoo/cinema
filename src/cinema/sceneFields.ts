@@ -1,8 +1,9 @@
 import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 import type { SceneFieldDescriptor } from './sceneField';
+import { PCB_COMPONENT_FIELDS } from './pcbInspectionFields';
 
 /** Scenes whose objects accept patches (contract level L2). */
-export const PATCHABLE_SCENES = ['bars', 'wave', 'network', 'spc'] as const;
+export const PATCHABLE_SCENES = ['bars', 'wave', 'network', 'spc', 'machine'] as const;
 export type PatchableScene = typeof PATCHABLE_SCENES[number];
 
 /**
@@ -11,6 +12,7 @@ export type PatchableScene = typeof PATCHABLE_SCENES[number];
  */
 export const SCENE_FIELDS: Record<PatchableScene, readonly SceneFieldDescriptor[]> = {
   bars: PRODUCTION_LINE_FIELDS,
+  machine: PCB_COMPONENT_FIELDS,
   wave: [
     { field: 'temperature', label: '온도', kind: 'number', unit: '°C', decimals: 1, patchable: true, aliases: /온도/, default: true },
     { field: 'humidity', label: '습도', kind: 'number', unit: '%', min: 0, max: 100, decimals: 0, patchable: true, aliases: /습도/ },

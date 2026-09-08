@@ -8,6 +8,7 @@ import { useFilmCamera } from './useFilmCamera';
 import { JarvisMain } from './JarvisMain';
 import { SmtFactoryExplorer } from './SmtFactoryExplorer';
 import { EnvironmentZoneInteraction } from './EnvironmentZoneInteraction';
+import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
 
 export function SignalFilm() {
@@ -17,6 +18,7 @@ export function SignalFilm() {
   const [preview, setPreview] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const player = useFilmPlayback(canvas, camera.frameRef, cameraView);
+  const description = player.position.chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject] : player.position.chapter;
   const cameraMode = {
     ...camera, preview,
     openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
@@ -42,7 +44,7 @@ export function SignalFilm() {
       <div className={styles.screen}>
         <canvas ref={canvas} className={styles.canvas} role="img" aria-label={preview
           ? 'HATCHERY 메인 화면의 연속 공간 배경'
-          : `${player.position.chapter.title}: ${player.position.chapter.subtitle} 시뮬레이션 연출.`} />
+          : `${description.title}: ${description.subtitle} 시뮬레이션 연출.`} />
         {!preview && player.ready && player.position.chapter.id === 'visor'
           && <SmtFactoryExplorer canvas={canvas} controller={player.factory} onAuto={player.resumeTour} />}
         {!preview && player.ready && player.position.chapter.id === 'wave'
@@ -52,7 +54,7 @@ export function SignalFilm() {
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}
       </div>
-      {preview && <JarvisMain camera={camera} onChapter={id => { cameraMode.closePreview(); player.selectChapter(id); }}
+      {preview && <JarvisMain camera={camera} onChapter={(id, subject) => { cameraMode.closePreview(); if (subject) player.changeMachineSubject(subject); player.selectChapter(id); }}
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
     </main>

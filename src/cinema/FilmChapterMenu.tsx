@@ -11,7 +11,7 @@ import { useFilmMenuGlobe } from './useFilmMenuGlobe';
 const SHORT_LABELS: Partial<Record<FilmId, string>> = {
   wave: '온습도', gears: '기어', scan: '설비 스캔', unfold: '지표', trace: '변화 추적',
   console: '정보창', bars: '막대', pie: '파이',
-  machine: '투명 설비', network: '공정망', energy: '에너지', product: '내부 검사', spc: 'SPC',
+  machine: 'PCB 검사', network: '공정망', energy: '에너지', product: '내부 검사', spc: 'SPC',
 };
 
 /** Browsing the ring never starts a scene; activate the aligned tile to launch. */

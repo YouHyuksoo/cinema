@@ -5,6 +5,7 @@ import type { FilmPlayback } from './useFilmPlayback';
 import type { FilmCameraMode } from './FilmCameraControls';
 import styles from './film.module.css';
 import mobileStyles from './filmDock.module.css';
+import { MACHINE_PRESENTATIONS } from './machinePresentation';
 
 export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   player: FilmPlayback; camera: FilmCameraMode; menuOpen: boolean; onMenuOpenChange: (open: boolean) => void;
@@ -73,7 +74,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
       <div className={styles.dockBar}>
         <div className={styles.dockStatus}>
           <span className={styles.dockStatusLight} aria-hidden="true" />
-          <span>{camera.preview ? 'HATCHERY 메인 메뉴' : chapter.title}</span>
+          <span>{camera.preview ? 'HATCHERY 메인 메뉴' : chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject].title : chapter.title}</span>
           <span className={styles.dockTime}>{camera.preview ? 'VOICE / CONTROL CENTER'
             : player.factory.manual && chapter.id === 'visor' ? '직접 탐색' : `${localTime.toFixed(1)} / ${chapter.duration}초`}</span>
         </div>

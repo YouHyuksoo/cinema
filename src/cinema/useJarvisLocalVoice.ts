@@ -9,9 +9,10 @@ import { useJarvisSpeechProfile } from './useJarvisSpeechProfile';
 import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupSound';
 import { describeSceneDataResult, resolveHatcheryValueCommand, type HatcheryActions } from './hatcheryTargets';
 import { isSceneId, parseSceneObjectPatch } from './sceneDataDocument';
+import { isMachineSubject, type MachineSubject } from './machinePresentation';
 
 interface Message { role: 'user' | 'assistant'; content: string }
-export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
+export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
   const speechProfile = useJarvisSpeechProfile();
   const audioRef = useRef<JarvisAudioFrame>({ phase: 'idle', analyser: null });
   const [phase, setPhase] = useState<JarvisPhase>('idle');
@@ -168,12 +169,13 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { 
     history.current = [...previous, { role: 'user', content: message }]; setMessages(history.current);
     const timeout = setTimeout(() => abort.abort(), 30000);
     let finished = false;
+    let machineSubject: MachineSubject | undefined;
     const finish = (chapter?: FilmId) => {
       if (finished || token !== current.generation) return;
       finished = true;
       if (current.speechTimer) clearTimeout(current.speechTimer);
       current.speechTimer = undefined; current.busy = false;
-      if (chapter) { stop(); chapterRef.current(chapter); }
+      if (chapter) { stop(); if (machineSubject) chapterRef.current(chapter, machineSubject); else chapterRef.current(chapter); }
       else if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
@@ -189,6 +191,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { 
       history.current = [...history.current, { role: 'assistant' as const, content: data.reply }].slice(-8);
       setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'OpenAI · AI 생성 답변' : 'AI 연결 안내');
       const chapter = isSceneId(data.chapter) ? data.chapter : undefined;
+      machineSubject = chapter === 'machine' && isMachineSubject(data.machineSubject) ? data.machineSubject : undefined;
       if (options.speakReplies === false) { finish(chapter); }
       else if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(data.reply);

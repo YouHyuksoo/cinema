@@ -11,6 +11,9 @@ sources:
   - src/cinema/hatcheryTargets.ts
   - src/cinema/sceneField.ts
   - src/cinema/sceneFields.ts
+  - src/cinema/pcbInspectionData.ts
+  - src/cinema/pcbInspectionFields.ts
+  - src/cinema/pcbInspection.ts
   - src/cinema/productionLineFields.ts
   - src/cinema/productionLineObject.ts
   - src/cinema/domainFeeds.ts
@@ -119,7 +122,17 @@ export const productionLineObject = {
   - 정적 JSON: `public/cinema/data/scenes.json`에 전체 교체 문서 배열을 두면 시작 시 한 번 읽어 저장소에 넣는다(`staticSceneData.ts`). 파일이 없으면 기본 시연 데이터를 유지한다. 예시: `public/cinema/data/scenes.example.json`. `source: 'static'`.
 - 화면은 장면별 마지막 `source`·`at`을 표시할 수 있어야 한다(출처 표시).
 
-### 4.1 도메인 피드 — DB는 장면이 아니라 피드에 붙는다
+### 4.1 PCB 부품 계약 (`scene: machine`, 데이터 키 `pcb`)
+
+- 보드: `name`, `serial`, `width`, `height`, `thickness`, `components[]`. 치수와 좌표는 mm, 좌표 원점은 보드 중심, `rotation`은 도 단위다. 보드 표면 한 면을 표현한다.
+- 부품: 자연 참조번호 `id`(예: `U1`, `R12`), 표시명 `label`, `partNumber`, `kind`, `x`, `y`, `rotation`, `width`, `height`, `depth`, `defect`, `process`.
+- `kind`: `ic`, `resistor`, `capacitor`, `connector`. `defect`: `none`(정상), `uninspected`(미검사), `insufficient_solder`(납량 부족), `offset`(부품 위치 편차), `bridge`(납땜 브리지). `process`: `spi`, `maoi`, `aoi`. 코드와 라벨은 `pcbInspectionData.ts`, 필드 검증과 변경 허용 여부는 `pcbInspectionFields.ts`에서 공유한다.
+- 추가·삭제·좌표·회전·형상은 전체 문서 교체로만 변경한다. ID별 부분 패치는 `defect`, `process`만 허용하며 `id`·`label`은 보호한다. 잘못된 enum, 중복 ID, 비정상 치수, 회전 후 보드 경계를 벗어나는 부품은 거부하고 마지막 정상 데이터를 보존한다.
+- 정상·불량·미검사 수와 순회 대상은 전달된 배열에서 파생한다. 기본 40개 부품 및 세 불량은 시연 데이터다. 실제 검사 이미지/CAD/Oracle 연동이 아니며, 기존 `machine` 계통 피드는 PCB 부품 좌표·검사 결과의 소스로 연결하지 않는다.
+- 예시 패치: `{ "scene": "machine", "source": "hatchery", "at": "2026-09-08T12:00:00Z", "objects": [{ "id": "U1", "defect": "bridge", "process": "aoi" }] }`.
+- 분석 대상 PCB/자동차 선택은 데이터 계약 밖의 페이지 세션 상태다. 데이터 교체·패치나 시간 진행이 자동차 옵션으로 전환하지 않는다.
+
+### 4.2 도메인 피드 — DB는 장면이 아니라 피드에 붙는다
 
 DB 뷰는 장면 단위가 아니라 **도메인 피드** 단위로 만든다. 피드는 헤더 한 건과 객체 컬렉션들로 이루어지며, 장면들은 피드를 나눠 읽는다(라인 실적 피드 하나 → 막대·파이·코너·펼침·지표 카드). 선언은 `domainFeeds.ts`가 단일 출처이고, 여기서 JSON Schema·예시·컬럼 표가 생성된다.
 
@@ -157,7 +170,8 @@ DB 뷰는 장면 단위가 아니라 **도메인 피드** 단위로 만든다. �
 | console | L0 | L1 | (신규) console | drawConsoleFilm.ts | 문자열 줄 → `{ id, label, value, unit, warning }` |
 | scan | L0 | L1 | (신규) equipment | drawScanFilm.ts | 설비 12대 x좌표 → 개수 기반 배치 |
 | gears | L0 | L1 | (신규) gears | drawGearTrain.ts | 3개 지표 값 주입 |
-| machine | L0 | L1 | (신규) machine | raceCar.ts | 계통 5개 값 주입 |
+| machine (PCB) | L2 | L3 | pcb | pcbInspectionData.ts, pcbInspection.ts, drawPcbInspectionFilm.ts | 전체 교체·ID별 defect/process 패치, 고정 투명 기판·이동 포커스, 출처 표시 |
+| machine (자동차 옵션) | L0 | L1 | 고정 시연 | raceCar.ts, drawRaceCarFilm.ts | 수동 선택으로만 표시, 기존 계통 시연 보존 |
 
 장면 이관은 장면마다 별도 스펙·계획으로 진행한다. 이관이 끝나면 이 표의 등급을 갱신한다.
 

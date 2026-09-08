@@ -6,7 +6,8 @@ describe('transparent racing car scene',()=>{
   it('keeps the machine menu and duration while replacing the handset description',()=>{
     const chapter=FILM_CHAPTERS.find(item=>item.id==='machine')!;
     expect(chapter.duration).toBe(RACE_CAR_SECONDS);
-    expect(chapter.subtitle).toContain('레이싱카');
+    expect(chapter.subtitle).toContain('자동차');
+    expect(chapter.title).toBe('PCB 불량 분석');
     expect(chapter.subtitle).not.toContain('핸드폰');
   });
   it('keeps the chassis, wings and wheels between the diagnostic columns',()=>{

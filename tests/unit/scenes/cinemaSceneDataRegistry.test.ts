@@ -3,7 +3,7 @@ import { DEFAULT_FILM_SCENE_DATA, mergeFilmSceneData } from '@/cinema/filmSceneD
 import { SCENE_DATA_REGISTRY, sceneDataEntry } from '@/cinema/sceneDataRegistry';
 
 describe('scene data registry', () => {
-  it('maps the six data-driven scenes to their data keys and shares production between bars and pie', () => {
+  it('maps data-driven scenes to their keys and shares production between bars and pie', () => {
     expect(sceneDataEntry('bars')?.key).toBe('production');
     expect(sceneDataEntry('pie')?.key).toBe('production');
     expect(sceneDataEntry('wave')?.key).toBe('environment');
@@ -11,12 +11,13 @@ describe('scene data registry', () => {
     expect(sceneDataEntry('spc')?.key).toBe('spc');
     expect(sceneDataEntry('energy')?.key).toBe('energy');
     expect(sceneDataEntry('product')?.key).toBe('product');
+    expect(sceneDataEntry('machine')?.key).toBe('pcb');
     expect(sceneDataEntry('gears')).toBeUndefined();
     expect(sceneDataEntry('nope')).toBeUndefined();
   });
 
   it('normalizes each default dataset unchanged and rejects structural violations', () => {
-    for (const [scene, key] of [['bars', 'production'], ['wave', 'environment'], ['network', 'network'], ['spc', 'spc'], ['energy', 'energy'], ['product', 'product']] as const) {
+    for (const [scene, key] of [['bars', 'production'], ['wave', 'environment'], ['network', 'network'], ['spc', 'spc'], ['energy', 'energy'], ['product', 'product'], ['machine', 'pcb']] as const) {
       const entry = SCENE_DATA_REGISTRY[scene]!;
       expect(entry.normalize(DEFAULT_FILM_SCENE_DATA[key])).toBeDefined();
       expect(entry.normalize(null)).toBeUndefined();

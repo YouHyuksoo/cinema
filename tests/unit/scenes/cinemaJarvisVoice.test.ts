@@ -136,6 +136,13 @@ describe('Jarvis explicit voice session ownership', () => {
     expect(open).toHaveBeenCalledExactlyOnceWith('spc');
     expect(stopTrack).toHaveBeenCalledOnce();
   });
+  it('forwards an explicit car subject from text replies without starting a microphone', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ reply: '자동차 분석을 엽니다', source: 'local', chapter: 'machine', machineSubject: 'car' }));
+    const open = vi.fn(), voice = useJarvisVoice(open, { speakReplies: false });
+    await voice.ask('자동차 보여줘');
+    expect(open).toHaveBeenCalledExactlyOnceWith('machine', 'car');
+    expect(requestMedia).not.toHaveBeenCalled();
+  });
 });
 
 describe('HATCHERY value commands in the local voice hook', () => {

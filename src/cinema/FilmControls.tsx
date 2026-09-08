@@ -6,25 +6,30 @@ import { FilmTextureControls } from './FilmTextureControls';
 import { FilmChartControls } from './FilmChartControls';
 import { FilmThemeControls } from './FilmThemeControls';
 import { FilmCameraControls, type FilmCameraMode } from './FilmCameraControls';
+import { FilmMachineControls } from './FilmMachineControls';
+import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
 
 export function FilmControls({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
   const { chapter, localTime } = player.position;
+  const title = chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject].title : chapter.title;
   return (
     <div className={styles.footer}>
       <FilmCameraControls camera={camera} />
       {!camera.preview && <><div className={styles.chapterDetail}>
-        <span>{chapter.title}</span>
+        <span>{title}</span>
         <span className={styles.time}>{localTime.toFixed(1)} / {chapter.duration}초</span>
       </div>
       <input className={styles.seek} type="range" min={0} max={chapter.duration} step={0.1} value={localTime}
-        aria-label="현재 장면 재생 위치" aria-valuetext={`${chapter.title} ${localTime.toFixed(1)}초 / ${chapter.duration}초`}
+        aria-label="현재 장면 재생 위치" aria-valuetext={`${title} ${localTime.toFixed(1)}초 / ${chapter.duration}초`}
         disabled={!player.ready} onChange={(event) => player.seek(Number(event.target.value))} /></>}
       <FilmThemeControls theme={player.theme} disabled={!player.ready} onChange={player.changeTheme} />
       <FilmTextureControls texture={player.texture} disabled={!player.ready}
         onStyleChange={player.changeTextureStyle} onIntensityChange={player.changeTextureIntensity} />
+      {!camera.preview && chapter.id === 'machine' && <FilmMachineControls subject={player.machineSubject}
+        disabled={!player.ready} onChange={player.changeMachineSubject} />}
       {!camera.preview && (chapter.id === 'bars' || chapter.id === 'pie') && (
         <FilmChartControls kind={chapter.id} presentation={player.charts[chapter.id]} disabled={!player.ready}
           onChange={player.changeChartPresentation} />

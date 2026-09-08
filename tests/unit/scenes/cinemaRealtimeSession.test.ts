@@ -98,6 +98,17 @@ describe('Realtime lifecycle', () => {
     event({ type: 'output_audio_buffer.stopped', response_id: 'preamble' });
     expect(cb.chapter).not.toHaveBeenCalled(); session.stop();
   });
+  it.each([undefined, 'pcb', 'car', 'invalid'])('validates the machine subject %s and carries it after acknowledgement', async subject => {
+    const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');
+    const event = (data: unknown) => channel.onmessage?.({ data: JSON.stringify(data) });
+    event({ type: 'response.done', response: { status: 'completed', output: [{ type: 'function_call', name: 'open_scene', call_id: 'm1', arguments: JSON.stringify({ chapter: 'machine', subject }) }] } });
+    expect(cb.chapter).not.toHaveBeenCalled();
+    event({ type: 'response.created', response: { id: 'ack-machine' } });
+    event({ type: 'output_audio_buffer.stopped', response_id: 'ack-machine' });
+    if (subject === 'invalid') expect(cb.chapter).not.toHaveBeenCalled();
+    else expect(cb.chapter).toHaveBeenCalledExactlyOnceWith('machine', subject ?? 'pcb');
+    session.stop();
+  });
   it('manual interruption cancels the response and clears buffered sound', async () => {
     const session = new JarvisRealtimeSession(callbacks()); await session.start('cedar');
     channel.onmessage?.({ data: JSON.stringify({ type: 'response.created', response: { id: 'r1' } }) });

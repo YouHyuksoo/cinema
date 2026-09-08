@@ -10,6 +10,8 @@ import type { SpcData } from './spcTypes';
 import { validateSceneField, validateSceneObjectFields, type SceneFieldDescriptor } from './sceneField';
 import { SCENE_FIELDS } from './sceneFields';
 import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
+import { validatePcbInspectionData } from './pcbInspection';
+import type { PcbInspectionData } from './pcbInspectionData';
 
 export interface SceneDataPatchResult<K extends FilmSceneDataKey> { data: FilmSceneData[K]; applied: number; ignored: string[]; error?: string }
 export interface SceneDataEntry<K extends FilmSceneDataKey = FilmSceneDataKey> {
@@ -105,8 +107,14 @@ const product: SceneDataEntry<'product'> = {
 };
 
 /** Scene id → data key, structural normalizer and (for L2 scenes) an id-addressed patcher. */
+const pcb: SceneDataEntry<'pcb'> = {
+  key: 'pcb',
+  normalize: data => validatePcbInspectionData(data).valid ? data as PcbInspectionData : undefined,
+  patch: patchCollection<'pcb', 'components'>('components', SCENE_FIELDS.machine),
+};
+
 export const SCENE_DATA_REGISTRY: Partial<Record<FilmId, SceneDataEntry>> = {
-  bars: production, pie: production, wave: environment, network, spc, energy, product,
+  bars: production, pie: production, wave: environment, network, spc, energy, product, machine: pcb,
 };
 
 export function sceneDataEntry(scene: string): SceneDataEntry | undefined {

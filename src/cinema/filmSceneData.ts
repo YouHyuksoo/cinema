@@ -5,6 +5,7 @@ import { DEFAULT_PROCESS_DATA, type ProcessNetworkData } from './processNetwork'
 import { DEFAULT_PRODUCT_DATA, type ProductInspectionData } from './productInspection';
 import { DEFAULT_SPC_DATA } from './spcData';
 import type { SpcData } from './spcTypes';
+import { DEFAULT_PCB_INSPECTION_DATA, type PcbInspectionData } from './pcbInspectionData';
 
 /** Everything a film frame reads from outside: one entry per data-driven scene family. */
 export interface FilmSceneData {
@@ -14,6 +15,7 @@ export interface FilmSceneData {
   network: ProcessNetworkData;
   product: ProductInspectionData;
   spc: SpcData;
+  pcb: PcbInspectionData;
 }
 export type FilmSceneDataKey = keyof FilmSceneData;
 
@@ -24,6 +26,7 @@ export const DEFAULT_FILM_SCENE_DATA: FilmSceneData = {
   network: DEFAULT_PROCESS_DATA,
   product: DEFAULT_PRODUCT_DATA,
   spc: DEFAULT_SPC_DATA,
+  pcb: DEFAULT_PCB_INSPECTION_DATA,
 };
 
 /** Keys absent or undefined in the change keep their current data. */

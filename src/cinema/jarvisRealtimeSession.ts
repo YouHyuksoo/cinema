@@ -5,6 +5,7 @@ import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupS
 import { SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { SceneDataResult } from './sceneDataDocument';
+import { isMachineSubject, MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 
 export interface RealtimeCallbacks {
   phase(value: JarvisPhase): void;
@@ -12,7 +13,7 @@ export interface RealtimeCallbacks {
   transcript(value: string): void;
   analyser(value: AnalyserNode | null): void;
   error(message: string): void;
-  chapter(id: FilmId): void;
+  chapter(id: FilmId, subject?: MachineSubject): void;
   ended(): void;
   connection?(connected: boolean): void;
   /** Scene data contract entry points; absent when the player is not wired (patches are then refused). */
@@ -48,6 +49,7 @@ export class JarvisRealtimeSession {
   private responding = false;
   private playing = false;
   private pendingChapter?: FilmId;
+  private pendingMachineSubject?: MachineSubject;
   private chapterReplyId = '';
   private ignoredResponses = new Set<string>();
   private responseId = '';
@@ -172,7 +174,8 @@ export class JarvisRealtimeSession {
         this.finishStartup();
         this.playing = false;
         if (this.pendingChapter && this.chapterReplyId && (event.response_id ?? this.responseId) === this.chapterReplyId) {
-          const chapter = this.pendingChapter; this.stop(); this.callbacks.chapter(chapter);
+          const chapter = this.pendingChapter, subject = this.pendingMachineSubject;
+          this.stop(); if (subject) this.callbacks.chapter(chapter, subject); else this.callbacks.chapter(chapter);
         }
         else this.toPhase('listening');
         break;
@@ -199,12 +202,13 @@ export class JarvisRealtimeSession {
             this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(this.applyValues(call.arguments)) } });
             continue;
           }
-          let chapter: unknown;
-          try { chapter = JSON.parse(call.arguments ?? '{}').chapter; } catch { chapter = undefined; }
-          const scene = call.name === 'open_scene' ? FILM_CHAPTERS.find(c => c.id === chapter) : undefined;
-          if (scene) { this.pendingChapter = scene.id; this.chapterReplyId = ''; }
+          let chapter: unknown, subject: unknown;
+          try { const args = JSON.parse(call.arguments ?? '{}'); chapter = args.chapter; subject = args.subject; } catch { chapter = undefined; }
+          const scene = call.name === 'open_scene' && (subject === undefined || isMachineSubject(subject)) ? FILM_CHAPTERS.find(c => c.id === chapter) : undefined;
+          const machineSubject = scene?.id === 'machine' ? isMachineSubject(subject) ? subject : 'pcb' : undefined;
+          if (scene) { this.pendingChapter = scene.id; this.pendingMachineSubject = machineSubject; this.chapterReplyId = ''; }
           this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id,
-            output: JSON.stringify(scene ? { ok: true, title: scene.title, instruction: '한 문장으로 안내하세요. 음성 안내가 끝나면 화면을 전환합니다.' } : { ok: false, error: '허용되지 않은 연출입니다.' }) } });
+            output: JSON.stringify(scene ? { ok: true, title: machineSubject ? MACHINE_PRESENTATIONS[machineSubject].title : scene.title, instruction: '이 title의 대상을 한 문장으로 안내하세요. 음성 안내가 끝나면 화면을 전환합니다.' } : { ok: false, error: '허용되지 않은 연출입니다.' }) } });
         }
         if (calls.length) this.send({ type: 'response.create' });
         else if (!this.playing && !this.startupPending) this.toPhase('listening');
@@ -258,7 +262,7 @@ export class JarvisRealtimeSession {
     if (this.audio) { this.audio.pause(); this.audio.srcObject = null; this.audio = null; }
     this.robotVoice?.dispose(); this.robotVoice = null; this.outputMeter = null;
     if (this.context) void this.context.close().catch(() => {});
-    this.context = null; this.pendingChapter = undefined;
+    this.context = null; this.pendingChapter = undefined; this.pendingMachineSubject = undefined;
     this.callbacks.analyser(null); this.callbacks.phase('idle'); this.callbacks.ended();
   }
 }
