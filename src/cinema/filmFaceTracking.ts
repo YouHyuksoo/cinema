@@ -15,7 +15,7 @@ export interface FilmFaceTrackingDependencies {
 }
 
 const browserDependencies: FilmFaceTrackingDependencies = {
-  createWorker: () => new Worker('/cinema/face-tracker.worker.js'),
+  createWorker: () => new Worker(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/cinema/face-tracker.worker.js`),
   capture: (video, width, height) => createImageBitmap(video, {
     resizeWidth: width, resizeHeight: height, resizeQuality: 'low',
   }),

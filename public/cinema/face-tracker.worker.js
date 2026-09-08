@@ -9,11 +9,13 @@ async function initialize() {
   if (initializing || detector) return;
   initializing = true;
   try {
-    importScripts('/cinema/vision/vision_bundle.js');
-    const files = await Vision.FilesetResolver.forVisionTasks('/cinema/vision');
+    // 워커 파일 위치 기준으로 자원 경로를 계산해 basePath(예: GitHub Pages /cinema)가 붙어도 동작한다.
+    const visionBase = new URL('vision', self.location.href).href;
+    importScripts(visionBase + '/vision_bundle.js');
+    const files = await Vision.FilesetResolver.forVisionTasks(visionBase);
     detector = await Vision.FaceDetector.createFromOptions(files, {
       baseOptions: {
-        modelAssetPath: '/cinema/vision/blaze_face_short_range.tflite',
+        modelAssetPath: visionBase + '/blaze_face_short_range.tflite',
         delegate: 'CPU',
       },
       runningMode: 'VIDEO',
