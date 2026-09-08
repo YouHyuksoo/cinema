@@ -12,10 +12,11 @@ import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
 import { useEnvironmentSelection } from './useEnvironmentSelection';
+import { DEFAULT_FILM_SCENE_DATA, mergeFilmSceneData, type FilmSceneData } from './filmSceneData';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
-  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME });
+  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, sceneData: DEFAULT_FILM_SCENE_DATA });
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -23,6 +24,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [texture, setTexture] = useState<FilmTextureSettings>(DEFAULT_FILM_TEXTURE);
   const [charts, setCharts] = useState<FilmChartSettings>(DEFAULT_FILM_CHARTS);
   const [theme, setTheme] = useState<FilmThemeId>(DEFAULT_FILM_THEME);
+  const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
   const [position, setPosition] = useState(() => chapterAt(0));
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
@@ -77,7 +79,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       else {
         cameraTime = 3;
-        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame);
+        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, current.sceneData);
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {
@@ -95,8 +97,12 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory, environment,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData,
     resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
+    updateSceneData(change: Partial<FilmSceneData>) {
+      clock.current.sceneData = mergeFilmSceneData(clock.current.sceneData, change);
+      setSceneData(clock.current.sceneData);
+    },
     changeTheme(value: FilmThemeId) {
       clock.current.theme = getFilmTheme(value).id;
       setTheme(clock.current.theme);

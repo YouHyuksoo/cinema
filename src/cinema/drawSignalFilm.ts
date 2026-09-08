@@ -19,15 +19,17 @@ import type { FilmViewportInsets } from './filmViewport';
 import { DEFAULT_FILM_CHARTS, type FilmChartSettings } from './chartPresentation';
 import type { FactoryInteraction } from './smtFactoryInteraction';
 import type { ZoneEnvironmentState } from './zoneEnvironment';
+import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 
 export { FILM_SECONDS } from './filmProgram';
-type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null) => void;
+type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData) => void;
 const renderers: Record<FilmId, Renderer> = {
   wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment) => drawWaveFilm(ctx, width, height, time, fonts, insets, undefined, environment),
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
   console: drawConsoleFilm, visor: (ctx, width, height, time, fonts, insets, _charts, factory) => drawVisorFilm(ctx, width, height, time, fonts, 'space', insets, factory),
   visorPan: drawPlanarVisorFilm,
-  bars: (ctx, width, height, time, fonts, insets, charts) => drawBarFilm(ctx, width, height, time, fonts, charts.bars, insets),
+  bars: (ctx, width, height, time, fonts, insets, charts, _factory, _environment, data) =>
+    drawBarFilm(ctx, width, height, time, fonts, charts.bars, insets, data.production),
   pie: (ctx, width, height, time, fonts, insets, charts) => drawPieFilm(ctx, width, height, time, fonts, charts.pie, insets),
   corners: drawCornerFilm,
   machine: (ctx, width, height, time, fonts, insets) => drawTransparentMachineFilm(ctx, width, height, time, fonts, insets),
@@ -52,11 +54,11 @@ function resetFilmPaint(ctx: CanvasRenderingContext2D) {
 }
 
 /** Each renderer receives local scene time; playback and progress stay continuous. */
-export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null) {
+export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null, data: FilmSceneData = DEFAULT_FILM_SCENE_DATA) {
   ctx.save();
   try {
     resetFilmPaint(ctx);
-    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment);
+    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment, data);
   } finally {
     // Keep scene paint changes out of subsequent frames and the texture pass.
     ctx.restore();
@@ -64,9 +66,9 @@ export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, hei
 }
 
 function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts,
-  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null) {
+  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData) {
   const { chapter, index, start, localTime } = chapterAt(t);
-  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment);
+  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment, data);
 
   // Chapter fades and navigation marks must not inherit an object's local opacity.
   resetFilmPaint(ctx);
