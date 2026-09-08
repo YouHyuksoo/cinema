@@ -1,4 +1,4 @@
-export const JARVIS_STARTUP_MESSAGE = 'JARVIS initializing.';
+export const JARVIS_STARTUP_MESSAGE = 'HATCHERY initializing.';
 
 /** A short, locally synthesized motor spin-up followed by two confirmation tones. */
 export function playJarvisStartupSound(context: AudioContext) {

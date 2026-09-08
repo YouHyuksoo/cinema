@@ -2,6 +2,7 @@ import type { JarvisPhase } from './jarvisAudio';
 import styles from './jarvisIgnition.module.css';
 
 interface Props {
+  compact?: boolean;
   active: boolean;
   disabled: boolean;
   phase: JarvisPhase;
@@ -14,9 +15,9 @@ const STATUS: Record<JarvisPhase, string> = {
   thinking: 'PROCESSING', speaking: 'VOICE ACTIVE', error: 'CHECK SYSTEM',
 };
 
-export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt }: Props) {
+export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt, compact = false }: Props) {
   const busy = phase === 'thinking' || phase === 'speaking';
-  return <div className={styles.control} data-active={active} data-phase={phase}>
+  return <div className={styles.control} data-active={active} data-phase={phase} data-compact={compact}>
     <div className={styles.socket}>
       <div className={styles.halo} aria-hidden="true" />
       <button type="button" className={styles.ignition} disabled={disabled} onClick={onToggle}
@@ -25,7 +26,7 @@ export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt 
           <path d="M12 2v10M6 5a9 9 0 1 0 12 0" />
         </svg>
         <strong>{active ? 'STOP' : 'START'}</strong>
-        <small>JARVIS</small>
+        <small>HATCHERY</small>
         <i aria-hidden="true" />
       </button>
     </div>
@@ -43,7 +44,7 @@ export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt 
     </svg>
     <div className={styles.status}>
       <span><i />{STATUS[phase]}</span>
-      <small>{phase === 'listening' ? 'MIC INPUT / 실제 수신 파형' : phase === 'speaking' ? 'VOICE OUTPUT / 응답 연출' : 'JARVIS / VOICE SYSTEM'}</small>
+      <small>{phase === 'listening' ? 'MIC INPUT / 실제 수신 파형' : phase === 'speaking' ? 'VOICE OUTPUT / 응답 연출' : 'HATCHERY / VOICE SYSTEM'}</small>
       {busy && <button type="button" className={styles.interrupt} onClick={onInterrupt}>응답 중지</button>}
     </div>
   </div>;

@@ -83,3 +83,13 @@
   .halo,.rotor,.needle,.bridge i { animation:none; }
   .control .ignition { transition:none; }
 }
+.control[data-compact=true] { gap:6px; padding:2px 0; width:100%; }
+.control[data-compact=true] .socket { width:64px; height:64px; }
+.control[data-compact=true] .ignition { width:56px; height:56px; padding:5px 0; }
+.control[data-compact=true] .ignition strong { font-size:11px; }
+.control[data-compact=true] .ignition small { font-size:5px; }
+.control[data-compact=true] .power { width:11px; height:11px; }
+.control[data-compact=true] .bridge,.control[data-compact=true] .gauge,.control[data-compact=true] .status>small { display:none; }
+.control[data-compact=true] .status { flex:0 1 auto; }
+.control[data-compact=true] .status>span { font-size:7px; letter-spacing:0; gap:4px; overflow-wrap:anywhere; }
+.control[data-compact=true] .interrupt { min-height:28px; }

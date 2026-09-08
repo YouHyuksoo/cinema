@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JarvisRealtimeSession } from '@/cinema/jarvisRealtimeSession';
 const startup = vi.hoisted(() => ({ stop: vi.fn(), finished: Promise.resolve() }));
-vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'JARVIS initializing.', playJarvisStartupSound: () => startup }));
+vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'HATCHERY initializing.', playJarvisStartupSound: () => startup }));
 const stopTrack = vi.fn();
 const audioTrack = { stop: stopTrack, enabled: true, addEventListener: vi.fn() };
 const stream = { getTracks: () => [audioTrack], getAudioTracks: () => [audioTrack] };
@@ -30,7 +30,7 @@ describe('Realtime lifecycle', () => {
     finish(); await Promise.resolve();
     const events = channel.send.mock.calls.map(([value]) => JSON.parse(value));
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ type: 'response.create', response: { tool_choice: 'none', instructions: expect.stringContaining('JARVIS initializing.') } });
+    expect(events[0]).toMatchObject({ type: 'response.create', response: { tool_choice: 'none', instructions: expect.stringContaining('HATCHERY initializing.') } });
     channel.onmessage?.({ data: JSON.stringify({ type: 'response.done', response: { status: 'completed' } }) });
     expect(audioTrack.enabled).toBe(false);
     channel.onmessage?.({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });

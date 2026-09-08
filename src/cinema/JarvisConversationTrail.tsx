@@ -15,7 +15,7 @@ export function JarvisConversationTrail({ messages }: { messages: readonly Trail
           {[0, 1].map(copy => <div className={styles.sequence} key={copy}>
             {history.map((message, index) => <div className={styles.entry} data-role={message.role} key={index}>
               <span className={styles.marker}>{String(index + 1).padStart(2, '0')}</span>
-              <div><small>{message.role === 'user' ? 'OPERATOR / INPUT' : 'JARVIS / RESPONSE'}</small>
+              <div><small>{message.role === 'user' ? 'OPERATOR / INPUT' : 'HATCHERY / RESPONSE'}</small>
                 <p>{message.content}</p></div>
             </div>)}
           </div>)}

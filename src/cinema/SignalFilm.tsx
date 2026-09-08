@@ -8,6 +8,7 @@ import { getFilmTheme } from './filmThemes';
 import { useFilmCamera } from './useFilmCamera';
 import { JarvisMain } from './JarvisMain';
 import { SmtFactoryExplorer } from './SmtFactoryExplorer';
+import { EnvironmentZoneInteraction } from './EnvironmentZoneInteraction';
 import styles from './film.module.css';
 
 export function SignalFilm() {
@@ -18,9 +19,9 @@ export function SignalFilm() {
   const player = useFilmPlayback(canvas, camera.frameRef, cameraView);
   const cameraMode = {
     ...camera, preview,
-    openPreview() { if (player.factory.manual) player.resumeTour(); cameraView.current = true; setPreview(true); },
+    openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); },
     closePreview() { camera.stop(); cameraView.current = false; setPreview(false); },
-    enable() { cameraView.current = true; setPreview(true); },
+    enable() { player.environment.clear(); cameraView.current = true; setPreview(true); },
   };
   const duration = player.mode === 'chapter' ? player.position.chapter.duration : FILM_SECONDS;
   const themeStyle = useMemo(() => {
@@ -40,17 +41,19 @@ export function SignalFilm() {
   return (
     <main className={styles.page} style={themeStyle} data-film-theme={player.theme}>
       <header className={styles.header}>
-        <span>{preview ? 'JARVIS / MAIN INTERFACE' : 'SIGNAL / MOTION STUDIES'}</span>
+        <span>{preview ? 'HATCHERY / MAIN INTERFACE' : 'SIGNAL / MOTION STUDIES'}</span>
         <span>{preview ? 'VOICE ASSISTANT · DEMO DATA'
           : `${player.mode === 'chapter' ? '현재 장면' : `${FILM_CHAPTERS.length}개 연출`} · ${(duration / player.speed).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}초 반복`}</span>
       </header>
       <div className={styles.screen}>
         <canvas ref={canvas} className={styles.canvas} role="img" aria-label={preview
-          ? '자비스 메인 화면의 연속 공간 배경'
+          ? 'HATCHERY 메인 화면의 연속 공간 배경'
           : `${player.position.chapter.title}: ${player.position.chapter.subtitle} 시뮬레이션 연출.`} />
         {!preview && player.ready && player.position.chapter.id === 'visor'
           && <SmtFactoryExplorer canvas={canvas} controller={player.factory} onAuto={player.resumeTour} />}
-        {!preview && player.position.chapter.id !== 'visor' && <button type="button" className={styles.screenToggle} disabled={!player.ready}
+        {!preview && player.ready && player.position.chapter.id === 'wave'
+          && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} />}
+        {!preview && !['visor', 'wave'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
           aria-label={player.playing ? '연출 화면 일시정지' : '연출 화면 재생'}
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}

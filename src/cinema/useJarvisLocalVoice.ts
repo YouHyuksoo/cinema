@@ -87,7 +87,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { 
     if (current.enabled) return;
     setError('');
     const Ctor = recognitionConstructor(); setSupported(Boolean(Ctor));
-    if (!Ctor) { failure('이 브라우저에서는 음성 인식을 지원하지 않습니다. 아래 입력창으로 자비스와 대화할 수 있습니다.'); return; }
+    if (!Ctor) { failure('이 브라우저에서는 음성 인식을 지원하지 않습니다. 아래 입력창으로 HATCHERY와 대화할 수 있습니다.'); return; }
     if (!navigator.mediaDevices?.getUserMedia) { failure('마이크를 사용할 수 없는 환경입니다.'); return; }
     release();
     const token = current.generation;

@@ -7,7 +7,7 @@ export function JarvisDialogue({ text, source }: { text: string; source: string 
   const characters = Array.from(text.replace(/\s+/g, ' ').trim());
   const pages = Math.max(1, Math.ceil(characters.length / 72));
   return <div className={styles.dialogue}>
-    <div className={styles.replyHeading}><small>JARVIS <span>{source}</span></small>
+    <div className={styles.replyHeading}><small>HATCHERY <span>{source}</span></small>
       {pages > 1 && <nav aria-label="응답 페이지">
         <button type="button" aria-label="이전 응답 페이지" disabled={page === 0} onClick={() => setPage(n => n - 1)}>‹</button>
         <span>{page + 1} / {pages}</span>

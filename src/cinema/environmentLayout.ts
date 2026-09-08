@@ -4,6 +4,15 @@ import { ENVIRONMENT_GAUGES } from './environmentGauge';
 type ZoneItem = ZoneEnvironmentState['zones'][number];
 export interface EnvironmentPoint { x: number; y: number }
 
+/** The cut-corner outline and paint order are shared by drawing and picking. */
+export const ENVIRONMENT_CARD_OUTLINE: readonly EnvironmentPoint[] = [
+  { x: -84, y: -43 }, { x: 68, y: -43 }, { x: 84, y: -29 },
+  { x: 84, y: 39 }, { x: -84, y: 39 },
+];
+export function environmentCardPaintOrder(state: ZoneEnvironmentState) {
+  return [...state.zones].sort((a, b) => a.focus - b.focus);
+}
+
 /** Matches the mini-card's actual scale and tilted drawing plane. */
 export function environmentCardPoint(item: ZoneItem, x: number, y: number): EnvironmentPoint {
   return { x: item.anchor.x + x * item.anchor.scale,

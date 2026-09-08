@@ -1,0 +1,5 @@
+.content { display:flex; flex-direction:column; gap:4px; width:100%; min-height:0; }
+@media(max-width:680px) {
+  .dock.dock { padding-inline:12px; }
+  .dock .content { max-height:calc(100dvh - 54px); overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+}

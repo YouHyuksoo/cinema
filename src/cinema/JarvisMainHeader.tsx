@@ -1,15 +1,19 @@
+import type { ReactNode } from 'react';
 import { JarvisCamera } from './JarvisCamera';
-import { JarvisHeading } from './JarvisHeading';
 import { JarvisMetricCards } from './JarvisMetricCards';
 import { JarvisIdentity } from './JarvisIdentity';
 import type { FilmCamera } from './useFilmCamera';
 import header from './jarvisHeader.module.css';
 
-export function JarvisMainHeader({ camera }: { camera: FilmCamera }) {
+export function JarvisMainHeader({ camera, ignition }: { camera: FilmCamera; ignition: ReactNode }) {
   return <header className={header.header}>
-    <JarvisHeading />
     <div className={header.overview}>
-      <JarvisIdentity />
+      <div className={header.identityControl} role="region" aria-label="HATCHERY 음성 제어">
+        {ignition}
+        <div className={header.brandMark} role="region" aria-label="START 아래 HATCHERY 로고">
+          <JarvisIdentity compact />
+        </div>
+      </div>
       <JarvisMetricCards />
     </div>
     <section className={header.cameraDock} aria-label="우측 상단 고정 카메라">

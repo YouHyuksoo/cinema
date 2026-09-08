@@ -27,8 +27,14 @@ export function JarvisMain({ camera, onChapter }: { camera: FilmCamera; onChapte
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
-  return <section className={styles.main} aria-label="자비스 메인 메뉴">
-    <JarvisMainHeader camera={camera} />
+  return <section className={styles.main} aria-label="HATCHERY 메인 메뉴">
+    <JarvisMainHeader camera={camera} ignition={
+      <JarvisIgnition compact active={voice.active} phase={voice.phase} disabled={voice.configured === null}
+        onInterrupt={voice.stopReply} onToggle={() => {
+          if (voice.active) { voice.stop(); camera.stop(); }
+          else { void voice.start(); void camera.start(); }
+        }} />
+    } />
     <div className={styles.body}>
     <JarvisStream title="OPERATIONS / STREAM" label="좌측 운영 정보" speed={15}>
     <section className={styles.left}>
@@ -42,7 +48,7 @@ export function JarvisMain({ camera, onChapter }: { camera: FilmCamera; onChapte
       <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
       {voice.configured ? <JarvisAiVoiceSettings voice={voice.realtimeVoice} active={voice.active} effect={voice.robotVoice}
         onVoice={voice.setRealtimeVoice} onEffect={voice.setRobotVoice} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
-      <p className={styles.notice}>{voice.configured ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : '대화 시작을 누르고 자비스에게 말을 걸어보세요.'}</p>
+      <p className={styles.notice}>{voice.configured ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : '대화 시작을 누르고 HATCHERY에게 말을 걸어보세요.'}</p>
       <p className={styles.notice}>최근 질문: {voice.transcript || '아직 입력한 질문이 없습니다.'}</p>
       {(voice.error || voice.statusError || camera.error) && <p className={styles.error} role="alert">{voice.error || voice.statusError || camera.error}</p>}
       <div className={styles.quick}>{['현장 요약', '살아 있는 공정망 보여줘', '에너지 보여줘', 'SPC 분석 보여줘'].map(q =>
@@ -56,15 +62,10 @@ export function JarvisMain({ camera, onChapter }: { camera: FilmCamera; onChapte
         <JarvisConversationTrail messages={voice.messages} />
         <JarvisWave audio={voice.audioRef} />
       </div>
-      <JarvisIgnition active={voice.active} phase={voice.phase} disabled={voice.configured === null}
-        onInterrupt={voice.stopReply} onToggle={() => {
-          if (voice.active) { voice.stop(); camera.stop(); }
-          else { void voice.start(); void camera.start(); }
-        }} />
       <JarvisDialogue key={reply} text={reply} source={voice.source} />
       <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
-        <label className={styles.srOnly} htmlFor="jarvis-message">자비스에게 질문</label>
-        <input id="jarvis-message" placeholder="자비스에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
+        <label className={styles.srOnly} htmlFor="jarvis-message">HATCHERY에게 질문</label>
+        <input id="jarvis-message" placeholder="HATCHERY에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
         <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>
       </form>
     </div>

@@ -9,7 +9,7 @@ export const textModel = () => process.env.OPENAI_TEXT_MODEL || 'gpt-4.1-mini';
 export const realtimeModel = () => process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini';
 export const REALTIME_VOICES = JARVIS_REALTIME_VOICES;
 export function jarvisInstructions() {
-  return `당신은 제조 모니터링 HUD의 AI 보조자 자비스입니다. 한국어로 간결하게 답하세요.
+  return `당신은 제조 모니터링 HUD의 AI 보조자 HATCHERY입니다. 한국어로 간결하게 답하세요.
 차분하고 낮은 남성적인 음색과 절제된 로봇 같은 말투를 사용하되 발음은 명료하게 하세요. 영화 배우와 동일한 목소리라고 주장하지 마세요.
 현재 현장 데이터는 실제 MES가 아닌 시연 데이터입니다. 수치를 말할 때 시연 기준임을 밝히고, 없는 측정값이나 원인을 지어내지 마세요.
 카메라는 볼 수 없습니다. 설비를 제어하거나 DB를 변경할 권한은 없습니다.

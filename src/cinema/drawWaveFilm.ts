@@ -3,15 +3,16 @@ import { beginFilmViewport, type FilmViewportInsets } from './filmViewport';
 import { drawCornerField } from './components/drawCornerField';
 import { drawEnvironmentFocus, drawEnvironmentZones } from './components/drawZoneEnvironment';
 import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING,
-  environmentReadingStatus, zoneEnvironmentState, type ZoneEnvironmentData } from './zoneEnvironment';
+  environmentReadingStatus, zoneEnvironmentState, type ZoneEnvironmentData, type ZoneEnvironmentState } from './zoneEnvironment';
 import { drawEnvironmentHeatmap } from './components/drawEnvironmentHeatmap';
 
 export const WAVE_FILM_SECONDS = ENVIRONMENT_FILM_SECONDS;
 
 /** Stable chapter ID; the scene now tours manufacturing temperature and humidity stations. */
 export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
-  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA) {
-  const state = zoneEnvironmentState(time, data);
+  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA,
+  frame?: ZoneEnvironmentState | null) {
+  const state = frame ?? zoneEnvironmentState(time, data);
   const view = beginFilmViewport(ctx, width, height, insets);
   drawCornerField(ctx, view, state.elapsed, state.focus * .35);
   const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false, heat = 0) =>

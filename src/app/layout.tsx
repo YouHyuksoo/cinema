@@ -7,7 +7,7 @@ const label = Rajdhani({ subsets: ['latin'], weight: ['500', '600'], variable: '
 const mono = Share_Tech_Mono({ subsets: ['latin'], weight: '400', variable: '--font-mono' });
 const korean = Noto_Sans_KR({ subsets: ['latin'], weight: ['500'], variable: '--font-korean' });
 
-export const metadata: Metadata = { title: 'JARVIS HUD' };
+export const metadata: Metadata = { title: 'HATCHERY HUD' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

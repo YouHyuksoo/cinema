@@ -1,6 +1,6 @@
 export const ROBOT_VOICE_STYLES = [
   { id: 'natural', label: '자연 음성', description: '전자음 효과 없이 기본 음색으로 말합니다.' },
-  { id: 'jarvis', label: '자비스형', description: '명료한 목소리에 은은한 금속 울림을 더합니다.' },
+  { id: 'jarvis', label: 'HATCHERY형', description: '명료한 목소리에 은은한 금속 울림을 더합니다.' },
   { id: 'android', label: '안드로이드형', description: '강한 전자음이 겹쳐지는 기계 목소리입니다.' },
   { id: 'radio', label: '통신 로봇형', description: '무전기 같은 좁은 음역과 거친 질감을 만듭니다.' },
 ] as const;

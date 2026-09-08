@@ -38,7 +38,7 @@
 .connections dt { color:var(--film-muted); }.connections dd { margin:0; }
 .alert { border-left:2px solid #ffc16866; padding:8px 10px; margin:9px 0; display:grid; grid-template-columns:1fr auto; gap:6px; font-size:10px; background:#ffc16804; }
 .alert strong { grid-column:1/3; font:15px var(--font-mono),monospace; font-weight:400; }.alert span { color:var(--film-muted); }
-.center { min-width:0; min-height:0; overflow:clip; display:grid; grid-template-rows:auto minmax(28px,1fr) auto auto auto; gap:7px; padding:0 0 2px; border-top:1px solid var(--film-line); }
+.center { min-width:0; min-height:0; overflow:clip; display:grid; grid-template-rows:auto minmax(28px,1fr) auto auto; gap:7px; padding:0 0 2px; border-top:1px solid var(--film-line); }
 .voiceHeading { display:flex; align-items:center; justify-content:space-between; padding-top:9px; font:9px var(--font-mono),monospace; color:var(--film-muted); }
 .voiceHeading small { font:inherit; }.voiceHeading span[data-active=true] { color:var(--film-accent); }
 .center h1 { font-size:clamp(18px,2vw,26px); font-weight:400; margin:0; letter-spacing:-.03em; color:var(--film-ink); }

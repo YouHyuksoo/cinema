@@ -35,7 +35,7 @@ export function resolveJarvisCommand(input: string): JarvisReply | null {
     const { energy, bottlenecks, quality } = jarvisMainData;
     return { source: 'local', reply: `시연 데이터 기준, 생산량은 ${energy.production.value}개, 목표 ${energy.production.capacity}개입니다. 공정 병목 ${bottlenecks.length}곳, ${quality.valid ? `SPC 관리 한계 이탈 ${quality.violationCount}개 부분군` : '품질 데이터 확인 필요'}입니다. 사용 전력은 ${energy.power.value}킬로와트입니다. 좌우 정보에서 공정·품질·에너지 상세 연출을 열 수 있습니다.` };
   }
-  if (/^(?:자비스[야,\s]*)?(?:안녕(?:하세요)?|도움말|무엇을 할 수 있(?:어|나요))?[.!?\s]*$/.test(text)) return { source: 'local',
-    reply: '네, 자비스입니다. 현장 요약, 이상 구역, ZONE 6 온습도처럼 질문하거나 SPC 분석 보여줘처럼 연출을 선택해 주세요. 현재 현장 정보는 시연 데이터입니다.' };
+  if (/^(?:(?:hatchery|헤처리|해처리|해쳐리|자비스)[야,\s]*)?(?:안녕(?:하세요)?|도움말|무엇을 할 수 있(?:어|나요))?[.!?\s]*$/.test(text)) return { source: 'local',
+    reply: '네, HATCHERY입니다. 현장 요약, 이상 구역, ZONE 6 온습도처럼 질문하거나 SPC 분석 보여줘처럼 연출을 선택해 주세요. 현재 현장 정보는 시연 데이터입니다.' };
   return null;
 }

@@ -11,6 +11,7 @@ import { drawJarvisBackdrop } from './drawJarvisBackdrop';
 import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
+import { useEnvironmentSelection } from './useEnvironmentSelection';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -26,6 +27,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
   const readFactoryState = factory.readState;
+  const environment = useEnvironmentSelection();
+  const updateEnvironment = environment.update;
 
   useEffect(() => {
     const node = canvasRef.current;
@@ -66,13 +69,15 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       previous = now;
       themed.setTheme(current.theme);
+      const active = chapterAt(current.time);
+      const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null);
       if (cameraView.current) {
         const view = beginFilmViewport(themed.ctx, node.width, node.height, viewport);
         drawJarvisBackdrop(themed.ctx, view, cameraTime);
       }
       else {
         cameraTime = 3;
-        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState());
+        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame);
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {
@@ -87,10 +92,10 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     };
     frame = requestAnimationFrame(render);
     return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); };
-  }, [canvasRef, cameraRef, cameraView, readFactoryState]);
+  }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, environment,
     resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
     changeTheme(value: FilmThemeId) {
       clock.current.theme = getFilmTheme(value).id;
@@ -117,6 +122,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     togglePlay() { factory.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },
     selectChapter(id: FilmId) {
       factory.clear();
+      environment.clear();
       clock.current.time = chapterStart(id); clock.current.paused = false;
       setPosition(chapterAt(clock.current.time)); setPlaying(true);
     },
@@ -124,10 +130,12 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       factory.clear();
       const active = chapterAt(clock.current.time);
       clock.current.time = active.start + Math.max(0, Math.min(active.chapter.duration - .001, value));
+      environment.update(active.chapter.id === 'wave' ? chapterAt(clock.current.time).localTime : null);
       setPosition(chapterAt(clock.current.time));
     },
     restart() {
       factory.clear();
+      environment.clear();
       clock.current.time = clock.current.mode === 'chapter' ? chapterAt(clock.current.time).start : 0;
       clock.current.paused = false; setPlaying(true); setPosition(chapterAt(clock.current.time));
     },

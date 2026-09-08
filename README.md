@@ -1,6 +1,6 @@
-# CINEMA — JARVIS Manufacturing Assistant
+# CINEMA — HATCHERY Manufacturing Assistant
 
-C:\Project\hud의 CINEMA를 분리한 독립 Next.js 프로젝트입니다. 자비스 메인 화면과 16개 연출, 카메라 얼굴 추적, 대화 기록 배경, 시동 버튼·기동 효과음, OpenAI Realtime·자유 질문, 로봇 음색 설정을 포함합니다. 제조 정보는 시연 데이터입니다.
+C:\Project\hud의 CINEMA를 분리한 독립 Next.js 프로젝트입니다. HATCHERY 메인 화면과 16개 연출, 카메라 얼굴 추적, 대화 기록 배경, 시동 버튼·기동 효과음, OpenAI Realtime·자유 질문, 로봇 음색 설정을 포함합니다. 제조 정보는 시연 데이터입니다.
 
 ## 실행
 
@@ -33,7 +33,7 @@ API는 localhost 접속과 동일 출처를 검증합니다. 외부 배포용 �
 ## 구조
 
 - src/app: 메인 및 /cinema 진입점, CINEMA API
-- src/cinema: 재사용 연출 부품, 데이터 규격, 재생·테마·카메라·자비스 음성
+- src/cinema: 재사용 연출 부품, 데이터 규격, 재생·테마·카메라·HATCHERY 음성
 - src/server/cinema: 서버 전용 OpenAI 요청
 - public/cinema: 얼굴 추적 Worker와 모델/WASM, 원본 라이선스
 - tests/unit/scenes: CINEMA 관련 단위 테스트

@@ -4,6 +4,7 @@ import { drawTransparentMachineFilm } from '@/cinema/drawTransparentMachineFilm'
 import { advanceFilm, chapterStart, type FilmId } from '@/cinema/filmProgram';
 import { TRACE_LOOP } from '@/cinema/workOrderTraceTiming';
 import { SMT_LINE } from '@/cinema/smtLine';
+import { zoneEnvironmentState } from '@/cinema/zoneEnvironment';
 
 // Only the DOM-backed raster surface is omitted; scene, background and frame code run unchanged.
 vi.mock('@/cinema/components/drawProjectedFilmSurface', () => ({ drawProjectedFilmSurface: () => undefined }));
@@ -68,6 +69,18 @@ function expectOpaqueBackground(fill: Fill) {
 }
 
 describe('cinema frame paint isolation', () => {
+  it('renders manual ZONE values in the central instruments and restores automatic values on release', () => {
+    for (const selectedId of ['ZONE 08', null]) {
+      const frame = zoneEnvironmentState(8, undefined, selectedId);
+      const fixture = canvasFixture();
+      drawSignalFilm(fixture.ctx, 1280, 720, 8, undefined, undefined, undefined, null, frame);
+      expect(fixture.texts.find(text => text.x === 640 && text.y === 313)?.value).toBe(frame.selected.zone.id);
+      expect(fixture.texts.find(text => text.x === 640 && text.y === 335)?.value).toBe(frame.selected.zone.name);
+      expect(fixture.texts.some(text => text.value === String(frame.selected.zone.temperature))).toBe(true);
+      expect(fixture.stack).toHaveLength(0);
+    }
+  });
+
   it('keeps all eight machines and settled readouts visible across a trace repeat without a blackout', () => {
     const before = chapterStart('trace') + TRACE_LOOP.end - .01;
     const after = advanceFilm(before, .02, 'chapter');

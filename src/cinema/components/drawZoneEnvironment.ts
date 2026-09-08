@@ -2,7 +2,7 @@ import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
 import type { ZoneEnvironmentState } from '../zoneEnvironment';
 import { drawSensorRotor, sensorReading } from './drawSensorInstrument';
 import { drawZoneTemperatureHistory } from './drawZoneTemperatureHistory';
-import { environmentFocusConnection } from '../environmentLayout';
+import { ENVIRONMENT_CARD_OUTLINE, environmentCardPaintOrder, environmentFocusConnection } from '../environmentLayout';
 import { drawEnvironmentLink } from './drawEnvironmentLink';
 import { ENVIRONMENT_GAUGES, environmentGaugeState } from '../environmentGauge';
 import { drawEnvironmentGauge } from './drawEnvironmentGauge';
@@ -10,7 +10,7 @@ import { drawEnvironmentGauge } from './drawEnvironmentGauge';
 /** Ten suspended sensor stations share their projection with the selected station's tether. */
 export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState) {
   for (const item of state.zones) drawZoneTemperatureHistory(ctx, fonts, state, item);
-  for (const item of [...state.zones].sort((a, b) => a.focus - b.focus)) {
+  for (const item of environmentCardPaintOrder(state)) {
     const { zone, anchor, focus, reveal, status } = item;
     const alpha = state.reveal * reveal * item.cardOpacity, heat = status === 'outside' ? 1 : .4;
     if (alpha <= .001) continue;
@@ -25,9 +25,15 @@ export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmF
     glow.addColorStop(0, signalColor(heat, alpha * (.035 + focus * .08)));
     glow.addColorStop(1, signalColor(heat, 0));
     ctx.fillStyle = glow; ctx.fillRect(-84, -43, 168, 82);
-    line(-84, -43, 68, -43, .35 + focus * .35); line(68, -43, 84, -29, .35);
-    line(-84, -43, -84, 38, .17); line(84, -29, 84, 38, .17);
-    line(-84, 39, 84, 39, .35); line(-81, 42, 81, 42, .14);
+    ENVIRONMENT_CARD_OUTLINE.forEach((a, index) => {
+      const b = ENVIRONMENT_CARD_OUTLINE[(index + 1) % ENVIRONMENT_CARD_OUTLINE.length];
+      line(a.x, a.y, b.x, b.y, [.35 + focus * .35, .35, .17, .35, .17][index]);
+    });
+    line(-81, 42, 81, 42, .14);
+    if (state.manualSelectedId === zone.id) {
+      ctx.fillStyle = signalColor(heat, alpha);
+      ctx.fillRect(-86, -45, 4, 4); ctx.fillRect(82, 37, 4, 4);
+    }
     const text = (value: string, x: number, y: number, size: number, opacity = 1, mono = false, colorHeat = heat) =>
       filmText(ctx, fonts, value, x, y, size, alpha * opacity, mono, 'left', signalColor(colorHeat, 1));
     text(zone.id, -73, -26, 13, 1, true);

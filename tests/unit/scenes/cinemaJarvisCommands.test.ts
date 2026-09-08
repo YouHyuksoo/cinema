@@ -35,9 +35,13 @@ describe('Jarvis main commands and local endpoint', () => {
     expect(resolveJarvisCommand('온습도 알려줘')?.chapter).toBeUndefined();
     expect(resolveJarvisCommand('모든 설비 정지해')).toBeNull();
   });
-  it('does not swallow free AI questions just because they address Jarvis', () => {
-    expect(resolveJarvisCommand('자비스, 생산성을 어떻게 개선할까?')).toBeNull();
-    expect(resolveJarvisCommand('자비스')).toMatchObject({ source: 'local' });
+  it('does not swallow free AI questions just because they address HATCHERY', () => {
+    expect(resolveJarvisCommand('HATCHERY, 생산성을 어떻게 개선할까?')).toBeNull();
+    expect(resolveJarvisCommand('HATCHERY')).toMatchObject({ source: 'local' });
+  });
+  it.each(['HATCHERY', 'hatchery', '헤처리', '해처리', '해쳐리', '자비스'])('introduces HATCHERY when addressed as %s', name => {
+    expect(resolveJarvisCommand(name)).toMatchObject({ source: 'local', reply: expect.stringContaining('HATCHERY입니다.') });
+    expect(resolveJarvisCommand(`${name}, 생산성을 어떻게 개선할까?`)).toBeNull();
   });
   it('keeps AI unconnected and handles unknown questions honestly without external calls', async () => {
     expect(await GET().json()).toMatchObject({ aiConfigured: false });

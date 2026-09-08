@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JarvisRecognition } from '@/cinema/jarvisAudio';
-vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'JARVIS initializing.', playJarvisStartupSound: () => ({ stop: vi.fn(), finished: Promise.resolve() }) }));
+vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'HATCHERY initializing.', playJarvisStartupSound: () => ({ stop: vi.fn(), finished: Promise.resolve() }) }));
 
 const hooks = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[] }));
 vi.mock('react', () => ({
@@ -37,7 +37,7 @@ const cancel = vi.fn();
 beforeEach(() => {
   hooks.effects = []; Recognition.instances = [];
   vi.clearAllMocks(); vi.useFakeTimers();
-  speak.mockImplementation(u => { u.onstart?.(); if (u.text === 'JARVIS initializing.') { u.onend?.(); speak.mockClear(); } });
+  speak.mockImplementation(u => { u.onstart?.(); if (u.text === 'HATCHERY initializing.') { u.onend?.(); speak.mockClear(); } });
   requestMedia.mockResolvedValue(stream);
   vi.stubGlobal('window', { SpeechRecognition: Recognition, speechSynthesis: { speak, cancel, getVoices: () => [], addEventListener: vi.fn(), removeEventListener: vi.fn() }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
   vi.stubGlobal('document', { hidden: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
@@ -59,7 +59,7 @@ describe('Jarvis explicit voice session ownership', () => {
     speak.mockImplementationOnce(u => u.onstart?.());
     const voice = useJarvisVoice(vi.fn()); await voice.start();
     const greeting = speak.mock.calls[0][0];
-    expect(greeting.text).toBe('JARVIS initializing.'); expect(greeting.lang).toBe('en-US');
+    expect(greeting.text).toBe('HATCHERY initializing.'); expect(greeting.lang).toBe('en-US');
     expect(Recognition.instances).toHaveLength(0);
     voice.stop(); greeting.onend?.();
     expect(Recognition.instances).toHaveLength(0); expect(cancel).toHaveBeenCalled();
