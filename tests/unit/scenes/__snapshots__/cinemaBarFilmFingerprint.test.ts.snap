@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bar scene draw-call fingerprint > 2D presentation at 8s 1`] = `"5633 calls · f5f97673c6af0cdac5c6623aec857c196138677e"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 1.5s 1`] = `"4341 calls · 10590b5d3f72602d9f6f8d8a613a983f0dd426fe"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 8s 1`] = `"8267 calls · f7681d658aa3f8550d7e027f23565b8c5eb92ca9"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 12.5s 1`] = `"9386 calls · e175e41ac9b1052569977a884e95470e271c4db0"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 14s 1`] = `"9386 calls · bcb72db121e71a652b81b993e198c6962565f7f9"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 20s 1`] = `"9386 calls · db9f71501a145ba8f0b8fe9d5327e946abda47d0"`;
+
+exports[`bar scene draw-call fingerprint > default snapshot at 26s 1`] = `"8267 calls · c8a1fc83ab40178396ceb802528a1b79234bb2df"`;
+
+exports[`bar scene draw-call fingerprint > twelve lines at 8s (compact headers) 1`] = `"15331 calls · 46fce0adb4e1868951a9288d1ea1936e46c30bc2"`;
+
+exports[`bar scene draw-call fingerprint > two lines at 8s 1`] = `"4327 calls · bbf85a2e312ad2853a3f46bf8f5f19a5e09367c3"`;
+
+exports[`bar scene draw-call fingerprint > two lines at 14s 1`] = `"5457 calls · f866ff61a240da14c74ec8c042ea1d0477b20a04"`;
