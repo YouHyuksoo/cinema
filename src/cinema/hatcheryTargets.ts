@@ -125,6 +125,16 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
     reply: `${target.object.label} ${field.label}를 ${valueText(field, value, unit)}로 갱신했습니다. 시연 데이터이며 실제 설비는 바뀌지 않습니다.` };
 }
 
+/** Spoken confirmation for a patch built from a tool call (no local command sentence available). */
+export function describeHatcheryPatch(patch: SceneObjectPatch) {
+  const scene = isPatchScene(patch.scene) ? patch.scene : undefined;
+  const changes = patch.objects.map(object => Object.entries(object).filter(([key]) => key !== 'id').map(([key, value]) => {
+    const field = scene ? HATCHERY_FIELDS[scene].find(item => item.field === key) : undefined;
+    return `${object.id} ${field?.label ?? key} ${Array.isArray(value) ? value.join(', ') : String(value)}${field?.unit ?? ''}`;
+  }).join(', ')).join(', ');
+  return `${changes}로 갱신했습니다. 시연 데이터이며 실제 설비는 바뀌지 않습니다.`;
+}
+
 /** Sentence for the assistant after the store answered. */
 export function describeSceneDataResult(command: Extract<HatcheryValueCommand, { kind: 'patch' }>, result: SceneDataResult) {
   if (!result.ok) return `${command.label} 값을 바꾸지 못했습니다. ${result.reason}`;

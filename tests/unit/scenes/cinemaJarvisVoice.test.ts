@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JarvisRecognition } from '@/cinema/jarvisAudio';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
+import type { SceneDataResult } from '@/cinema/sceneDataDocument';
 vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'HATCHERY initializing.', playJarvisStartupSound: () => ({ stop: vi.fn(), finished: Promise.resolve() }) }));
 
 const hooks = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[] }));
@@ -139,7 +140,7 @@ describe('Jarvis explicit voice session ownership', () => {
 
 describe('HATCHERY value commands in the local voice hook', () => {
   const actions = () => ({ sceneData: () => DEFAULT_FILM_SCENE_DATA,
-    applySceneObjects: vi.fn((_input: unknown) => ({ ok: true as const, scene: 'bars' as const, applied: 1, ignored: [] as string[] })) });
+    applySceneObjects: vi.fn<(input: unknown) => SceneDataResult>(() => ({ ok: true, scene: 'bars', applied: 1, ignored: [] })) });
   it('applies a deterministic value command locally, speaks the result and then opens the scene', async () => {
     const open = vi.fn(), acts = actions(), voice = useJarvisVoice(open, { actions: acts });
     await voice.start(); await voice.ask('라인 2 470으로');

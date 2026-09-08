@@ -52,3 +52,35 @@ describe('Jarvis OpenAI server boundary', () => {
     expect(await (await POST(request({ message: '철학이란 무엇인가?' }))).json()).toMatchObject({ source: 'unavailable' });
   });
 });
+
+describe('HATCHERY value commands through the OpenAI text assistant', () => {
+  it('offers the set_scene_object_values tool and lists patchable objects in the instructions', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ output: [{ type: 'message', content: [{ type: 'output_text', text: '네.' }] }] }));
+    await POST(request({ message: '생산성을 어떻게 개선할까?' }));
+    const payload = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(payload.tools.map((tool: { name: string }) => tool.name)).toContain('set_scene_object_values');
+    expect(payload.tool_choice).toBe('auto');
+    expect(payload.instructions).toContain('LINE-02');
+    expect(payload.instructions).toContain('set_scene_object_values');
+  });
+  it('turns a function call into a contract patch alongside the spoken reply', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ output: [
+      { type: 'function_call', name: 'set_scene_object_values', call_id: 'c1', arguments: JSON.stringify({ scene: 'bars', objects: [{ id: 'LINE 02', field: 'value', value: 470 }] }) },
+    ] }));
+    const body = await (await POST(request({ message: '두 번째 라인을 470으로 맞춰줘' }))).json();
+    expect(body.source).toBe('ai');
+    expect(body.patch).toMatchObject({ scene: 'bars', source: 'hatchery', objects: [{ id: 'LINE-02', value: 470 }] });
+    expect(typeof body.patch.at).toBe('string');
+    expect(body.chapter).toBe('bars');
+    expect(body.reply).toContain('470');
+  });
+  it('keeps the reply and drops the patch when the tool arguments are invalid', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ output: [
+      { type: 'function_call', name: 'set_scene_object_values', call_id: 'c1', arguments: JSON.stringify({ scene: 'energy', objects: [{ id: 'power', field: 'value', value: 1 }] }) },
+      { type: 'message', content: [{ type: 'output_text', text: '전력 값을 바꾸겠습니다.' }] },
+    ] }));
+    const body = await (await POST(request({ message: '전력 90으로' }))).json();
+    expect(body.patch).toBeUndefined();
+    expect(body.reply).toContain('바꿀 수 없는');
+  });
+});

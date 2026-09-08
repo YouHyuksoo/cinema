@@ -3,6 +3,9 @@ import { jarvisOverview } from '@/cinema/jarvisCommands';
 import { jarvisMainData } from '@/cinema/jarvisMainData';
 import { FILM_CHAPTERS } from '@/cinema/filmProgram';
 import { JARVIS_REALTIME_VOICES } from '@/cinema/jarvisAudio';
+import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
+import { describeHatcheryPatch, hatcheryObjectCatalog, SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from '@/cinema/hatcheryTargets';
+import type { JarvisReply } from '@/cinema/jarvisCommands';
 
 export const openAiConfigured = () => Boolean(process.env.OPENAI_API_KEY?.trim());
 export const textModel = () => process.env.OPENAI_TEXT_MODEL || 'gpt-4.1-mini';
@@ -14,6 +17,8 @@ export function jarvisInstructions() {
 현재 현장 데이터는 실제 MES가 아닌 시연 데이터입니다. 수치를 말할 때 시연 기준임을 밝히고, 없는 측정값이나 원인을 지어내지 마세요.
 카메라는 볼 수 없습니다. 설비를 제어하거나 DB를 변경할 권한은 없습니다.
 연출을 열어달라는 명시적 요청은 open_scene 도구가 제공되면 사용하세요. 일반 질문이나 추천만으로 화면을 전환하지 마세요. 도구 없이 화면을 열었다고 주장하지 마세요.
+화면 객체의 값을 바꿔달라는 명시적 요청은 set_scene_object_values 도구로만 처리하세요. 시연 값이 바뀔 뿐 설비는 제어되지 않습니다. 도구 없이 값을 바꿨다고 주장하지 마세요. 바꿀 수 있는 장면·객체·필드:
+${hatcheryObjectCatalog(DEFAULT_FILM_SCENE_DATA)}
 현장 수치는 아래 스냅샷만 근거로 사용하고 추정은 추정이라고 말하세요.
 사용 가능한 연출: ${FILM_CHAPTERS.map(c => `${c.id}: ${c.title}`).join(', ')}.
 시연 스냅샷: ${JSON.stringify({ zones: jarvisOverview().zones, energy: jarvisMainData.energy,
@@ -46,19 +51,30 @@ export async function openAiRequest(path: string, body: BodyInit, signal: AbortS
   if (!response.ok) throw new OpenAiFailure(response.status);
   return response;
 }
-export async function answerWithOpenAi(body: z.infer<typeof ChatBody>, signal: AbortSignal) {
+export async function answerWithOpenAi(body: z.infer<typeof ChatBody>, signal: AbortSignal): Promise<JarvisReply> {
   const response = await openAiRequest('responses', JSON.stringify({ model: textModel(), store: false,
-    max_output_tokens: 800, instructions: jarvisInstructions(), input: [...body.history, { role: 'user', content: body.message }] }), signal);
-  const data = await response.json() as { output?: { type: string; content?: { type: string; text?: string; refusal?: string }[] }[] };
+    max_output_tokens: 800, instructions: jarvisInstructions(), tools: [SET_SCENE_OBJECT_VALUES_TOOL], tool_choice: 'auto',
+    input: [...body.history, { role: 'user', content: body.message }] }), signal);
+  const data = await response.json() as { output?: { type: string; name?: string; arguments?: string; content?: { type: string; text?: string; refusal?: string }[] }[] };
   const reply = data.output?.filter(item => item.type === 'message').flatMap(item => item.content ?? [])
     .map(item => item.type === 'output_text' ? item.text ?? '' : item.type === 'refusal' ? item.refusal ?? '' : '').join('\n').trim();
+  // The text path is single-round: the server turns the tool call into a contract patch and the browser applies it.
+  const call = data.output?.find(item => item.type === 'function_call' && item.name === SET_SCENE_OBJECT_VALUES_TOOL.name);
+  if (call) {
+    let args: unknown;
+    try { args = JSON.parse(call.arguments ?? '{}'); } catch { args = undefined; }
+    const converted = toolCallToPatch(args, DEFAULT_FILM_SCENE_DATA);
+    if (converted.ok) return { source: 'ai', reply: reply || describeHatcheryPatch(converted.patch), patch: converted.patch, chapter: converted.patch.scene };
+    return { source: 'ai', reply: [reply, converted.reason].filter(Boolean).join(' ') };
+  }
   if (!reply) throw new OpenAiFailure(502);
-  return { source: 'ai' as const, reply };
+  return { source: 'ai', reply };
 }
 export function realtimeConfiguration(voice: string) {
   return { type: 'realtime', model: realtimeModel(), instructions: jarvisInstructions(), max_output_tokens: 800,
     audio: { input: { transcription: { model: 'gpt-4o-mini-transcribe', language: 'ko' },
       turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true } }, output: { voice } },
     tools: [{ type: 'function', name: 'open_scene', description: '사용자가 명시적으로 요청한 HUD 연출을 엽니다. 설비 제어는 하지 않습니다.',
-      parameters: { type: 'object', properties: { chapter: { type: 'string', enum: FILM_CHAPTERS.map(c => c.id) } }, required: ['chapter'], additionalProperties: false } }], tool_choice: 'auto' };
+      parameters: { type: 'object', properties: { chapter: { type: 'string', enum: FILM_CHAPTERS.map(c => c.id) } }, required: ['chapter'], additionalProperties: false } },
+      SET_SCENE_OBJECT_VALUES_TOOL], tool_choice: 'auto' };
 }
