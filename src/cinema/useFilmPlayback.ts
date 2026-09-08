@@ -15,6 +15,7 @@ import { useEnvironmentSelection } from './useEnvironmentSelection';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData, type FilmSceneDataKey } from './filmSceneData';
 import { createSceneDataStore } from './sceneDataStore';
 import { browserStaticSceneDataOptions, loadStaticSceneData } from './staticSceneData';
+import { browserFeedPollingOptions, startFeedPolling, type FeedPollSummary } from './feedPolling';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -30,7 +31,16 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
   useEffect(() => store.subscribe(setSceneData), [store]);
   // Static JSON adapter: public/cinema/data/scenes.json overrides the demo defaults when present.
-  useEffect(() => { void loadStaticSceneData(store, browserStaticSceneDataOptions()); }, [store]);
+  const [feedStatus, setFeedStatus] = useState<FeedPollSummary | null>(null);
+  useEffect(() => {
+    // Static JSON first, then the server feed adapter takes over when a feed route exists.
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void loadStaticSceneData(store, browserStaticSceneDataOptions()).then(() => {
+      if (!cancelled) stop = startFeedPolling(store, { ...browserFeedPollingOptions(), onStatus: setFeedStatus });
+    });
+    return () => { cancelled = true; stop?.(); };
+  }, [store]);
   const [position, setPosition] = useState(() => chapterAt(0));
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
@@ -110,7 +120,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment, store]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus,
     resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
     /** Scene data contract entry points: full replacement documents and object patches (see docs/standards/scene-data-contract.md). */
     applySceneDocument: (input: unknown) => store.replace(input),
