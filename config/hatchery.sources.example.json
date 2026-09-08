@@ -1,13 +1,161 @@
 {
   "sources": [
-    { "id": "mes", "name": "SOLMAX MES", "kind": "oracle", "host": "db.example.local", "port": 1521, "serviceName": "SVEHICLEPDB", "user": "READ_ONLY_USER", "password": "" }
+    {
+      "id": "mes",
+      "name": "SOLMAX MES (SVEHICLEPDB)",
+      "kind": "oracle",
+      "host": "db.example.local",
+      "port": 1521,
+      "serviceName": "SVEHICLEPDB",
+      "user": "READ_ONLY_USER",
+      "password": ""
+    }
   ],
   "feeds": [
     {
-      "feed": "production", "sourceId": "mes", "enabled": true, "intervalSeconds": 30,
+      "feed": "production",
+      "sourceId": "mes",
+      "enabled": true,
+      "intervalSeconds": 30,
       "sql": "SELECT l.LINE_CODE AS ID, l.LINE_NAME AS LABEL, NVL(p.ACTUAL_QTY, 0) AS VALUE, NVL(l.DAY_PLAN_QTY, 0) AS TARGET, 'EA' AS UNIT FROM IP_PRODUCT_LINE l LEFT JOIN (SELECT LINE_CODE, SUM(ACTUAL_QTY) AS ACTUAL_QTY FROM IP_PRODUCT_SMD_PLAN WHERE PLAN_DATE >= TRUNC(SYSDATE) - 14 GROUP BY LINE_CODE) p ON p.LINE_CODE = l.LINE_CODE WHERE l.MES_DISPLAY_YN = 'Y' AND l.LINE_PRODUCT_DIVISION = 'SMD' ORDER BY l.MES_DISPLAY_SEQUENCE",
-      "header": { "unit": "UNIT", "target": "TARGET" },
-      "collections": { "lines": { "fields": { "id": "ID", "label": "LABEL", "value": "VALUE" } } }
+      "header": {
+        "unit": "UNIT",
+        "target": "TARGET"
+      },
+      "collections": {
+        "lines": {
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "value": "VALUE"
+          }
+        }
+      }
+    },
+    {
+      "feed": "environment",
+      "sourceId": "mes",
+      "enabled": true,
+      "intervalSeconds": 60,
+      "sql": "SELECT M.MACHINE_CODE AS ID, M.MACHINE_NAME AS LABEL, M.MACHINE_NAME AS NAME, T.ROOM_TEMPERATURE AS TEMPERATURE, T.HUMIDITY AS HUMIDITY, '{\"min\":' || NVL(M.MIN_TEMP_VALUE, 18) || ',\"max\":' || NVL(M.MAX_TEMP_VALUE, 28) || '}' AS TEMPERATURE_RANGE, '{\"min\":' || NVL(M.MIN_HUMIDITY_VALUE, 30) || ',\"max\":' || NVL(M.MAX_HUMIDITY_VALUE, 60) || '}' AS HUMIDITY_RANGE, 'SOLMAX / ENVIRONMENT MONITORING' AS TITLE FROM IMCN_MACHINE M, ICOM_TEMPERATURE_DATA T WHERE M.MACHINE_CODE = UPPER(T.NODEID(+)) AND M.ORGANIZATION_ID = T.ORGANIZATION_ID(+) AND M.MACHINE_TYPE = 'TEMP' AND M.MES_DISPLAY_YN = 'Y' AND T.NODETYPE = 1 ORDER BY M.MES_DISPLAY_SEQUENCE, M.MACHINE_CODE",
+      "header": {
+        "title": "TITLE"
+      },
+      "collections": {
+        "zones": {
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "name": "NAME",
+            "temperature": "TEMPERATURE",
+            "humidity": "HUMIDITY",
+            "temperatureRange": "TEMPERATURE_RANGE",
+            "humidityRange": "HUMIDITY_RANGE"
+          }
+        }
+      }
+    },
+    {
+      "feed": "quality",
+      "sourceId": "mes",
+      "enabled": true,
+      "intervalSeconds": 120,
+      "sql": "SELECT 'SG-' || LPAD(G, 2, '0') AS ID, LISTAGG(V, ',') WITHIN GROUP (ORDER BY RN) AS VALUES_LIST, 'EOL TURN 2 / SM-EOL' AS NAME, 'mA' AS UNIT, 200 AS NOMINAL, 190 AS LSL, 215 AS USL, 1.33 AS CPK_TARGET FROM (SELECT CEIL(RN / 5) AS G, RN, V FROM (SELECT ROW_NUMBER() OVER (ORDER BY LOG_TIMESTAMP DESC) AS RN, TO_NUMBER(MEAS_2) AS V FROM LOG_EOL WHERE NAME = 'TURN 2' AND MIN_2 = '190' AND REGEXP_LIKE(MEAS_2, '^-?[0-9]+(\\.[0-9]+)?$')) WHERE RN <= 125) GROUP BY G ORDER BY G",
+      "header": {
+        "name": "NAME",
+        "unit": "UNIT",
+        "nominal": "NOMINAL",
+        "lsl": "LSL",
+        "usl": "USL",
+        "cpkTarget": "CPK_TARGET"
+      },
+      "collections": {
+        "subgroups": {
+          "fields": {
+            "id": "ID",
+            "values": "VALUES_LIST"
+          }
+        }
+      }
+    },
+    {
+      "feed": "process",
+      "sourceId": "mes",
+      "enabled": true,
+      "intervalSeconds": 60,
+      "sql": "WITH ACTIVE AS (SELECT WORKSTAGE_CODE, SUM(CASE WHEN IO_DEFICIT = 'I' THEN IO_QTY ELSE 0 END) AS IN_QTY, SUM(CASE WHEN IO_DEFICIT = 'O' THEN IO_QTY ELSE 0 END) AS OUT_QTY FROM IP_PRODUCT_WORKSTAGE_IO WHERE ENTER_DATE >= SYSDATE - 1 GROUP BY WORKSTAGE_CODE), S AS (SELECT W.WORKSTAGE_CODE, W.WORKSTAGE_NAME, W.WORKSTAGE_SORT_ORDER, NVL(W.ST_VALUE, 0) AS ST_VALUE, NVL(W.UPH_VALUE, 0) AS UPH_VALUE, NVL(A.IN_QTY, 0) - NVL(A.OUT_QTY, 0) AS QUEUE, ROW_NUMBER() OVER (ORDER BY W.WORKSTAGE_SORT_ORDER, W.WORKSTAGE_CODE) AS RN, COUNT(*) OVER () AS N FROM IP_PRODUCT_WORKSTAGE W JOIN ACTIVE A ON A.WORKSTAGE_CODE = W.WORKSTAGE_CODE) SELECT WORKSTAGE_CODE AS ID, WORKSTAGE_NAME AS LABEL, WORKSTAGE_CODE AS CODE, ST_VALUE AS CYCLE_SECONDS, UPH_VALUE AS CAPACITY_PER_HOUR, GREATEST(QUEUE, 0) AS QUEUE, '{\"x\":' || ROUND(-430 + (RN - 1) * (860 / GREATEST(N - 1, 1))) || ',\"y\":' || CASE WHEN MOD(RN, 2) = 1 THEN 75 ELSE -90 END || ',\"z\":' || (MOD(RN, 3) * 40 - 40) || '}' AS POSITION, 'SOLMAX / WORKSTAGE FLOW' AS TITLE, 480 AS DEMAND_PER_HOUR FROM S ORDER BY RN",
+      "header": {
+        "title": "TITLE",
+        "demandPerHour": "DEMAND_PER_HOUR"
+      },
+      "collections": {
+        "nodes": {
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "code": "CODE",
+            "cycleSeconds": "CYCLE_SECONDS",
+            "capacityPerHour": "CAPACITY_PER_HOUR",
+            "queue": "QUEUE",
+            "position": "POSITION"
+          }
+        },
+        "links": {
+          "sql": "WITH ACTIVE AS (SELECT DISTINCT WORKSTAGE_CODE FROM IP_PRODUCT_WORKSTAGE_IO WHERE ENTER_DATE >= SYSDATE - 1), S AS (SELECT W.WORKSTAGE_CODE, W.WORKSTAGE_NAME, LEAD(W.WORKSTAGE_CODE) OVER (ORDER BY W.WORKSTAGE_SORT_ORDER, W.WORKSTAGE_CODE) AS NEXT_CODE, LEAD(W.WORKSTAGE_NAME) OVER (ORDER BY W.WORKSTAGE_SORT_ORDER, W.WORKSTAGE_CODE) AS NEXT_NAME, ROW_NUMBER() OVER (ORDER BY W.WORKSTAGE_SORT_ORDER, W.WORKSTAGE_CODE) AS RN FROM IP_PRODUCT_WORKSTAGE W JOIN ACTIVE A ON A.WORKSTAGE_CODE = W.WORKSTAGE_CODE) SELECT WORKSTAGE_CODE || '>' || NEXT_CODE AS ID, WORKSTAGE_NAME || ' -> ' || NEXT_NAME AS LABEL, WORKSTAGE_CODE AS FROM_CODE, NEXT_CODE AS TO_CODE, CASE WHEN MOD(RN, 2) = 1 THEN -70 ELSE 70 END AS BEND FROM S WHERE NEXT_CODE IS NOT NULL ORDER BY RN",
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "from": "FROM_CODE",
+            "to": "TO_CODE",
+            "bend": "BEND"
+          }
+        }
+      }
+    },
+    {
+      "feed": "equipment",
+      "sourceId": "mes",
+      "enabled": false,
+      "intervalSeconds": 30,
+      "sql": "SELECT M.MACHINE_CODE AS ID, M.MACHINE_NAME AS LABEL, TO_NUMBER(M.LINE_CODE) AS LINE_NO, ROW_NUMBER() OVER (PARTITION BY M.LINE_CODE ORDER BY M.WORKSTAGE_CODE, M.MACHINE_CODE) AS ORDER_NO, LOWER(M.MACHINE_TYPE) AS KIND, CASE NVL(M.MACHINE_STATUS_CODE, 'N') WHEN 'N' THEN 'running' ELSE 'alarm' END AS STATUS, COUNT(DISTINCT M.LINE_CODE) OVER () AS LINES FROM IMCN_MACHINE M WHERE M.MES_DISPLAY_YN = 'Y' AND M.MACHINE_TYPE <> 'TEMP' AND REGEXP_LIKE(M.LINE_CODE, '^[0-9]+$') AND M.LINE_CODE <> '00' ORDER BY TO_NUMBER(M.LINE_CODE), ORDER_NO",
+      "header": {
+        "lines": "LINES"
+      },
+      "collections": {
+        "stations": {
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "line": "LINE_NO",
+            "order": "ORDER_NO",
+            "kind": "KIND",
+            "status": "STATUS"
+          }
+        }
+      }
+    },
+    {
+      "feed": "workOrder",
+      "sourceId": "mes",
+      "enabled": false,
+      "intervalSeconds": 60,
+      "sql": "WITH R AS (SELECT RUN_NO, MODEL_NAME, LINE_CODE, LOT_SIZE FROM (SELECT * FROM IP_PRODUCT_RUN_CARD WHERE RUN_STATUS IN ('2','3','4','5') ORDER BY RUN_DATE DESC) WHERE ROWNUM = 1), Q AS (SELECT * FROM (SELECT SERIAL_NO, QC_SEQUENCE, BAD_REASON_CODE, MACHINE_CODE, QC_DATE FROM IP_PRODUCT_WORK_QC WHERE QC_DATE >= SYSDATE - 7 AND QC_RESULT IN ('N','O') ORDER BY QC_DATE DESC) WHERE ROWNUM <= 50) SELECT Q.SERIAL_NO || '-' || Q.QC_SEQUENCE AS ID, CASE Q.BAD_REASON_CODE WHEN 'A' THEN 'APPEARANCE' WHEN 'B' THEN 'FUNCTION' WHEN 'C' THEN 'SPEC' ELSE 'OTHER' END AS LABEL, ROW_NUMBER() OVER (ORDER BY Q.QC_DATE) AS SERIAL, Q.MACHINE_CODE AS EQUIPMENT_ID, R.RUN_NO AS ORDER_ID, R.MODEL_NAME AS PRODUCT, R.LINE_CODE AS LINE, R.LOT_SIZE AS QUANTITY FROM R LEFT JOIN Q ON 1 = 1 ORDER BY Q.QC_DATE",
+      "header": {
+        "orderId": "ORDER_ID",
+        "product": "PRODUCT",
+        "line": "LINE",
+        "quantity": "QUANTITY"
+      },
+      "collections": {
+        "defects": {
+          "fields": {
+            "id": "ID",
+            "label": "LABEL",
+            "serial": "SERIAL",
+            "equipmentId": "EQUIPMENT_ID"
+          }
+        }
+      }
     }
   ]
 }
