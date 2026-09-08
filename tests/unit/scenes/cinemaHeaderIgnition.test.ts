@@ -16,15 +16,18 @@ describe('full-width metrics and center controls', () => {
     expect(html.includes('움직이는 나침반과 방위각 눈금')).toBe(false);
     expect(html.includes('AZIMUTH / DEMO')).toBe(false);
   });
-  it('keeps a single start, camera and logo within the central conversation', () => {
+  it('places AI information above the controls and removes the separate HATCHERY logo', () => {
     const html = renderToStaticMarkup(createElement(JarvisMain, {
       camera: { status: 'off', frameRef: { current: null }, stop() {}, start: async () => {} } as unknown as FilmCamera,
       onChapter() {},
     }));
     expect(html.match(/aria-label="대화 시작"/g)).toHaveLength(1);
-    expect(html.match(/aria-label="HATCHERY 핑크 네온 로고"/g)).toHaveLength(1);
+    expect(html).not.toContain('aria-label="HATCHERY 핑크 네온 로고"');
     expect(html.match(/내 영상 연결/g)).toHaveLength(1);
-    expect(html.includes('aria-label="중앙 좌측 하단 HATCHERY 로고"')).toBe(true);
+    expect(html).not.toContain('aria-label="중앙 좌측 하단 HATCHERY 로고"');
+    expect(html).toContain('aria-label="중앙 상단 AI 연결정보"');
+    expect(html.match(/aria-label="AI 연결 상태와 모델"/g)).toHaveLength(1);
+    expect(html.indexOf('aria-label="AI 연결 상태와 모델"')).toBeLessThan(html.indexOf('aria-label="대화 시작"'));
     expect(html.includes('aria-label="AI 연결 상태와 모델"')).toBe(true);
     expect(html.includes('aria-label="중앙 상태 메시지"')).toBe(true);
     expect(html.indexOf('aria-label="대화 시작"')).toBeGreaterThan(html.indexOf('aria-label="중앙 음성 대화"'));

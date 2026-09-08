@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { JarvisCamera } from './JarvisCamera';
-import { JarvisIdentity } from './JarvisIdentity';
 import type { FilmCamera } from './useFilmCamera';
 import styles from './jarvis.module.css';
 import layout from './jarvisCenterLayout.module.css';
@@ -11,6 +10,7 @@ export function JarvisCenterLayout({ camera, ignition, heading, children, form, 
 }) {
   return <div className={styles.center} role="region" aria-label="중앙 음성 대화">
     <div className={layout.toolbar}>
+      <div className={layout.aiPanel} role="region" aria-label="중앙 상단 AI 연결정보">{aiStatus}</div>
       <div className={layout.startPanel} role="region" aria-label="중앙 좌측 상단 음성 제어">
         {ignition}
       </div>
@@ -29,11 +29,7 @@ export function JarvisCenterLayout({ camera, ignition, heading, children, form, 
     <div className={layout.centerHeading} role="status" aria-label="중앙 상태 메시지">{heading}</div>
     {children}
     <div className={layout.bottomRow}>
-      <div className={layout.brandMark} role="region" aria-label="중앙 좌측 하단 HATCHERY 로고">
-        <JarvisIdentity compact />
-      </div>
       {form}
-      {aiStatus}
     </div>
   </div>;
 }
