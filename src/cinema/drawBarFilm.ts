@@ -1,26 +1,31 @@
 import { drawBarChart } from './components/drawBarChart';
-import { PRODUCTION_LINES, PRODUCTION_TARGET, PRODUCTION_TOTAL, SELECTED_LINE_INDEX } from './chartData';
 import { drawChartStage } from './drawChartStage';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
 import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint } from './filmFocus';
 import { DEFAULT_CHART_PRESENTATION, type ChartPresentation } from './chartPresentation';
 import type { FilmViewportInsets } from './filmViewport';
+import { DEFAULT_PRODUCTION_SNAPSHOT, productionSnapshotState, type ProductionSnapshot } from './productionSnapshot';
 
+const FOCUS_WINDOW = { enter: [9, 11.5] as [number, number], exit: [21.5, 24.5] as [number, number] };
+const READ_WINDOW = { enter: [11, 13.2] as [number, number], exit: [21.5, 24.5] as [number, number] };
+
+/** One production snapshot drives every channel; the selected line is chosen by id or by the snapshot rule. */
 export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number,
   fonts: FilmFonts = DEFAULT_FONTS, presentation: ChartPresentation = DEFAULT_CHART_PRESENTATION,
-  insets?: FilmViewportInsets) {
+  insets?: FilmViewportInsets, snapshot: ProductionSnapshot = DEFAULT_PRODUCTION_SNAPSHOT) {
   drawChartStage(ctx, width, height, t, fonts, 'PRODUCTION / BAR COMPARISON', insets);
+  const state = productionSnapshotState(snapshot);
+  const { lines, unit, target, total, aggregateRatio, reached, selected } = state;
   const release = 1 - smooth(25, 28, t);
   const intro = smooth(.4, 1.6, t);
-  const focus = focusEnvelope(t, { enter: [9, 11.5], exit: [21.5, 24.5] });
-  const activeIndex = t >= 9 && t < 24.5 ? SELECTED_LINE_INDEX : undefined;
-  const readFocus = focusEnvelope(t, { enter: [11, 13.2], exit: [21.5, 24.5] });
+  const hasSelection = selected !== undefined;
+  const focus = hasSelection ? focusEnvelope(t, FOCUS_WINDOW) : 0;
+  const activeIndex = hasSelection && t >= 9 && t < 24.5 ? state.selectedIndex : undefined;
+  const readFocus = hasSelection ? focusEnvelope(t, READ_WINDOW) : 0;
   const readProjection = focusProjection({ x: 955, y: 385, focus: readFocus, depth: 85, lift: 10 });
   const text = (value: string, x: number, y: number, size: number, opacity: number, mono = false, heat = 0) =>
     filmText(ctx, fonts, value, x, y, size, opacity * release, mono, 'left', signalColor(heat, 1));
-  const aggregateTarget = PRODUCTION_TARGET * PRODUCTION_LINES.length;
-  const aggregateRatio = aggregateTarget > 0 ? PRODUCTION_TOTAL / aggregateTarget : 0;
-  const reached = PRODUCTION_LINES.filter(line => line.value >= PRODUCTION_TARGET).length;
+  const count = String(lines.length).padStart(2, '0');
 
   const gauge = (x: number, y: number, width: number, ratio: number, opacity: number, heat = 0) => {
     const segments = 32, slot = width / segments, charge = Math.max(0, Math.min(1, ratio));
@@ -41,7 +46,7 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
 
   text('PRODUCTION TELEMETRY', 150, 177, 25, intro * .94, true);
   text('라인별 생산 실적 · 1교대 · 공통 수량 기준', 151, 204, 12, intro * .52);
-  text('05 CHANNELS', 724, 176, 10, intro * .47, true);
+  text(`${count} CHANNELS`, 724, 176, 10, intro * .47, true);
   ctx.save(); ctx.globalAlpha = intro * release;
   ctx.beginPath(); ctx.moveTo(136, 157); ctx.lineTo(136, 181); ctx.lineTo(145, 190);
   ctx.strokeStyle = signalColor(0, .65); ctx.lineWidth = 2; ctx.stroke();
@@ -49,19 +54,18 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
   ctx.restore();
   const anchors = drawBarChart(ctx, fonts, {
     x: 150, y: 280, width: 690, height: 250, time: t - 1.1,
-    data: PRODUCTION_LINES, maxValue: 1000, target: PRODUCTION_TARGET, unit: 'EA', activeIndex, focus, opacity: release, presentation,
+    data: lines, maxValue: state.maximum, target: target > 0 ? target : undefined, unit, activeIndex, focus, opacity: release, presentation,
   });
 
   text('AGGREGATE / TOTAL OUTPUT', 956, 165, 10, intro * .5, true);
-  text(PRODUCTION_TOTAL.toLocaleString('en-US'), 953, 208, 42, intro, true);
-  text(`EA / ${PRODUCTION_LINES.length} LINES  ·  ${(aggregateRatio * 100).toFixed(1)}%`, 956, 231, 10, intro * .6, true);
+  text(total.toLocaleString('en-US'), 953, 208, 42, intro, true);
+  text(`${unit} / ${lines.length} LINES  ·  ${(aggregateRatio * 100).toFixed(1)}%`, 956, 231, 10, intro * .6, true);
   gauge(956, 246, 196, aggregateRatio, intro * .7);
-  const selected = PRODUCTION_LINES[SELECTED_LINE_INDEX];
-  const difference = selected.value - PRODUCTION_TARGET;
-  const selectedRatio = PRODUCTION_TARGET > 0 ? selected.value / PRODUCTION_TARGET : 0;
-  const heat = difference < 0 ? 1 : 0;
-  const anchor = anchors[SELECTED_LINE_INDEX];
-  if (anchor && focus > .001) {
+  const anchor = state.selectedIndex === undefined ? undefined : anchors[state.selectedIndex];
+  if (selected && anchor && focus > .001) {
+    const difference = selected.value - target;
+    const selectedRatio = target > 0 ? selected.value / target : 0;
+    const heat = difference < 0 ? 1 : 0;
     const reveal = smooth(10, 12, t);
     const endpoint = projectFocusPoint(readProjection, { x: 944, y: 301 });
     ctx.save(); ctx.beginPath(); ctx.rect(anchor.x - 6, 220, (endpoint.x - anchor.x + 6) * reveal, 345); ctx.clip();
@@ -81,22 +85,22 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
     text(selected.label, 955, 302, 15, read, true, heat);
     text('ACTUAL OUTPUT', 955, 325, 9, read * .52, true);
     text(selected.value.toLocaleString('en-US'), 952, 374, 49, read, true, heat);
-    text('EA', 1070, 372, 13, read * .67, true, heat);
+    text(unit, 1070, 372, 13, read * .67, true, heat);
     text(`${(selectedRatio * 100).toFixed(1)}%`, 955, 408, 25, read, true, heat);
     text('ACHIEVEMENT', 1057, 406, 9, read * .5, true);
     gauge(956, 425, 192, selectedRatio, read, heat);
-    text(`TARGET  ${PRODUCTION_TARGET.toLocaleString('en-US')} EA`, 956, 463, 12, read * .67, true);
+    text(`TARGET  ${target.toLocaleString('en-US')} ${unit}`, 956, 463, 12, read * .67, true);
     const signedDifference = `${difference < 0 ? '−' : '+'}${Math.abs(difference).toLocaleString('en-US')}`;
-    text(`Δ ${signedDifference} EA`, 955, 493, 22, read, true, heat);
-    text(difference < 0 ? `목표까지 ${Math.abs(difference)} EA 추가 필요`
-      : difference > 0 ? `목표보다 ${difference} EA 초과 달성` : '설정한 생산 목표 달성', 956, 519, 12, read * .76, false, heat);
+    text(`Δ ${signedDifference} ${unit}`, 955, 493, 22, read, true, heat);
+    text(difference < 0 ? `목표까지 ${Math.abs(difference)} ${unit} 추가 필요`
+      : difference > 0 ? `목표보다 ${difference} ${unit} 초과 달성` : '설정한 생산 목표 달성', 956, 519, 12, read * .76, false, heat);
     ctx.restore();
   }
   const summary = smooth(4.6, 6.3, t);
   const totals = [
-    { x: 150, label: 'TARGET / LINE', value: `${PRODUCTION_TARGET.toLocaleString('en-US')} EA` },
+    { x: 150, label: 'TARGET / LINE', value: `${target.toLocaleString('en-US')} ${unit}` },
     { x: 399, label: 'AGGREGATE ACHIEVEMENT', value: `${(aggregateRatio * 100).toFixed(1)}%` },
-    { x: 685, label: 'LINES ON TARGET', value: `${String(reached).padStart(2, '0')} / ${String(PRODUCTION_LINES.length).padStart(2, '0')}` },
+    { x: 685, label: 'LINES ON TARGET', value: `${String(reached).padStart(2, '0')} / ${count}` },
   ];
   for (const item of totals) {
     text(item.label, item.x, 616, 9, summary * .43, true);
