@@ -1,8 +1,10 @@
 import { DEFAULT_ENVIRONMENT_DATA, environmentZoneStatus } from './zoneEnvironment';
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import { jarvisMainData } from './jarvisMainData';
+import type { SceneObjectPatch } from './sceneDataDocument';
 
-export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId }
+/** chapter opens a scene; patch changes scene object values (docs/standards/scene-data-contract.md). Both may be present. */
+export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId; patch?: SceneObjectPatch }
 export function jarvisOverview() {
   const zones = DEFAULT_ENVIRONMENT_DATA.zones;
   return { zones, normal: zones.filter(z => environmentZoneStatus(z) === 'normal').length,

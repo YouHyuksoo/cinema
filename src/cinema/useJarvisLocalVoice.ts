@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { recognitionConstructor, type JarvisAudioFrame, type JarvisPhase, type JarvisRecognition } from './jarvisAudio';
-import { FILM_CHAPTERS, type FilmId } from './filmProgram';
+import type { FilmId } from './filmProgram';
 import type { JarvisReply } from './jarvisCommands';
 import { configureJarvisSpeech } from './jarvisSpeechProfile';
 import { useJarvisSpeechProfile } from './useJarvisSpeechProfile';
 import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupSound';
+import { describeSceneDataResult, resolveHatcheryValueCommand, type HatcheryActions } from './hatcheryTargets';
+import { isSceneId, parseSceneObjectPatch } from './sceneDataDocument';
 
 interface Message { role: 'user' | 'assistant'; content: string }
-export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { speakReplies?: boolean } = {}) {
+export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
   const speechProfile = useJarvisSpeechProfile();
   const audioRef = useRef<JarvisAudioFrame>({ phase: 'idle', analyser: null });
   const [phase, setPhase] = useState<JarvisPhase>('idle');
@@ -27,6 +29,26 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { 
     speechTimer: undefined as ReturnType<typeof setTimeout> | undefined });
   const chapterRef = useRef(onChapter);
   useEffect(() => { chapterRef.current = onChapter; }, [onChapter]);
+  const actionsRef = useRef(options.actions);
+  useEffect(() => { actionsRef.current = options.actions; }, [options.actions]);
+  /** Deterministic value commands never leave the browser; assistant replies carrying a patch are applied here too. */
+  function resolveReply(message: string): JarvisReply | null {
+    const actions = actionsRef.current;
+    if (!actions) return null;
+    const command = resolveHatcheryValueCommand(message, actions.sceneData());
+    if (!command) return null;
+    if (command.kind === 'clarify') return { reply: command.reply, source: 'local' };
+    const result = actions.applySceneObjects(command.patch);
+    return { reply: describeSceneDataResult(command, result), source: 'local', chapter: result.ok ? command.chapter : undefined };
+  }
+  function applyReplyPatch(data: JarvisReply): JarvisReply {
+    const actions = actionsRef.current;
+    if (!data.patch || !actions) return data;
+    const parsed = parseSceneObjectPatch(data.patch);
+    const result = parsed.ok ? actions.applySceneObjects(parsed.patch) : { ok: false as const, reason: parsed.reason };
+    if (result.ok) return data;
+    return { ...data, reply: `${data.reply} 값은 바꾸지 못했습니다. ${result.reason}`, chapter: undefined };
+  }
   const phaseTo = (value: JarvisPhase) => { audioRef.current.phase = value; setPhase(value); };
   function stopRecognition() {
     const current = state.current;
@@ -155,14 +177,18 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId) => void, options: { 
       else if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
-      const response = await fetch('/api/cinema/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history: previous }), signal: abort.signal });
-      const data = await response.json() as JarvisReply & { error?: string };
-      if (token !== current.generation) return;
-      if (!response.ok || !data.reply) throw new Error(data.error || '응답을 받지 못했습니다.');
+      let data = resolveReply(message);
+      if (!data) {
+        const response = await fetch('/api/cinema/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, history: previous }), signal: abort.signal });
+        const answer = await response.json() as JarvisReply & { error?: string };
+        if (token !== current.generation) return;
+        if (!response.ok || !answer.reply) throw new Error(answer.error || '응답을 받지 못했습니다.');
+        data = applyReplyPatch(answer);
+      }
       history.current = [...history.current, { role: 'assistant' as const, content: data.reply }].slice(-8);
       setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'OpenAI · AI 생성 답변' : 'AI 연결 안내');
-      const chapter = FILM_CHAPTERS.some(c => c.id === data.chapter) ? data.chapter : undefined;
+      const chapter = isSceneId(data.chapter) ? data.chapter : undefined;
       if (options.speakReplies === false) { finish(chapter); }
       else if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(data.reply);
