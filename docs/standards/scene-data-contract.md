@@ -8,7 +8,8 @@ sources:
   - src/cinema/drawSignalFilm.ts
   - src/cinema/useFilmPlayback.ts
   - src/cinema/staticSceneData.ts
-verifiedCommit: 736ccd2
+  - src/cinema/hatcheryTargets.ts
+verifiedCommit: d9ecb7f
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
@@ -70,7 +71,7 @@ HATCHERY의 모든 화면(장면)은 이 계약에 따라 데이터를 받고, �
 - **원천 어댑터**는 문서나 패치를 만들어 `replace`/`patch`를 호출하는 것만 한다. 그리기 코드나 등록부를 알지 못한다.
   - MES 폴링: 주기마다 장면별 전체 교체 문서.
   - 설비/센서 푸시: 객체 패치.
-  - HATCHERY(AI): 도구 호출 결과를 객체 패치로 변환. `source: 'hatchery'`.
+  - HATCHERY(AI): 세 경로가 모두 객체 패치를 만든다(`hatcheryTargets.ts`). (1) 정형 문장은 브라우저에서 `resolveHatcheryValueCommand`가 저장소 데이터 기준으로 해석해 API 없이 적용한다(예: "라인 2 470으로", "존 3 온도 31.5", "리플로우 대기 3", "부분군 18 측정값 10.01 10.02 10.03 10.04 10.05"). (2) OpenAI 텍스트·실시간 세션은 도구 `set_scene_object_values { scene, objects[{ id, field, value | values }] }`를 쓰고 `toolCallToPatch`가 패치로 바꾼다. 대상은 id·label·code, 필드는 `HATCHERY_FIELDS`(막대 value, 환경 temperature·humidity, 공정망 queue·capacityPerHour·cycleSeconds, SPC values)가 단일 출처다. `source: 'hatchery'`.
   - 정적 JSON: `public/cinema/data/scenes.json`에 전체 교체 문서 배열을 두면 시작 시 한 번 읽어 저장소에 넣는다(`staticSceneData.ts`). 파일이 없으면 기본 시연 데이터를 유지한다. 예시: `public/cinema/data/scenes.example.json`. `source: 'static'`.
 - 화면은 장면별 마지막 `source`·`at`을 표시할 수 있어야 한다(출처 표시).
 
