@@ -12,11 +12,12 @@ import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
 import { useEnvironmentSelection } from './useEnvironmentSelection';
-import { DEFAULT_FILM_SCENE_DATA, mergeFilmSceneData, type FilmSceneData } from './filmSceneData';
+import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData, type FilmSceneDataKey } from './filmSceneData';
+import { createSceneDataStore } from './sceneDataStore';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
-  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, sceneData: DEFAULT_FILM_SCENE_DATA });
+  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME });
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -24,7 +25,9 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [texture, setTexture] = useState<FilmTextureSettings>(DEFAULT_FILM_TEXTURE);
   const [charts, setCharts] = useState<FilmChartSettings>(DEFAULT_FILM_CHARTS);
   const [theme, setTheme] = useState<FilmThemeId>(DEFAULT_FILM_THEME);
+  const [store] = useState(() => createSceneDataStore());
   const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
+  useEffect(() => store.subscribe(setSceneData), [store]);
   const [position, setPosition] = useState(() => chapterAt(0));
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
@@ -79,14 +82,14 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       previous = now;
       themed.setTheme(current.theme);
       const active = chapterAt(current.time);
-      const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null);
+      const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, store.get().environment);
       if (cameraView.current) {
         const view = beginFilmViewport(themed.ctx, node.width, node.height, viewport);
         drawJarvisBackdrop(themed.ctx, view, cameraTime);
       }
       else {
         cameraTime = 3;
-        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, current.sceneData);
+        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, store.get());
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {
@@ -101,15 +104,16 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     };
     frame = requestAnimationFrame(render);
     return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); };
-  }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment]);
+  }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment, store]);
 
   return {
     ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData,
     resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
-    updateSceneData(change: Partial<FilmSceneData>) {
-      clock.current.sceneData = mergeFilmSceneData(clock.current.sceneData, change);
-      setSceneData(clock.current.sceneData);
-    },
+    /** Scene data contract entry points: full replacement documents and object patches (see docs/standards/scene-data-contract.md). */
+    applySceneDocument: (input: unknown) => store.replace(input),
+    applySceneObjects: (input: unknown) => store.patch(input),
+    sceneProvenance: (key: FilmSceneDataKey) => store.provenance(key),
+    updateSceneData(change: Partial<FilmSceneData>) { store.merge(change); },
     changeTheme(value: FilmThemeId) {
       clock.current.theme = getFilmTheme(value).id;
       setTheme(clock.current.theme);
