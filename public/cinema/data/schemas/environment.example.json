@@ -8,6 +8,7 @@
     "historyEnd": 1788739200000,
     "zones": [
       {
+        "label": "자재 입고",
         "id": "ZONE 01",
         "name": "자재 입고",
         "temperature": 23.2,
@@ -36,6 +37,7 @@
         ]
       },
       {
+        "label": "자재 보관",
         "id": "ZONE 02",
         "name": "자재 보관",
         "temperature": 22.8,
@@ -64,6 +66,7 @@
         ]
       },
       {
+        "label": "인쇄 공정",
         "id": "ZONE 03",
         "name": "인쇄 공정",
         "temperature": 24.1,
@@ -92,6 +95,7 @@
         ]
       },
       {
+        "label": "실장 공정",
         "id": "ZONE 04",
         "name": "실장 공정",
         "temperature": 25.3,
@@ -120,6 +124,7 @@
         ]
       },
       {
+        "label": "리플로우",
         "id": "ZONE 05",
         "name": "리플로우",
         "temperature": 26.7,
@@ -148,6 +153,7 @@
         ]
       },
       {
+        "label": "검사 공정",
         "id": "ZONE 06",
         "name": "검사 공정",
         "temperature": 29.4,
@@ -176,6 +182,7 @@
         ]
       },
       {
+        "label": "조립 공정",
         "id": "ZONE 07",
         "name": "조립 공정",
         "temperature": 24.8,
@@ -204,6 +211,7 @@
         ]
       },
       {
+        "label": "검사 대기",
         "id": "ZONE 08",
         "name": "검사 대기",
         "temperature": 23.9,
@@ -232,6 +240,7 @@
         ]
       },
       {
+        "label": "포장 공정",
         "id": "ZONE 09",
         "name": "포장 공정",
         "temperature": 23.1,
@@ -260,6 +269,7 @@
         ]
       },
       {
+        "label": "완제품 보관",
         "id": "ZONE 10",
         "name": "완제품 보관",
         "temperature": 22.6,

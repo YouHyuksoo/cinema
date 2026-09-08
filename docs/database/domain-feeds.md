@@ -3,7 +3,7 @@ sources:
   - src/cinema/domainFeeds.ts
   - src/cinema/sceneFields.ts
   - src/cinema/productionLineFields.ts
-verifiedCommit: 069fd61
+verifiedCommit: 2569c8d
 ---
 
 # 도메인 피드 — DB가 보내야 하는 기대값

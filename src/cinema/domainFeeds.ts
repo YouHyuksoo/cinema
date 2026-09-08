@@ -96,7 +96,7 @@ export const DOMAIN_FEEDS: readonly DomainFeed[] = [
         temperatureHistory: { label: '24시간 온도 이력', schema: { type: 'array', items: { type: 'object', properties: { at: { type: 'number' }, value: { type: 'number' } }, required: ['at', 'value'] } }, optional: true } } }],
     scenes: ['wave'], status: 'live',
     note: '온습도 장면이 읽는다. 최대 10구역까지 표시하고 초과분은 생략한다. 상단 지표의 평균·이탈도 파생.',
-    example: data => ({ ...data.environment, zones: data.environment.zones.map(zone => ({ ...zone, temperatureHistory: zone.temperatureHistory?.slice(0, 3) })) }),
+    example: data => ({ ...data.environment, zones: data.environment.zones.map(zone => ({ label: zone.name, ...zone, temperatureHistory: zone.temperatureHistory?.slice(0, 3) })) }),
   },
   {
     feed: 'quality', label: '품질 SPC 측정', refresh: 'event', refreshHint: '부분군 완성 시 이벤트, 또는 1~5분 폴링',
@@ -104,7 +104,7 @@ export const DOMAIN_FEEDS: readonly DomainFeed[] = [
     objects: [{ type: 'spcSubgroup', collection: 'subgroups', label: '부분군', fields: SCENE_FIELDS.spc }],
     scenes: ['spc', 'corners', 'unfold'], status: 'partial',
     note: 'SPC 장면이 읽는다(부분군 수·크기 무관). 코너·펼침의 양품률과 상단 지표의 이탈 수도 파생 예정.',
-    example: data => ({ ...data.spc, subgroups: data.spc.subgroups.slice(0, 5) }),
+    example: data => ({ ...data.spc, subgroups: data.spc.subgroups.slice(0, 5).map(group => ({ label: group.id, ...group })) }),
   },
   {
     feed: 'energy', label: '에너지 사용', refresh: 'fast', refreshHint: '5~30초 폴링',
