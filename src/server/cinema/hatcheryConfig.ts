@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { EMPTY_HATCHERY_CONFIG, parseHatcheryConfig, type DataSourceConfig, type HatcheryConfig } from '@/cinema/feedConfig';
 
 /** Server-only file with data source credentials and feed mappings. Never committed. */
-export const configPath = () => resolve(process.env.HATCHERY_CONFIG_PATH || 'config/hatchery.sources.json');
+export const configPath = () => resolve(/*turbopackIgnore: true*/ process.env.HATCHERY_CONFIG_PATH || 'config/hatchery.sources.json');
 
 export function readConfig(path = configPath()): { config: HatcheryConfig; error?: string } {
   let raw: string;
