@@ -14,7 +14,12 @@ sources:
   - src/cinema/productionLineFields.ts
   - src/cinema/productionLineObject.ts
   - src/cinema/domainFeeds.ts
-verifiedCommit: b119b8e
+  - src/cinema/feedConfig.ts
+  - src/cinema/feedMapping.ts
+  - src/cinema/feedScenes.ts
+  - src/cinema/feedPolling.ts
+  - src/server/cinema/feedRunner.ts
+verifiedCommit: ba62575
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
@@ -122,6 +127,7 @@ DB 뷰는 장면 단위가 아니라 **도메인 피드** 단위로 만든다. �
 - 생성물: `public/cinema/data/schemas/<feed>.schema.json`, `<feed>.example.json`, `docs/database/domain-feeds.md`(컬럼 표). `npm run docs:feeds`로 재생성하며 골든 테스트(`cinemaDomainFeeds.test.ts`)가 선언과 생성물의 동기화를 강제한다.
 - 피드 → 장면 문서 변환은 서버 피드 라우트의 일이다(다음 단계). 화면은 지금처럼 장면 문서만 받는다.
 - 실제 MES 컬럼은 피드별로 매핑한다. 컬럼 정의가 오면 `domainFeeds.ts`의 서술자(이름·단위·범위)만 맞추고 재생성한다.
+- **DB 연결 구현**: 데이터 소스·피드 매핑은 서버 설정 파일(`config/hatchery.sources.json`, git 제외)에 두고 관리 화면 `/cinema/admin`(localhost 전용)에서 편집한다. 서버 피드 러너(`feedRunner.ts`)가 SELECT 조회문을 실행해 행을 서술자로 검증·매핑하고(`feedMapping.ts`) 장면 문서로 변환하며(`feedScenes.ts`), 브라우저는 `/api/cinema/feed`를 폴링해 저장소에 넣는다(`feedPolling.ts`). 실패한 실행은 마지막 성공 문서를 유지한다. 절차는 `docs/guides/db-feed-setup.md`.
 
 ### 5. 장면 적합성 등급
 
