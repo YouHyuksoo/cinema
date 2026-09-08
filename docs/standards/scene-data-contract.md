@@ -9,7 +9,11 @@ sources:
   - src/cinema/useFilmPlayback.ts
   - src/cinema/staticSceneData.ts
   - src/cinema/hatcheryTargets.ts
-verifiedCommit: d9ecb7f
+  - src/cinema/sceneField.ts
+  - src/cinema/sceneFields.ts
+  - src/cinema/productionLineFields.ts
+  - src/cinema/productionLineObject.ts
+verifiedCommit: daa1d95
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
@@ -62,6 +66,40 @@ HATCHERY의 모든 화면(장면)은 이 계약에 따라 데이터를 받고, �
 - **시간은 연출에만 쓴다.** 값을 `Math.sin(time)`으로 흉내내는 것은 데이터가 없을 때의 시연 모드로만 허용하고, 문서가 들어오면 그 값을 쓴다.
 - 잘못된 데이터는 예외를 던지지 않는다. 장면의 상태 함수는 `{ valid: false, reason }`을 돌려주고 장면은 "데이터 없음" 화면을 그린다(`spcStatistics.ts`의 `analyzeSpc` 패턴).
 - 장면의 파생 계산은 `<scene>State(time, data)` 한 함수에 모은다. 그리기 함수는 그 결과만 읽는다.
+
+### 3.1 필드 서술자 — 기대 포맷의 단일 출처
+
+객체의 값 하나마다 **필드 서술자**(`sceneField.ts`의 `SceneFieldDescriptor`)가 기대 포맷을 선언한다.
+
+```ts
+{ field: 'value', label: '생산량', kind: 'number', min: 0, decimals: 0, patchable: true, aliases: /생산량|실적|수량|값/, default: true }
+{ field: 'humidity', label: '습도', kind: 'number', unit: '%', min: 0, max: 100, decimals: 0, patchable: true, aliases: /습도/ }
+{ field: 'values', label: '측정값', kind: 'number[]', patchable: true, aliases: /측정값|값/, default: true }
+```
+
+- `kind`는 `number` | `number[]` | `text`. `unit`·`min`·`max`·`decimals`·`length`는 형식이고, 목표치·관리 범위처럼 객체마다 다른 수치는 데이터(문서)에 둔다.
+- `patchable`인 필드만 객체 패치로 바꿀 수 있다. 서술자에 없는 필드나 종류·범위를 어긴 값을 담은 패치는 **전체 거부**한다(`sceneDataRegistry.ts`).
+- HATCHERY 명령 해석(`aliases`·`default`), 도구 스키마, 응답 문장의 단위·소수점, 카탈로그의 범위 표기는 모두 서술자에서 파생한다(`hatcheryTargets.ts`). 필드 사실을 다른 곳에 복사하지 않는다.
+- 장면별 선언은 `sceneFields.ts`의 `SCENE_FIELDS`에 모으고, 객체 타입 모듈이 있는 장면은 그 모듈의 `fields`를 그대로 가리킨다(막대 → `productionLineFields.ts`).
+
+### 3.2 객체 타입 모듈 — 속성과 메서드를 한 곳에
+
+객체 **타입**마다 모듈 하나가 속성(서술자)과 메서드를 가진다. 인스턴스는 문서(`{ id, label, value }`)이며 저장소가 든다. 클래스 인스턴스를 만들지 않는다: 화면은 매 프레임 `시간 + 데이터 → 그리기`로 계산하므로 탐색·되감기·순수 함수 테스트가 그대로 유지된다.
+
+```ts
+export const productionLineObject = {
+  type: 'productionLine', fields: PRODUCTION_LINE_FIELDS,
+  normalize(raw) { … },            // 문서 한 건의 구조·서술자 검증
+  describe(item, unit) { … },      // 응답·툴팁 문장
+  layout(items, frame) { … },      // 개수에 따른 배치
+  draw(ctx, item, slot, time) { … },   // 객체 하나
+  drawAll(ctx, fonts, options) { … },  // 헤더·라벨·포커스 포함 전체
+};
+```
+
+- 장면은 "어떤 타입을 어디에 놓는가"만 담당하고 객체 타입의 `drawAll`을 호출한다(`drawBarFilm.ts`).
+- 그리기 코드를 모듈로 옮길 때는 **그리기 호출 지문 테스트**(`tests/unit/support/recordingCanvas.ts`, `cinemaBarFilmFingerprint.test.ts`)로 리팩터링 전후 화면이 같음을 고정한다. 지문이 바뀌는 커밋은 의도한 시각 변경일 때만 허용한다.
+- 첫 적용: 막대 라인(`productionLineObject.ts`). 다른 장면은 이관 시 같은 모양을 따른다.
 
 ### 4. 런타임 — 등록부와 저장소
 
