@@ -15,14 +15,13 @@ export function SignalFilm() {
   const camera = useFilmCamera();
   const cameraView = useRef(true);
   const [preview, setPreview] = useState(true);
-  const [sceneMenuOpen, setSceneMenuOpen] = useState(false);
-  const menuOpen = preview || sceneMenuOpen;
+  const [menuOpen, setMenuOpen] = useState(false);
   const player = useFilmPlayback(canvas, camera.frameRef, cameraView);
   const cameraMode = {
     ...camera, preview,
-    openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); },
-    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); setSceneMenuOpen(false); },
-    enable() { player.environment.clear(); cameraView.current = true; setPreview(true); },
+    openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
+    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
+    enable() { player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
   };
   const themeStyle = useMemo(() => {
     const { accent } = getFilmTheme(player.theme);
@@ -55,7 +54,7 @@ export function SignalFilm() {
       </div>
       {preview && <JarvisMain camera={camera} onChapter={id => { cameraMode.closePreview(); player.selectChapter(id); }}
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
-      <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setSceneMenuOpen} />
+      <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
     </main>
   );
 }

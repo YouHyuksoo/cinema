@@ -10,6 +10,15 @@ export function useFilmMenuRing(active: number, count: number, disabled: boolean
   const [dragging, setDragging] = useState(false);
   const pointer = useRef<{ id: number; x: number; start: number; latest: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
+  useEffect(() => {
+    if (!disabled || !pointer.current) return;
+    const current = pointer.current;
+    pointer.current = null;
+    suppressClick.current = current.moved;
+    setPosition(value => ({ ...value, turn: Math.round(current.latest) }));
+    setDragging(false);
+    if (stage.current?.hasPointerCapture(current.id)) stage.current.releasePointerCapture(current.id);
+  }, [disabled]);
   if (position.active !== active) {
     const browsing = ringIndex(position.turn, count) !== position.active;
     setPosition({ active, turn: active < 0 || browsing ? position.turn : nearestRingTurn(position.turn, active, count) });
@@ -43,6 +52,7 @@ export function useFilmMenuRing(active: number, count: number, disabled: boolean
         pointer.current = { id: event.pointerId, x: event.clientX, start: turn, latest: turn, moved: false };
       },
       onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
+        if (disabled) return;
         const current = pointer.current;
         if (!current || current.id !== event.pointerId) return;
         const delta = event.clientX - current.x;

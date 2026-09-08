@@ -1,0 +1,171 @@
+import { describe, expect, it } from 'vitest';
+import {
+  clampGlobeCenter,
+  globeDiameter,
+  globeFaceSize,
+  globeMomentumStep,
+  globePose,
+  globeRestingCenter,
+  isGlobeDrag,
+  mixMenuPose,
+} from '@/cinema/filmMenuGlobe';
+import { ringPose } from '@/cinema/filmMenuRing';
+
+describe('floating menu globe geometry', () => {
+  it.each([
+    { width: 1200, height: 805, expected: { x: 1064, y: 637 } },
+    { width: 390, height: 845, expected: { x: 274, y: 707 } },
+    { width: 843, height: 390, expected: { x: 727, y: 276 } },
+  ])('docks at bottom right with caption clearance in $width x $height', ({ width, height, expected }) => {
+    expect(globeRestingCenter({ width, height }, globeDiameter(width, height))).toEqual(expected);
+  });
+
+  it('preserves a dragged center until collapse clears it, then uses the current viewport corner', () => {
+    const viewport = { width: 1200, height: 805 }, dragged = { x: 400, y: 300 };
+    expect(globeRestingCenter(viewport, 240, dragged)).toEqual(dragged);
+    expect(globeRestingCenter(viewport, 240, null)).toEqual({ x: 1064, y: 637 });
+    expect(globeRestingCenter({ width: 1440, height: 900 }, 240, null)).toEqual({ x: 1304, y: 732 });
+  });
+
+  it('uses the requested desktop, mobile, and short-screen diameters', () => {
+    expect(globeDiameter(1440, 900)).toBe(240);
+    expect(globeDiameter(680, 900)).toBe(180);
+    expect(globeDiameter(1440, 500)).toBe(132);
+    expect(globeDiameter(680, 500)).toBe(132);
+  });
+
+  it('shrinks only as needed to keep the globe, float, and caption on screen', () => {
+    expect(globeDiameter(200, 900)).toBe(168);
+    expect(globeDiameter(900, 160)).toBe(92);
+    expect(globeDiameter(30, 30)).toBe(0);
+  });
+
+  it('clamps remembered centers with edge, float, and caption clearance', () => {
+    expect(clampGlobeCenter({ x: -20, y: 900 }, { width: 400, height: 700 }, 240))
+      .toEqual({ x: 136, y: 532 });
+    expect(clampGlobeCenter({ x: 200, y: 455 }, { width: 400, height: 700 }, 240))
+      .toEqual({ x: 200, y: 455 });
+    expect(clampGlobeCenter({ x: 0, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(116);
+    expect(clampGlobeCenter({ x: 999, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(244);
+  });
+
+  it('requires about seven pixels before a pointer gesture suppresses click', () => {
+    expect(isGlobeDrag({ x: 10, y: 10 }, { x: 16, y: 13 })).toBe(false);
+    expect(isGlobeDrag({ x: 10, y: 10 }, { x: 17, y: 11 })).toBe(true);
+  });
+
+  it('damps release momentum, clamps edges, and disables motion when reduced', () => {
+    const moving = globeMomentumStep(
+      { center: { x: 200, y: 350 }, velocity: { x: .4, y: -.2 } },
+      16, { width: 800, height: 700 }, 240, false,
+    );
+    expect(moving.center.x).toBeGreaterThan(200);
+    expect(moving.center.y).toBeLessThan(350);
+    expect(Math.hypot(moving.velocity.x, moving.velocity.y)).toBeLessThan(Math.hypot(.4, .2));
+
+    const stopped = globeMomentumStep(
+      { center: { x: 200, y: 350 }, velocity: { x: .4, y: -.2 } },
+      16, { width: 800, height: 700 }, 240, true,
+    );
+    expect(stopped).toEqual({ center: { x: 200, y: 350 }, velocity: { x: 0, y: 0 } });
+
+    const edge = globeMomentumStep(
+      { center: { x: 679, y: 350 }, velocity: { x: 1, y: 0 } },
+      32, { width: 800, height: 700 }, 240, false,
+    );
+    expect(edge.center.x).toBe(664);
+    expect(edge.velocity.x).toBe(0);
+  });
+
+  it('places distinct centers on the sphere at every rotation', () => {
+    for (const angle of [0, .9, Math.PI, Math.PI * 2]) {
+      const poses = Array.from({ length: 16 }, (_, i) => globePose(i, 16, 56, angle));
+      expect(new Set(poses.map(p => `${p.x},${p.y},${p.z}`)).size).toBe(16);
+      for (const pose of poses) {
+        expect(Math.hypot(pose.x, pose.y, pose.z)).toBeCloseTo(56);
+        expect(Object.values(pose).every(Number.isFinite)).toBe(true);
+      }
+    }
+  });
+
+  it('orients CSS rotateY then rotateX normals outward', () => {
+    for (let i = 0; i < 16; i++) {
+      const pose = globePose(i, 16, 56, .8);
+      const yaw = pose.yaw * Math.PI / 180, pitch = pose.pitch * Math.PI / 180;
+      expect(Math.sin(yaw) * Math.cos(pitch)).toBeCloseTo(pose.x / 56);
+      expect(-Math.sin(pitch)).toBeCloseTo(pose.y / 56);
+      expect(Math.cos(yaw) * Math.cos(pitch)).toBeCloseTo(pose.z / 56);
+    }
+  });
+
+  it('returns the same geometry after a full revolution', () => {
+    const first = globePose(5, 16, 56, .3), full = globePose(5, 16, 56, .3 + Math.PI * 2);
+    for (const key of ['x', 'y', 'z', 'yaw', 'pitch', 'scale', 'opacity'] as const) {
+      expect(full[key]).toBeCloseTo(first[key]);
+    }
+  });
+
+  it('bounds every face diameter to leave a gap between all centers', () => {
+    for (const count of [2, 3, 16, 32]) {
+      const size = globeFaceSize(count, 56);
+      expect(size).toBeGreaterThan(0);
+      const poses = Array.from({ length: count }, (_, i) => globePose(i, count, 56, .9));
+      for (let i = 0; i < count; i++) for (let j = i + 1; j < count; j++) {
+        const distance = Math.hypot(poses[i].x - poses[j].x, poses[i].y - poses[j].y, poses[i].z - poses[j].z);
+        expect(size).toBeLessThanOrEqual(distance * .75 + 1e-10);
+      }
+      expect(globeFaceSize(count, 28)).toBeCloseTo(size / 2);
+    }
+  });
+
+  it('handles empty and single-face menus with finite geometry', () => {
+    expect(globePose(0, 0, 56, 0)).toEqual({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, scale: 0, opacity: 0 });
+    expect(globeFaceSize(0, 56)).toBe(0);
+    const single = globePose(0, 1, 56, 0);
+    expect(single.x).toBe(0);
+    expect(single.y).toBe(0);
+    expect(single.z).toBe(56);
+    expect(globeFaceSize(1, 56)).toBe(42);
+  });
+
+  it('rejects invalid counts, wraps indices, and sanitizes nonfinite inputs', () => {
+    for (const count of [NaN, Infinity, -1, 1.5]) {
+      expect(globePose(0, count, 56, 0).opacity).toBe(0);
+      expect(globeFaceSize(count, 56)).toBe(0);
+    }
+    expect(globePose(-1, 16, 56, 0)).toEqual(globePose(15, 16, 56, 0));
+    expect(globePose(NaN, 16, 56, Infinity)).toEqual(globePose(0, 16, 56, 0));
+    for (const radius of [NaN, Infinity, -56, 0, Number.MAX_VALUE]) {
+      expect(Object.values(globePose(0, 16, radius, NaN)).every(Number.isFinite)).toBe(true);
+      expect(Number.isFinite(globeFaceSize(2, radius))).toBe(true);
+    }
+  });
+});
+
+describe('menu pose transition', () => {
+  const from = { x: 0, y: 10, z: -10, yaw: 170, pitch: 20, scale: 1, opacity: .4 };
+  const to = { x: 20, y: -10, z: 10, yaw: -170, pitch: -20, scale: .5, opacity: 1 };
+
+  it('preserves endpoints and clamps progress', () => {
+    expect(mixMenuPose(from, to, 0)).toEqual(from);
+    expect(mixMenuPose(from, to, 1)).toEqual(to);
+    expect(mixMenuPose(from, to, -1)).toEqual(from);
+    expect(mixMenuPose(from, to, 2)).toEqual(to);
+    expect(mixMenuPose(from, to, NaN)).toEqual(from);
+    expect(mixMenuPose(from, to, Infinity)).toEqual(to);
+  });
+
+  it('interpolates coordinates and appearance while crossing the shortest angular seam', () => {
+    expect(mixMenuPose(from, to, .5)).toEqual({ x: 10, y: 0, z: 0, yaw: 180, pitch: 0, scale: .75, opacity: .7 });
+    const forward = mixMenuPose(from, to, .25), reverse = mixMenuPose(to, from, .75);
+    expect(reverse.x).toBe(forward.x);
+    expect(reverse.pitch).toBe(forward.pitch);
+    expect(Math.cos(reverse.yaw * Math.PI / 180)).toBeCloseTo(Math.cos(forward.yaw * Math.PI / 180));
+    expect(Math.sin(reverse.yaw * Math.PI / 180)).toBeCloseTo(Math.sin(forward.yaw * Math.PI / 180));
+  });
+
+  it('accepts existing ring poses with a zero pitch default', () => {
+    const ring = ringPose(0, 0, 16, 300);
+    expect(mixMenuPose(ring, globePose(0, 16, 56, 0), 0)).toEqual({ ...ring, pitch: 0 });
+  });
+});
