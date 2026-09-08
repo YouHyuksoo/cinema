@@ -52,16 +52,23 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       mono: `${style.getPropertyValue('--font-mono')}, monospace`,
     };
     const viewport = { bottomInset: 0 };
+    const syncDockInset = () => {
+      const rect = node.getBoundingClientRect();
+      const dockSpace = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-dock-space')) || 0;
+      viewport.bottomInset = Math.max(0, dockSpace) * node.height / Math.max(1, rect.height);
+    };
     const resize = () => {
       const rect = node.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       node.width = Math.max(1, Math.round(rect.width * dpr));
       node.height = Math.max(1, Math.round(rect.height * dpr));
-      const dockSpace = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-dock-space')) || 0;
-      viewport.bottomInset = Math.max(0, dockSpace) * dpr;
+      syncDockInset();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(node); resize();
+    const dockObserver = new MutationObserver(syncDockInset);
+    const page = node.closest('[data-film-theme]');
+    if (page) dockObserver.observe(page, { attributes: true, attributeFilter: ['data-menu-open', 'data-preview'] });
     const sync = requestAnimationFrame(() => { setReady(true); setPlaying(!current.paused); setPosition(chapterAt(current.time)); });
     const render = (now: number) => {
       if (!current.paused) {
@@ -93,7 +100,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
-    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); };
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); };
   }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment]);
 
   return {

@@ -20,7 +20,7 @@ export function useEnvironmentSelection() {
   const clear = useCallback(() => { session.clear(); publish(); }, [session, publish]);
   return {
     selectedId, update, clear,
-    pick(point: EnvironmentPoint | null) { session.pick(point); publish(); },
+    pick(point: EnvironmentPoint | null, portrait = false) { session.pick(point, portrait); publish(); },
     step(direction: number) { session.step(direction); publish(); },
   };
 }

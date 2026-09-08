@@ -9,10 +9,11 @@ const media = vi.fn(async () => stream);
 const channel = { readyState: 'open', send: vi.fn(), close: vi.fn(), onopen: null as null | (() => void), onmessage: null as null | ((e: { data: string }) => void), onclose: null };
 const peer = { addTrack: vi.fn(), createDataChannel: () => channel, createOffer: async () => ({ sdp: 'v=0\r\nm=audio' }),
   setLocalDescription: vi.fn(), setRemoteDescription: vi.fn(), close: vi.fn(), ontrack: null, onconnectionstatechange: null, connectionState: 'new' };
-const callbacks = () => ({ phase: vi.fn(), message: vi.fn(), transcript: vi.fn(), analyser: vi.fn(), error: vi.fn(), chapter: vi.fn(), ended: vi.fn() });
+const callbacks = () => ({ phase: vi.fn(), message: vi.fn(), transcript: vi.fn(), analyser: vi.fn(), error: vi.fn(), chapter: vi.fn(), ended: vi.fn(), connection: vi.fn() });
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); media.mockResolvedValue(stream);
   startup.finished = Promise.resolve(); audioTrack.enabled = true;
+  peer.connectionState = 'new';
   vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: media } });
   vi.stubGlobal('RTCPeerConnection', class { constructor() { return peer; } });
   vi.stubGlobal('Audio', class { autoplay = true; srcObject = null; pause() {} play() { return Promise.resolve(); } });
@@ -21,6 +22,26 @@ beforeEach(() => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('Realtime lifecycle', () => {
+  it('reports a live connection only after the channel opens and clears it on stop', async () => {
+    const cb = callbacks(), session = new JarvisRealtimeSession(cb);
+    await session.start('cedar');
+    expect(cb.connection).not.toHaveBeenCalledWith(true);
+    channel.onopen?.(); await Promise.resolve();
+    expect(cb.connection).toHaveBeenLastCalledWith(true);
+    session.stop();
+    expect(cb.connection).toHaveBeenLastCalledWith(false);
+  });
+  it('clears connection status during a network interruption and restores it on reconnect', async () => {
+    const cb = callbacks(), session = new JarvisRealtimeSession(cb);
+    await session.start('cedar'); channel.onopen?.(); await Promise.resolve();
+    peer.connectionState = 'disconnected';
+    (peer.onconnectionstatechange as (() => void) | null)?.();
+    expect(cb.connection).toHaveBeenLastCalledWith(false);
+    peer.connectionState = 'connected';
+    (peer.onconnectionstatechange as (() => void) | null)?.();
+    expect(cb.connection).toHaveBeenLastCalledWith(true);
+    session.stop();
+  });
   it('waits for the startup sound, announces once, and opens the microphone only after playback', async () => {
     let finish!: () => void;
     startup.finished = new Promise(resolve => { finish = resolve; });

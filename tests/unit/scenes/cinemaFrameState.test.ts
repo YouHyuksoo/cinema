@@ -69,6 +69,20 @@ function expectOpaqueBackground(fill: Fill) {
 }
 
 describe('cinema frame paint isolation', () => {
+  it.each([8, 28])('renders all portrait ZONEs and phase readouts at %s seconds', time => {
+    const frame = zoneEnvironmentState(time, undefined, 'ZONE 08');
+    const fixture = canvasFixture();
+    drawSignalFilm(fixture.ctx, 390, 844, time, undefined, { bottomInset: 64 }, undefined, null, frame);
+    for (const item of frame.zones) expect(fixture.texts.some(text => text.value === item.zone.id && text.opacity > .9)).toBe(true);
+    if (time === 8) {
+      expect(fixture.texts.find(text => text.x === 220 && text.y === 295)?.value).toBe(`${frame.selected.zone.id} · ${frame.selected.zone.name}`);
+      expect(fixture.texts.some(text => text.value === '64' && text.x === 0)).toBe(true);
+    } else {
+      expect(fixture.texts.filter(text => text.value === '24H' && text.opacity > .5)).toHaveLength(10);
+    }
+    expect(fixture.stack).toHaveLength(0);
+  });
+
   it('renders manual ZONE values in the central instruments and restores automatic values on release', () => {
     for (const selectedId of ['ZONE 08', null]) {
       const frame = zoneEnvironmentState(8, undefined, selectedId);

@@ -8,8 +8,11 @@ beforeEach(() => { vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGl
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe('Jarvis OpenAI server boundary', () => {
   it('reports configured status without disclosing credentials', async () => {
+    vi.stubEnv('OPENAI_TEXT_MODEL', 'server-text-model');
+    vi.stubEnv('OPENAI_REALTIME_MODEL', 'server-voice-model');
     const body = await GET().json();
     expect(body.aiConfigured).toBe(true);
+    expect(body).toMatchObject({ textModel: 'server-text-model', realtimeModel: 'server-voice-model' });
     expect(JSON.stringify(body)).not.toContain('test-server-secret');
   });
   it('retains deterministic scene commands without spending API tokens', async () => {

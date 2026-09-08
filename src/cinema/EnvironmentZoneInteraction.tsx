@@ -2,6 +2,7 @@
 
 import type { RefObject } from 'react';
 import { environmentCanvasPoint } from './environmentSceneObjects';
+import { isEnvironmentPortrait } from './environmentMobileLayout';
 import type { EnvironmentSelectionController } from './useEnvironmentSelection';
 import styles from './environmentInteraction.module.css';
 
@@ -19,7 +20,7 @@ export function EnvironmentZoneInteraction({ canvas, controller }: {
         const dock = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-dock-space')) || 0;
         controller.pick(environmentCanvasPoint({ left: rect.left, top: rect.top, width: rect.width, height: rect.height,
           pixelWidth: node.width, pixelHeight: node.height, bottomInset: dock * node.height / Math.max(1, rect.height) },
-        { x: event.clientX, y: event.clientY }));
+        { x: event.clientX, y: event.clientY }), isEnvironmentPortrait(node.width, node.height));
       }}
       onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); controller.clear(); }

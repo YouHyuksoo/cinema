@@ -1,8 +1,8 @@
 .page { --film-dock-space: 208px; --film-accent: #5fe3ff; --film-accent-soft: #b6f6ff; --film-ink: #b1cdd4; --film-muted: #9eb7bd; --film-dim: #67818a; --film-bg: #040b10; --film-panel: #071319; --film-line: #28434d; position: relative; height: 100dvh; display: block; overflow: hidden; isolation: isolate; background: var(--film-bg); font-family: var(--font-label), var(--font-korean), sans-serif; }
-.header, .footer { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--film-muted); font-size: 12px; letter-spacing: .12em; }
-.header { position: absolute; top: 16px; left: 24px; right: 24px; z-index: 2; width: auto; max-width: none; pointer-events: none; font-size: 10px; text-shadow: 0 1px 8px var(--film-bg); opacity: .8; }
-.header span:first-child { color: var(--film-ink); font-family: var(--font-mono), monospace; }
+.footer { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--film-muted); font-size: 12px; letter-spacing: .12em; }
 .screen { position: absolute; inset: 0; width: 100%; height: 100%; }
+.page[data-preview=false][data-menu-open=true] { --film-dock-space:256px; }
+.page[data-menu-open=false] { --film-dock-space:64px; }
 .canvas { width: 100%; height: 100%; display: block; }
 .screenToggle { position: absolute; inset: 0; width: 100%; height: 100%; display: block; margin: 0; padding: 0; appearance: none; border: 0; border-radius: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
 .screenToggle:disabled { cursor: default; }
@@ -83,7 +83,6 @@
 .chapterButton:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 2px; border-radius: 3px; }
 .chapterButton:disabled { opacity: .35; cursor: default; }
 @media (max-width: 800px) {
-  .header { left: 16px; right: 16px; font-size: 9px; }
   .chapterDetail { font-size: 11px; }
   .controlRow { align-items: flex-start; flex-direction: column; gap: 8px; }
   .controls { gap: 14px; }
@@ -105,6 +104,7 @@
   .dockTime { display: none; }
 }
 @media (max-height: 500px) {
+  .page[data-preview=false][data-menu-open=true] { --film-dock-space:220px; }
   .page { --film-dock-space: 172px; }
   .filmDock { padding-top: 6px; padding-bottom: 4px; }
   .chapterMenu { display: flex; max-width: 940px; overflow-x: auto; gap: 2px; padding: 6px 3px 3px; scrollbar-width: thin; scrollbar-color: var(--film-line) transparent; }

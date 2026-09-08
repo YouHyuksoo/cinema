@@ -11,6 +11,7 @@ export interface RealtimeCallbacks {
   error(message: string): void;
   chapter(id: FilmId): void;
   ended(): void;
+  connection?(connected: boolean): void;
 }
 interface RealtimeEvent {
   type: string; item_id?: string; transcript?: string; text?: string; delta?: string;
@@ -83,6 +84,7 @@ export class JarvisRealtimeSession {
       peer.onconnectionstatechange = () => {
         if (this.closed) return;
         clearTimeout(this.disconnectTimer);
+        this.callbacks.connection?.(peer.connectionState === 'connected' && this.channel?.readyState === 'open');
         if (peer.connectionState === 'failed') this.fail('OpenAI 음성 연결이 끊어졌습니다. 다시 시작해 주세요.');
         if (peer.connectionState === 'disconnected') this.disconnectTimer = setTimeout(() => this.fail('음성 네트워크 연결이 끊어졌습니다.'), 8000);
       };
@@ -90,6 +92,7 @@ export class JarvisRealtimeSession {
       const channel = peer.createDataChannel('oai-events'); this.channel = channel;
       channel.onopen = async () => {
         if (this.closed || this.startupSent) return;
+        this.callbacks.connection?.(true);
         this.startupSent = true;
         await this.startupSound?.finished;
         if (this.closed) return;
@@ -222,6 +225,7 @@ export class JarvisRealtimeSession {
   private fail(message: string) { this.stop(); this.callbacks.error(message); this.callbacks.phase('error'); }
   stop() {
     if (this.closed) return;
+    this.callbacks.connection?.(false);
     this.closed = true; this.abort?.abort(); this.abort = null;
     clearTimeout(this.connectTimer); clearTimeout(this.sessionTimer); clearTimeout(this.disconnectTimer);
     clearTimeout(this.startupTimer); this.startupPending = false; this.startupSent = false;

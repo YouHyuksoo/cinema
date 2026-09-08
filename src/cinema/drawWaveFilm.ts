@@ -5,6 +5,8 @@ import { drawEnvironmentFocus, drawEnvironmentZones } from './components/drawZon
 import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING,
   environmentReadingStatus, zoneEnvironmentState, type ZoneEnvironmentData, type ZoneEnvironmentState } from './zoneEnvironment';
 import { drawEnvironmentHeatmap } from './components/drawEnvironmentHeatmap';
+import { isEnvironmentPortrait } from './environmentMobileLayout';
+import { drawEnvironmentMobile } from './components/drawEnvironmentMobile';
 
 export const WAVE_FILM_SECONDS = ENVIRONMENT_FILM_SECONDS;
 
@@ -13,6 +15,10 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA,
   frame?: ZoneEnvironmentState | null) {
   const state = frame ?? zoneEnvironmentState(time, data);
+  if (isEnvironmentPortrait(width, height)) {
+    drawEnvironmentMobile(ctx, width, height, fonts, state, data, data === DEFAULT_ENVIRONMENT_DATA, insets);
+    return;
+  }
   const view = beginFilmViewport(ctx, width, height, insets);
   drawCornerField(ctx, view, state.elapsed, state.focus * .35);
   const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false, heat = 0) =>

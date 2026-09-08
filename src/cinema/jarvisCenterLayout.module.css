@@ -1,0 +1,28 @@
+.toolbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; min-width:0; }
+.startPanel { min-width:0; flex:1; }
+.startPanel>[data-compact=true] { width:150px; max-width:100%; justify-content:flex-start; }
+.centerHeading { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.centerHeading>div { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:block; width:max-content; max-width:calc(100% - 24px); padding:0; text-align:center; text-shadow:0 2px 8px var(--film-bg),0 0 14px var(--film-bg); }
+.centerHeading span { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); white-space:nowrap; }
+.cameraDock { flex:0 0 128px; min-width:0; background:linear-gradient(120deg,color-mix(in srgb,var(--film-accent) 5%,transparent),transparent); }
+.cameraTitle { display:flex; justify-content:space-between; align-items:center; gap:4px; font:6px var(--font-mono),monospace; color:var(--film-muted); padding:5px 2px; }
+.cameraTitle i { width:4px; height:4px; flex:none; background:var(--film-muted); }
+.cameraTitle i[data-on=true] { background:var(--film-accent); box-shadow:0 0 8px var(--film-accent); }
+.cameraImage { position:relative; overflow:hidden; border:1px solid var(--film-line); }
+.cameraImage>span { position:absolute; top:4px; left:4px; font:6px var(--font-mono),monospace; color:var(--film-accent); text-shadow:0 1px 3px black; pointer-events:none; }
+.cameraImage .cameraToggle { position:absolute; right:3px; bottom:3px; margin:0; padding:4px 6px; font-size:9px; line-height:1.3; background:color-mix(in srgb,var(--film-bg) 85%,transparent); border-color:var(--film-line); }
+.cameraImage .cameraToggle:focus-visible { outline-offset:-2px; }
+.bottomRow { display:grid; grid-template-columns:112px minmax(0,1fr); align-items:end; gap:4px 10px; min-width:0; }
+.bottomRow>form { grid-column:1/-1; grid-row:1; min-width:0; }
+.bottomRow>section { grid-column:2; grid-row:2; }
+.brandMark { grid-column:1; grid-row:2; width:100%; height:36px; pointer-events:none; }
+.brandMark>div,.brandMark svg { width:100%; height:100%; }
+@media(max-width:680px) {
+  .toolbar { gap:8px; }
+  .cameraDock { flex-basis:106px; }
+  .bottomRow { grid-template-columns:80px minmax(0,1fr); gap:4px 6px; }
+  .brandMark { height:30px; }
+  .bottomRow>form { gap:4px; }
+  .bottomRow>form input { padding-inline:6px; font-size:10px; }
+  .bottomRow>form button { padding-inline:6px; font-size:10px; }
+}

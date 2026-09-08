@@ -1,6 +1,7 @@
 import { DEFAULT_ENVIRONMENT_DATA, zoneEnvironmentState, type ZoneEnvironmentData, type ZoneEnvironmentState } from './zoneEnvironment';
 import { environmentSceneObjects, pickEnvironmentZone } from './environmentSceneObjects';
 import type { EnvironmentPoint } from './environmentLayout';
+import { environmentMobileState } from './environmentMobileLayout';
 
 /** Picks use the last painted frame, not the throttled React playback position. */
 export function createEnvironmentSelection() {
@@ -17,8 +18,8 @@ export function createEnvironmentSelection() {
     select(id: string | null) {
       selectedId = frame && environmentSceneObjects(frame).some(object => object.id === id) ? id : null;
     },
-    pick(point: EnvironmentPoint | null) {
-      selectedId = frame && point ? pickEnvironmentZone(frame, point)?.id ?? null : null;
+    pick(point: EnvironmentPoint | null, portrait = false) {
+      selectedId = frame && point ? pickEnvironmentZone(portrait ? environmentMobileState(frame) : frame, point)?.id ?? null : null;
     },
     step(direction: number) {
       const objects = frame ? environmentSceneObjects(frame).sort((a, b) => a.id.localeCompare(b.id)) : [];

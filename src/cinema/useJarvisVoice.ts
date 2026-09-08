@@ -10,6 +10,8 @@ interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId) => void) {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [statusError, setStatusError] = useState('');
+  const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
+  const [connected, setConnected] = useState(false);
   const [realtimeVoice, setRealtimeVoice] = useState('cedar');
   const [robotVoice, setRobotVoice] = useState<RobotVoiceSettings>(DEFAULT_ROBOT_VOICE);
   const [realtimeView, setRealtimeView] = useState(false);
@@ -28,7 +30,12 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void) {
     const abort = new AbortController();
     void fetch('/api/cinema/assistant', { signal: abort.signal, cache: 'no-store' })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(data => { if (!abort.signal.aborted) setConfigured(data.aiConfigured === true); })
+      .then(data => {
+        if (abort.signal.aborted) return;
+        setConfigured(data.aiConfigured === true);
+        setModels({ text: typeof data.textModel === 'string' && data.textModel.trim() ? data.textModel : null,
+          realtime: typeof data.realtimeModel === 'string' && data.realtimeModel.trim() ? data.realtimeModel : null });
+      })
       .catch(() => { if (!abort.signal.aborted) setStatusError('AI 설정을 확인하지 못했습니다. 페이지를 새로고침해 주세요.'); });
     const hide = () => session.current?.stop();
     const visibility = () => { if (document.hidden) hide(); };
@@ -42,6 +49,7 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void) {
     local.stop(); session.current?.stop(); setRealtimeView(true); setError(''); setActive(true); setMessages([]); setTranscript('');
     const current = new JarvisRealtimeSession({
       phase(value) { audioRef.current.phase = value; setPhase(value); },
+      connection: setConnected,
       analyser(value) { audioRef.current.analyser = value; },
       error: setError, transcript: setTranscript, ended: () => setActive(false), chapter: id => chapter.current(id),
       message(role, content, id) {
@@ -63,5 +71,6 @@ export function useJarvisVoice(onChapter: (id: FilmId) => void) {
   const selected = realtimeView ? { phase, transcript, messages, error, source: 'OpenAI Realtime · AI 생성 음성',
     supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
   return { ...selected, configured, statusError, realtimeVoice, setRealtimeVoice, robotVoice, setRobotVoice, speechProfile: local.speechProfile,
+    aiConnection: { configured, statusError, models, connected, realtimeActive: active, error: realtimeView ? error : local.error },
     start, stop, ask, stopReply: realtimeView ? () => session.current?.interrupt() : local.stopReply };
 }

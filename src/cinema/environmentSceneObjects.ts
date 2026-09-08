@@ -1,7 +1,7 @@
 import { environmentCardVisibility, type ZoneEnvironmentState } from './zoneEnvironment';
 import { ENVIRONMENT_CARD_OUTLINE, environmentCardPaintOrder, environmentCardPoint,
   type EnvironmentPoint } from './environmentLayout';
-import { filmViewportPoint } from './filmViewport';
+import { environmentViewportTransform } from './environmentMobileLayout';
 
 export interface ZoneSceneObject {
   id: string;
@@ -40,6 +40,7 @@ export function environmentCanvasPoint(surface: EnvironmentCanvasSurface, client
     || surface.width <= 0 || surface.height <= 0 || surface.pixelWidth <= 0 || surface.pixelHeight <= 0) return null;
   const x = client.x - surface.left, y = client.y - surface.top;
   if (x < 0 || y < 0 || x > surface.width || y > surface.height) return null;
-  return filmViewportPoint(x * surface.pixelWidth / surface.width, y * surface.pixelHeight / surface.height,
-    surface.pixelWidth, surface.pixelHeight, { bottomInset: surface.bottomInset });
+  const view = environmentViewportTransform(surface.pixelWidth, surface.pixelHeight, { bottomInset: surface.bottomInset });
+  return { x: (x * surface.pixelWidth / surface.width - view.offsetX) / view.scale,
+    y: (y * surface.pixelHeight / surface.height - view.offsetY) / view.scale };
 }

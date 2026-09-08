@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
-import { FILM_CHAPTERS, FILM_SECONDS } from './filmProgram';
 import { useFilmPlayback } from './useFilmPlayback';
 import { FilmDock } from './FilmDock';
 import { getFilmTheme } from './filmThemes';
@@ -16,14 +15,15 @@ export function SignalFilm() {
   const camera = useFilmCamera();
   const cameraView = useRef(true);
   const [preview, setPreview] = useState(true);
+  const [sceneMenuOpen, setSceneMenuOpen] = useState(false);
+  const menuOpen = preview || sceneMenuOpen;
   const player = useFilmPlayback(canvas, camera.frameRef, cameraView);
   const cameraMode = {
     ...camera, preview,
     openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); },
-    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); },
+    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); setSceneMenuOpen(false); },
     enable() { player.environment.clear(); cameraView.current = true; setPreview(true); },
   };
-  const duration = player.mode === 'chapter' ? player.position.chapter.duration : FILM_SECONDS;
   const themeStyle = useMemo(() => {
     const { accent } = getFilmTheme(player.theme);
     return {
@@ -39,12 +39,7 @@ export function SignalFilm() {
   }, [player.theme]);
 
   return (
-    <main className={styles.page} style={themeStyle} data-film-theme={player.theme}>
-      <header className={styles.header}>
-        <span>{preview ? 'HATCHERY / MAIN INTERFACE' : 'SIGNAL / MOTION STUDIES'}</span>
-        <span>{preview ? 'VOICE ASSISTANT · DEMO DATA'
-          : `${player.mode === 'chapter' ? '현재 장면' : `${FILM_CHAPTERS.length}개 연출`} · ${(duration / player.speed).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}초 반복`}</span>
-      </header>
+    <main className={styles.page} style={themeStyle} data-film-theme={player.theme} data-preview={preview} data-menu-open={menuOpen}>
       <div className={styles.screen}>
         <canvas ref={canvas} className={styles.canvas} role="img" aria-label={preview
           ? 'HATCHERY 메인 화면의 연속 공간 배경'
@@ -59,7 +54,7 @@ export function SignalFilm() {
           onClick={player.togglePlay} />}
       </div>
       {preview && <JarvisMain camera={camera} onChapter={id => { cameraMode.closePreview(); player.selectChapter(id); }} />}
-      <FilmDock player={player} camera={cameraMode} />
+      <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setSceneMenuOpen} />
     </main>
   );
 }

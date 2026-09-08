@@ -6,10 +6,12 @@ import { ENVIRONMENT_CARD_OUTLINE, environmentCardPaintOrder, environmentFocusCo
 import { drawEnvironmentLink } from './drawEnvironmentLink';
 import { ENVIRONMENT_GAUGES, environmentGaugeState } from '../environmentGauge';
 import { drawEnvironmentGauge } from './drawEnvironmentGauge';
+import type { environmentHistoryLayout } from '../environmentLayout';
 
 /** Ten suspended sensor stations share their projection with the selected station's tether. */
-export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState) {
-  for (const item of state.zones) drawZoneTemperatureHistory(ctx, fonts, state, item);
+export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState,
+  historyLayout?: typeof environmentHistoryLayout) {
+  for (const item of state.zones) drawZoneTemperatureHistory(ctx, fonts, state, item, historyLayout?.(item));
   for (const item of environmentCardPaintOrder(state)) {
     const { zone, anchor, focus, reveal, status } = item;
     const alpha = state.reveal * reveal * item.cardOpacity, heat = status === 'outside' ? 1 : .4;

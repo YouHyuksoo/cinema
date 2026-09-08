@@ -6,11 +6,12 @@ import { drawEnvironmentLink } from './drawEnvironmentLink';
 
 /** Histories unfold toward the center, preserving both fixed rows and a shared 24-hour scale. */
 export function drawZoneTemperatureHistory(ctx: CanvasRenderingContext2D, fonts: FilmFonts,
-  state: ZoneEnvironmentState, item: ZoneEnvironmentState['zones'][number]) {
+  state: ZoneEnvironmentState, item: ZoneEnvironmentState['zones'][number],
+  layout = environmentHistoryLayout(item)) {
   const reveal = item.chartReveal;
   if (reveal <= 0) return;
   const { anchor, zone, history } = item;
-  const { x, top, width, height } = environmentHistoryLayout(item);
+  const { x, top, width, height } = layout;
   const alpha = state.reveal * reveal;
   const domain = state.historyDomain;
   const y = (value: number) => top + height * (1 - (value - domain.min) / (domain.max - domain.min));
