@@ -1,0 +1,30 @@
+[
+  {
+    "scene": "bars",
+    "version": 1,
+    "source": "static",
+    "at": "2026-09-08T09:00:00+09:00",
+    "data": {
+      "unit": "EA",
+      "target": 500,
+      "selectedId": "SMT-02",
+      "lines": [
+        { "id": "SMT-01", "label": "SMT 1", "value": 540 },
+        { "id": "SMT-02", "label": "SMT 2", "value": 410 },
+        { "id": "SMT-03", "label": "SMT 3", "value": 505 }
+      ]
+    }
+  },
+  {
+    "scene": "energy",
+    "version": 1,
+    "source": "static",
+    "at": "2026-09-08T09:00:00+09:00",
+    "data": {
+      "name": "SMT LINE / STATIC FEED",
+      "power": { "value": 88.1, "capacity": 140, "unit": "kW" },
+      "production": { "value": 1455, "capacity": 1500, "unit": "EA" },
+      "efficiency": { "value": 96.2, "capacity": 100, "unit": "%" }
+    }
+  }
+]

@@ -14,6 +14,7 @@ import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
 import { useEnvironmentSelection } from './useEnvironmentSelection';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData, type FilmSceneDataKey } from './filmSceneData';
 import { createSceneDataStore } from './sceneDataStore';
+import { browserStaticSceneDataOptions, loadStaticSceneData } from './staticSceneData';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -28,6 +29,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [store] = useState(() => createSceneDataStore());
   const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
   useEffect(() => store.subscribe(setSceneData), [store]);
+  // Static JSON adapter: public/cinema/data/scenes.json overrides the demo defaults when present.
+  useEffect(() => { void loadStaticSceneData(store, browserStaticSceneDataOptions()); }, [store]);
   const [position, setPosition] = useState(() => chapterAt(0));
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
