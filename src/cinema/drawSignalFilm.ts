@@ -24,7 +24,7 @@ import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 export { FILM_SECONDS } from './filmProgram';
 type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData) => void;
 const renderers: Record<FilmId, Renderer> = {
-  wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment) => drawWaveFilm(ctx, width, height, time, fonts, insets, undefined, environment),
+  wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment, data) => drawWaveFilm(ctx, width, height, time, fonts, insets, data.environment, environment),
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
   console: drawConsoleFilm, visor: (ctx, width, height, time, fonts, insets, _charts, factory) => drawVisorFilm(ctx, width, height, time, fonts, 'space', insets, factory),
   visorPan: drawPlanarVisorFilm,
@@ -33,10 +33,10 @@ const renderers: Record<FilmId, Renderer> = {
   pie: (ctx, width, height, time, fonts, insets, charts) => drawPieFilm(ctx, width, height, time, fonts, charts.pie, insets),
   corners: drawCornerFilm,
   machine: (ctx, width, height, time, fonts, insets) => drawTransparentMachineFilm(ctx, width, height, time, fonts, insets),
-  network: (ctx, width, height, time, fonts, insets) => drawProcessNetworkFilm(ctx, width, height, time, fonts, insets),
-  energy: (ctx, width, height, time, fonts, insets) => drawEnergyCoreFilm(ctx, width, height, time, fonts, insets),
-  product: (ctx, width, height, time, fonts, insets) => drawProductInspectionFilm(ctx, width, height, time, fonts, insets),
-  spc: (ctx, width, height, time, fonts, insets) => drawSpcFilm(ctx, width, height, time, fonts, insets),
+  network: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProcessNetworkFilm(ctx, width, height, time, fonts, insets, data.network),
+  energy: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawEnergyCoreFilm(ctx, width, height, time, fonts, insets, data.energy),
+  product: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProductInspectionFilm(ctx, width, height, time, fonts, insets, data.product),
+  spc: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawSpcFilm(ctx, width, height, time, fonts, insets, data.spc),
 };
 
 /** Paint a fresh frame independently of the preceding scene's fades and light effects. */

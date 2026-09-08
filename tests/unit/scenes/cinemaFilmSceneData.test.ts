@@ -32,3 +32,34 @@ describe('film scene data injection', () => {
     expect(fixture.texts.map(text => text.value)).toContain('05 CHANNELS');
   });
 });
+
+describe('scene data routing for the other data-driven scenes', () => {
+  const drawn = (time: number, change: Partial<FilmSceneData>) => {
+    const fixture = canvasFixture();
+    drawSignalFilm(fixture.ctx, 1280, 720, time, undefined, undefined, undefined, null, null, mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, change));
+    expect(fixture.stack).toHaveLength(0);
+    return fixture.texts.map(text => text.value);
+  };
+  const base = DEFAULT_FILM_SCENE_DATA;
+
+  it('energy reads the injected document name', () => {
+    expect(drawn(chapterStart('energy') + 15, { energy: { ...base.energy, name: 'INJECTED ENERGY' } })).toContain('INJECTED ENERGY');
+  });
+
+  it('network reads the injected title', () => {
+    expect(drawn(chapterStart('network') + 15, { network: { ...base.network, title: 'INJECTED NETWORK' } })).toContain('INJECTED NETWORK');
+  });
+
+  it('product reads the injected serial', () => {
+    expect(drawn(chapterStart('product') + 17, { product: { ...base.product, serial: 'SN-INJECTED' } })).toContain('SN-INJECTED');
+  });
+
+  it('spc reads the injected unit', () => {
+    expect(drawn(chapterStart('spc') + 10, { spc: { ...base.spc, unit: 'INCH' } }).some(value => value.includes('INCH'))).toBe(true);
+  });
+
+  it('wave draws injected zone ids even without a precomputed frame', () => {
+    const zones = base.environment.zones.map((zone, index) => index === 0 ? { ...zone, id: 'ZONE 77' } : zone);
+    expect(drawn(chapterStart('wave') + 8, { environment: { ...base.environment, zones } })).toContain('ZONE 77');
+  });
+});

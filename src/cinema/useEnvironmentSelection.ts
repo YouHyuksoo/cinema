@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { createEnvironmentSelection } from './environmentSelection';
 import type { EnvironmentPoint } from './environmentLayout';
+import type { ZoneEnvironmentData } from './zoneEnvironment';
 
 export function useEnvironmentSelection() {
   const [session] = useState(createEnvironmentSelection);
@@ -13,8 +14,8 @@ export function useEnvironmentSelection() {
     publishedId.current = session.selectedId;
     setSelectedId(session.selectedId);
   }, [session]);
-  const update = useCallback((time: number | null) => {
-    const frame = session.update(time); publish(); return frame;
+  const update = useCallback((time: number | null, data?: ZoneEnvironmentData) => {
+    const frame = session.update(time, data); publish(); return frame;
   }, [session, publish]);
   const clear = useCallback(() => { session.clear(); publish(); }, [session, publish]);
   return {

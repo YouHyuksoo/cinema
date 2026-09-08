@@ -114,3 +114,15 @@ describe('environment ZONE selection', () => {
     session.clear(); session.step(1); expect(session.selectedId).toBeNull();
   });
 });
+
+describe('environment selection session with injected data', () => {
+  it('computes frames from the data passed to update()', () => {
+    const session = createEnvironmentSelection();
+    const zones = DEFAULT_ENVIRONMENT_DATA.zones.map((zone, index) => index === 0 ? { ...zone, id: 'ZONE 77' } : zone);
+    const frame = session.update(8, { ...DEFAULT_ENVIRONMENT_DATA, zones })!;
+    expect(frame.zones.some(item => item.zone.id === 'ZONE 77')).toBe(true);
+    session.select('ZONE 77');
+    expect(session.selectedId).toBe('ZONE 77');
+    expect(session.update(8)!.manualSelectedId).toBeNull();
+  });
+});

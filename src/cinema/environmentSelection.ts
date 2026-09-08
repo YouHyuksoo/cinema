@@ -1,4 +1,4 @@
-import { zoneEnvironmentState, type ZoneEnvironmentState } from './zoneEnvironment';
+import { DEFAULT_ENVIRONMENT_DATA, zoneEnvironmentState, type ZoneEnvironmentData, type ZoneEnvironmentState } from './zoneEnvironment';
 import { environmentSceneObjects, pickEnvironmentZone } from './environmentSceneObjects';
 import type { EnvironmentPoint } from './environmentLayout';
 
@@ -8,8 +8,8 @@ export function createEnvironmentSelection() {
   let frame: ZoneEnvironmentState | null = null;
   return {
     get selectedId() { return selectedId; },
-    update(time: number | null) {
-      frame = time === null ? null : zoneEnvironmentState(time, undefined, selectedId);
+    update(time: number | null, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA) {
+      frame = time === null ? null : zoneEnvironmentState(time, data, selectedId);
       selectedId = frame?.manualSelectedId ?? null;
       return frame;
     },
