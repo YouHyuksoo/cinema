@@ -13,7 +13,8 @@ sources:
   - src/cinema/sceneFields.ts
   - src/cinema/productionLineFields.ts
   - src/cinema/productionLineObject.ts
-verifiedCommit: daa1d95
+  - src/cinema/domainFeeds.ts
+verifiedCommit: b119b8e
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
@@ -112,6 +113,15 @@ export const productionLineObject = {
   - HATCHERY(AI): 세 경로가 모두 객체 패치를 만든다(`hatcheryTargets.ts`). (1) 정형 문장은 브라우저에서 `resolveHatcheryValueCommand`가 저장소 데이터 기준으로 해석해 API 없이 적용한다(예: "라인 2 470으로", "존 3 온도 31.5", "리플로우 대기 3", "부분군 18 측정값 10.01 10.02 10.03 10.04 10.05"). (2) OpenAI 텍스트·실시간 세션은 도구 `set_scene_object_values { scene, objects[{ id, field, value | values }] }`를 쓰고 `toolCallToPatch`가 패치로 바꾼다. 대상은 id·label·code, 필드는 `HATCHERY_FIELDS`(막대 value, 환경 temperature·humidity, 공정망 queue·capacityPerHour·cycleSeconds, SPC values)가 단일 출처다. `source: 'hatchery'`.
   - 정적 JSON: `public/cinema/data/scenes.json`에 전체 교체 문서 배열을 두면 시작 시 한 번 읽어 저장소에 넣는다(`staticSceneData.ts`). 파일이 없으면 기본 시연 데이터를 유지한다. 예시: `public/cinema/data/scenes.example.json`. `source: 'static'`.
 - 화면은 장면별 마지막 `source`·`at`을 표시할 수 있어야 한다(출처 표시).
+
+### 4.1 도메인 피드 — DB는 장면이 아니라 피드에 붙는다
+
+DB 뷰는 장면 단위가 아니라 **도메인 피드** 단위로 만든다. 피드는 헤더 한 건과 객체 컬렉션들로 이루어지며, 장면들은 피드를 나눠 읽는다(라인 실적 피드 하나 → 막대·파이·코너·펼침·지표 카드). 선언은 `domainFeeds.ts`가 단일 출처이고, 여기서 JSON Schema·예시·컬럼 표가 생성된다.
+
+- 피드 9개: `production`(lines), `equipment`(stations), `process`(nodes, links), `environment`(zones), `quality`(subgroups), `energy`(readings), `workOrder`(defects), `inspection`(measurements), `machine`(systems). 피드 봉투는 `{ feed, version: 1, source, at, data }`.
+- 생성물: `public/cinema/data/schemas/<feed>.schema.json`, `<feed>.example.json`, `docs/database/domain-feeds.md`(컬럼 표). `npm run docs:feeds`로 재생성하며 골든 테스트(`cinemaDomainFeeds.test.ts`)가 선언과 생성물의 동기화를 강제한다.
+- 피드 → 장면 문서 변환은 서버 피드 라우트의 일이다(다음 단계). 화면은 지금처럼 장면 문서만 받는다.
+- 실제 MES 컬럼은 피드별로 매핑한다. 컬럼 정의가 오면 `domainFeeds.ts`의 서술자(이름·단위·범위)만 맞추고 재생성한다.
 
 ### 5. 장면 적합성 등급
 
