@@ -7,7 +7,7 @@ sources:
   - src/cinema/sceneObject.ts
   - src/cinema/drawSignalFilm.ts
   - src/cinema/useFilmPlayback.ts
-verifiedCommit: be30b41
+verifiedCommit: 303daf7
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
