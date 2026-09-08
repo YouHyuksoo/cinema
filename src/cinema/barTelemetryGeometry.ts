@@ -11,6 +11,9 @@ export interface BarChartOptions {
 }
 export interface BarAnchor { x: number; y: number; baseline: number; value: number }
 const positive = (value: number | undefined) => Number.isFinite(value) ? Math.max(0, value!) : 0;
+/** Slot width of the original five-channel layout; narrower slots scale their headers down. */
+const REFERENCE_SLOT = 138;
+const COMPACT_SLOT = 70;
 
 /** A partial final light strip ends at the measured value, never at a rounded rung. */
 export function telemetrySegments(height: number, filledHeight: number, count = 48) {
@@ -38,6 +41,8 @@ export function barTelemetryLayout(options: BarChartOptions) {
   const presentation = normalizeChartPresentation(options.presentation);
   const depth = presentation.dimension === '3d' ? Math.min((slot - barWidth) * .32, 22 * presentation.depthScale) : 0;
   const stagger = Math.min(.25, 3 / Math.max(1, data.length - 1));
+  const channelScale = Math.max(.45, Math.min(1, slot / REFERENCE_SLOT));
+  const compact = slot < COMPACT_SLOT;
   const columns = data.map((datum, index) => {
     const start = .8 + index * stagger, growth = smooth(start, start + 1.2, time);
     const value = values[index], center = x + slot * (index + .5);
@@ -50,7 +55,7 @@ export function barTelemetryLayout(options: BarChartOptions) {
       top, barHeight, heat: datum.accent || selected === index ? 1 : 0, lens,
       anchor: { x: head.x, y: head.y, baseline: foot.y, value } satisfies BarAnchor };
   });
-  return { x, y, width, height, baseline, slot, barWidth, target, maximum, selected, focus, depth, columns };
+  return { x, y, width, height, baseline, slot, barWidth, target, maximum, selected, focus, depth, channelScale, compact, columns };
 }
 export type BarTelemetryLayout = NonNullable<ReturnType<typeof barTelemetryLayout>>;
 export type BarTelemetryColumn = BarTelemetryLayout['columns'][number];

@@ -25,6 +25,7 @@ export function drawBarChart(ctx: CanvasRenderingContext2D, fonts: FilmFonts, op
   text('0', x - 20, baseline + 4, 9, 0, .55, 'right');
   if (target !== undefined) text(`REF / ${target.toLocaleString('en-US')} ${unit}`, x + width, y - 71, 10, 0, .68, 'right');
 
+  const { channelScale: scale, compact } = layout;
   for (const column of columns) {
     const { index, heat, center, datum, value, growth, top, start } = column;
     const channelLeft = x + slot * index + 2, channelRight = x + slot * (index + 1) - 8;
@@ -34,24 +35,32 @@ export function drawBarChart(ctx: CanvasRenderingContext2D, fonts: FilmFonts, op
     ctx.beginPath(); ctx.moveTo(channelLeft, y - 31); ctx.lineTo(channelLeft, y - 58);
     ctx.lineTo(channelRight - 5, y - 58); ctx.lineTo(channelRight, y - 53); ctx.lineTo(channelRight, y - 31);
     ctx.strokeStyle = signalColor(heat, .28); ctx.lineWidth = .7; ctx.stroke();
-    ctx.fillStyle = signalColor(heat, .08); ctx.fillRect(channelRight - 29, y - 55, 26, 21);
-    text(`T${index + 1}`, channelRight - 16, y - 39, 18, heat, .96, 'center');
-    text(`CH / ${String(index + 1).padStart(2, '0')}`, channelLeft + 6, y - 43, 9, heat, .7);
-    text('OUTPUT', channelLeft + 6, y - 31, 7, heat, .4);
-    for (let mark = 0; mark < 7; mark++) {
-      ctx.fillStyle = signalColor(heat, mark < Math.round(value / layout.maximum * 7) ? .4 : .08);
-      ctx.fillRect(channelLeft + 6 + mark * 7, y - 24, 4, 1.5);
+    if (compact) {
+      // Narrow channels keep only the channel number; the readouts below carry the value.
+      text(`T${index + 1}`, center, y - 39, 18 * scale, heat, .96, 'center', slot - 8);
     }
-    text(`${Math.round(value / layout.maximum * growth * 100)}% FS`, channelRight, y - 18, 7, heat, .5, 'right');
+    else {
+      ctx.fillStyle = signalColor(heat, .08); ctx.fillRect(channelRight - 29, y - 55, 26, 21);
+      text(`T${index + 1}`, channelRight - 16, y - 39, 18 * scale, heat, .96, 'center');
+      text(`CH / ${String(index + 1).padStart(2, '0')}`, channelLeft + 6, y - 43, 9 * scale, heat, .7);
+      text('OUTPUT', channelLeft + 6, y - 31, 7 * scale, heat, .4);
+      for (let mark = 0; mark < 7; mark++) {
+        ctx.fillStyle = signalColor(heat, mark < Math.round(value / layout.maximum * 7) ? .4 : .08);
+        ctx.fillRect(channelLeft + 6 + mark * 7, y - 24, 4, 1.5);
+      }
+      text(`${Math.round(value / layout.maximum * growth * 100)}% FS`, channelRight, y - 18, 7 * scale, heat, .5, 'right');
+    }
     ctx.save(); ctx.globalAlpha *= index === selected ? 1 - focus * .8 : 1;
     drawTelemetryBar(ctx, fonts, layout, column, time);
     ctx.globalAlpha *= index === selected ? 1 - focus : 1;
-    text(Math.round(value * growth).toLocaleString('en-US'), center, top - layout.depth - 10, 18, heat, .95, 'center', slot - 10);
+    text(Math.round(value * growth).toLocaleString('en-US'), center, top - layout.depth - 10, 18 * scale, heat, .95, 'center', slot - 10);
     ctx.restore();
     const characters = Math.max(0, Math.floor((time - start + .25) * 24));
-    text(Array.from(datum.label).slice(0, characters).join(''), center, baseline + 33, 15, heat, .9, 'center', slot - 12);
-    const attainment = target !== undefined && target > 0 ? `${(value / target * 100).toFixed(1)}% / REF` : unit;
-    text(attainment, center, baseline + 53, 9, heat, .56, 'center', slot - 12);
+    text(Array.from(datum.label).slice(0, characters).join(''), center, baseline + 33, 15 * scale, heat, .9, 'center', slot - 12);
+    if (!compact) {
+      const attainment = target !== undefined && target > 0 ? `${(value / target * 100).toFixed(1)}% / REF` : unit;
+      text(attainment, center, baseline + 53, 9 * scale, heat, .56, 'center', slot - 12);
+    }
     ctx.restore();
   }
   if (selected !== undefined && focus > .001) {

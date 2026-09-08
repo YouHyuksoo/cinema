@@ -138,3 +138,37 @@ describe('segmented telemetry bar data and geometry', () => {
     }
   });
 });
+
+describe('bar density for variable line counts', () => {
+  const lines = (count: number) => Array.from({ length: count }, (_, index) => ({ label: `LINE ${index + 1}`, value: 500 + index * 20 }));
+
+  it('keeps five channels at full scale and shrinks headers as channels narrow, never below .45', () => {
+    const five = barTelemetryLayout({ ...options, data: lines(5) })!;
+    expect(five.channelScale).toBe(1);
+    expect(five.compact).toBe(false);
+    const one = barTelemetryLayout({ ...options, data: lines(1) })!;
+    expect(one.channelScale).toBe(1);
+    expect(one.slot).toBe(options.width);
+    const twelve = barTelemetryLayout({ ...options, data: lines(12) })!;
+    expect(twelve.channelScale).toBeLessThan(1);
+    expect(twelve.channelScale).toBeGreaterThanOrEqual(.45);
+    expect(twelve.compact).toBe(true);
+    const twenty = barTelemetryLayout({ ...options, data: lines(20) })!;
+    expect(twenty.channelScale).toBe(.45);
+    expect(twenty.compact).toBe(true);
+  });
+
+  it('keeps every column inside the chart area for 1, 2, 12 and 20 lines', () => {
+    for (const count of [1, 2, 12, 20]) {
+      const layout = barTelemetryLayout({ ...options, data: lines(count), time: 20 })!;
+      expect(layout.columns).toHaveLength(count);
+      for (const column of layout.columns) {
+        expect(column.left).toBeGreaterThanOrEqual(layout.x);
+        expect(column.left + layout.barWidth).toBeLessThanOrEqual(layout.x + layout.width);
+        expect(column.top).toBeGreaterThanOrEqual(layout.y);
+      }
+      const lefts = layout.columns.map(column => column.left);
+      expect([...lefts].sort((a, b) => a - b)).toEqual(lefts);
+    }
+  });
+});
