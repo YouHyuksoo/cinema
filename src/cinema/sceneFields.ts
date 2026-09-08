@@ -1,4 +1,4 @@
-import { PRODUCTION_LINE_FIELDS } from './productionLineObject';
+import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 import type { SceneFieldDescriptor } from './sceneField';
 
 /** Scenes whose objects accept patches (contract level L2). */

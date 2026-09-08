@@ -1,20 +1,16 @@
 import type { FilmSceneData } from './filmSceneData';
 import type { FilmId } from './filmProgram';
 import type { SceneDataResult, SceneObjectChange, SceneObjectPatch } from './sceneDataDocument';
+import { formatSceneField, validateSceneField, type SceneFieldDescriptor } from './sceneField';
+import { isPatchableScene, PATCHABLE_SCENES, SCENE_FIELDS, type PatchableScene } from './sceneFields';
 
-/** Scenes whose objects HATCHERY may change (contract level L2) and the fields it may touch. */
-export const HATCHERY_PATCH_SCENES = ['bars', 'wave', 'network', 'spc'] as const;
-export type HatcheryPatchScene = typeof HATCHERY_PATCH_SCENES[number];
-export interface HatcheryField { field: string; label: string; aliases: RegExp; unit?: string; list?: boolean; default?: boolean }
-export const HATCHERY_FIELDS: Record<HatcheryPatchScene, readonly HatcheryField[]> = {
-  bars: [{ field: 'value', label: '생산량', aliases: /생산량|실적|수량|값/, default: true }],
-  wave: [{ field: 'temperature', label: '온도', aliases: /온도/, unit: '도', default: true },
-    { field: 'humidity', label: '습도', aliases: /습도/, unit: '퍼센트' }],
-  network: [{ field: 'queue', label: '대기량', aliases: /대기량|대기/, unit: '개', default: true },
-    { field: 'capacityPerHour', label: '처리능력', aliases: /처리\s*능력|용량/, unit: '개/시' },
-    { field: 'cycleSeconds', label: '사이클', aliases: /사이클|택트/, unit: '초' }],
-  spc: [{ field: 'values', label: '측정값', aliases: /측정값|값/, list: true, default: true }],
-};
+/** Scenes whose objects HATCHERY may change and the fields it may touch, derived from the scene field descriptors. */
+export const HATCHERY_PATCH_SCENES = PATCHABLE_SCENES;
+export type HatcheryPatchScene = PatchableScene;
+export type HatcheryField = SceneFieldDescriptor & { aliases: RegExp };
+const commandField = (field: SceneFieldDescriptor): field is HatcheryField => Boolean(field.patchable && field.aliases);
+export const HATCHERY_FIELDS: Record<HatcheryPatchScene, readonly HatcheryField[]> = Object.fromEntries(
+  PATCHABLE_SCENES.map(scene => [scene, SCENE_FIELDS[scene].filter(commandField)])) as unknown as Record<HatcheryPatchScene, readonly HatcheryField[]>;
 export const HATCHERY_SCENE_LABELS: Record<HatcheryPatchScene, string> = { bars: '막대', wave: '환경', network: '공정망', spc: 'SPC' };
 const NUMBER_REFERENCES: Record<HatcheryPatchScene, RegExp[]> = {
   bars: [/(?:라인|line)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*라인/g],
@@ -32,8 +28,6 @@ const norm = (value: string) => value.toLowerCase().replace(/[\s\-_]+/g, '');
 const trailingNumber = (value: string) => { const match = value.match(/(\d+)\s*$/); return match ? Number(match[1]) : undefined; };
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const aliasPattern = (alias: string) => new RegExp(escape(alias.trim()).replace(/[\s\-_]+/g, '[\\s\\-_]*'), 'gi');
-const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
-const isPatchScene = (value: unknown): value is HatcheryPatchScene => typeof value === 'string' && (HATCHERY_PATCH_SCENES as readonly string[]).includes(value);
 
 export function hatcheryObjects(data: FilmSceneData, scene: HatcheryPatchScene): HatcheryObject[] {
   switch (scene) {
@@ -89,8 +83,7 @@ export type HatcheryValueCommand =
   | { kind: 'patch'; patch: SceneObjectPatch; reply: string; chapter: FilmId; label: string; field: HatcheryField }
   | { kind: 'clarify'; reply: string };
 
-const valueText = (field: HatcheryField, value: number | number[], unit: string) =>
-  `${Array.isArray(value) ? value.join(', ') : value.toLocaleString('en-US')}${field.unit ?? unit}`;
+const valueText = (field: HatcheryField, value: number | number[], unit: string) => `${formatSceneField(field, value)}${field.unit ? '' : unit}`;
 
 /** Deterministic "change this object's value" sentences; anything else returns null for the other handlers. */
 export function resolveHatcheryValueCommand(input: string, data: FilmSceneData): HatcheryValueCommand | null {
@@ -118,7 +111,7 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
   for (const [start, end] of spans.sort((a, b) => b[0] - a[0])) remaining = remaining.slice(0, start) + ' ' + remaining.slice(end);
   const numbers = (remaining.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter(Number.isFinite);
   if (!numbers.length) return null;
-  const value = field.list ? numbers : numbers[numbers.length - 1];
+  const value = field.kind === 'number[]' ? numbers : numbers[numbers.length - 1];
   const unit = scene === 'bars' ? data.production.unit : scene === 'spc' ? data.spc.unit : '';
   const patch = hatcheryPatch(scene, [{ id: target.object.id, [field.field]: value }]);
   return { kind: 'patch', patch, chapter: scene, label: target.object.label, field,
@@ -127,10 +120,10 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
 
 /** Spoken confirmation for a patch built from a tool call (no local command sentence available). */
 export function describeHatcheryPatch(patch: SceneObjectPatch) {
-  const scene = isPatchScene(patch.scene) ? patch.scene : undefined;
+  const scene = isPatchableScene(patch.scene) ? patch.scene : undefined;
   const changes = patch.objects.map(object => Object.entries(object).filter(([key]) => key !== 'id').map(([key, value]) => {
     const field = scene ? HATCHERY_FIELDS[scene].find(item => item.field === key) : undefined;
-    return `${object.id} ${field?.label ?? key} ${Array.isArray(value) ? value.join(', ') : String(value)}${field?.unit ?? ''}`;
+    return `${object.id} ${field?.label ?? key} ${field ? formatSceneField(field, value) : Array.isArray(value) ? value.join(', ') : String(value)}`;
   }).join(', ')).join(', ');
   return `${changes}로 갱신했습니다. 시연 데이터이며 실제 설비는 바뀌지 않습니다.`;
 }
@@ -164,7 +157,7 @@ export const SET_SCENE_OBJECT_VALUES_TOOL = {
 export function toolCallToPatch(args: unknown, data: FilmSceneData): { ok: true; patch: SceneObjectPatch } | { ok: false; reason: string } {
   if (!args || typeof args !== 'object') return { ok: false, reason: '도구 인자가 없습니다.' };
   const { scene, objects } = args as { scene?: unknown; objects?: unknown };
-  if (!isPatchScene(scene)) return { ok: false, reason: `값을 바꿀 수 없는 장면입니다: ${String(scene)}` };
+  if (!isPatchableScene(scene)) return { ok: false, reason: `값을 바꿀 수 없는 장면입니다: ${String(scene)}` };
   if (!Array.isArray(objects) || !objects.length) return { ok: false, reason: 'objects가 비어 있습니다.' };
   const changes: SceneObjectChange[] = [];
   for (const entry of objects as { id?: unknown; field?: unknown; value?: unknown; values?: unknown }[]) {
@@ -172,14 +165,10 @@ export function toolCallToPatch(args: unknown, data: FilmSceneData): { ok: true;
     if (!target) return { ok: false, reason: `${HATCHERY_SCENE_LABELS[scene]} 장면에 없는 객체입니다: ${String(entry?.id)}` };
     const field = HATCHERY_FIELDS[scene].find(item => item.field === entry.field);
     if (!field) return { ok: false, reason: `${HATCHERY_SCENE_LABELS[scene]} 장면에서 바꿀 수 없는 항목입니다: ${String(entry?.field)}` };
-    if (field.list) {
-      if (!Array.isArray(entry.values) || !entry.values.length || !entry.values.every(finite)) return { ok: false, reason: `${field.label}은 숫자 목록(values)이어야 합니다.` };
-      changes.push({ id: target.id, [field.field]: [...entry.values] });
-    }
-    else {
-      if (!finite(entry.value)) return { ok: false, reason: `${field.label}은 숫자(value)여야 합니다.` };
-      changes.push({ id: target.id, [field.field]: entry.value });
-    }
+    const list = field.kind === 'number[]';
+    const checked = validateSceneField(field, list ? entry.values : entry.value);
+    if (!checked.ok) return { ok: false, reason: `${checked.reason} (${list ? 'values' : 'value'})` };
+    changes.push({ id: target.id, [field.field]: Array.isArray(checked.value) ? [...checked.value] : checked.value });
   }
   return { ok: true, patch: hatcheryPatch(scene, changes) };
 }
@@ -188,7 +177,7 @@ export function toolCallToPatch(args: unknown, data: FilmSceneData): { ok: true;
 export function hatcheryObjectCatalog(data: FilmSceneData) {
   return HATCHERY_PATCH_SCENES.map(scene => {
     const objects = hatcheryObjects(data, scene);
-    const fields = HATCHERY_FIELDS[scene].map(field => `${field.field}(${field.label}${field.list ? ', 숫자 목록' : ''})`).join(', ');
+    const fields = HATCHERY_FIELDS[scene].map(field => `${field.field}(${field.label}${field.unit ? `, ${field.unit}` : ''}${field.kind === 'number[]' ? ', 숫자 목록' : ''}${field.min !== undefined || field.max !== undefined ? `, 범위 ${field.min ?? ''}~${field.max ?? ''}` : ''})`).join(', ');
     const ids = scene === 'spc' && objects.length > 3 ? `${objects[0].id}~${objects[objects.length - 1].id}` : objects.map(object => `${object.id}(${object.label})`).join(', ');
     return `${scene}(${HATCHERY_SCENE_LABELS[scene]}) 필드: ${fields}; 객체: ${ids}`;
   }).join('\n');

@@ -57,3 +57,17 @@ describe('scene data registry', () => {
     expect(mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, { energy: undefined }).energy).toBe(DEFAULT_FILM_SCENE_DATA.energy);
   });
 });
+
+describe('patch validation from field descriptors', () => {
+  it('rejects wrong kinds, out-of-range values and undeclared fields before touching the data', () => {
+    const bars = sceneDataEntry('bars')!;
+    expect(bars.patch!(DEFAULT_FILM_SCENE_DATA.production, [{ id: 'LINE-01', value: 'abc' }]).error).toContain('숫자');
+    expect(bars.patch!(DEFAULT_FILM_SCENE_DATA.production, [{ id: 'LINE-01', value: -5 }]).error).toContain('0');
+    expect(bars.patch!(DEFAULT_FILM_SCENE_DATA.production, [{ id: 'LINE-01', color: 'red' }]).error).toContain('color');
+    expect(sceneDataEntry('wave')!.patch!(DEFAULT_FILM_SCENE_DATA.environment, [{ id: 'ZONE 01', humidity: 120 }]).error).toContain('100');
+    expect(sceneDataEntry('spc')!.patch!(DEFAULT_FILM_SCENE_DATA.spc, [{ id: 'SG-01', values: [1, 'x'] }]).error).toBeDefined();
+    const good = bars.patch!(DEFAULT_FILM_SCENE_DATA.production, [{ id: 'LINE-01', value: 5 }]);
+    expect(good.error).toBeUndefined();
+    expect(good.applied).toBe(1);
+  });
+});

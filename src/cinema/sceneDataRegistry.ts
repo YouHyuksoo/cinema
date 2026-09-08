@@ -7,8 +7,11 @@ import type { EnergyCoreData } from './energyCore';
 import type { ProcessNetworkData } from './processNetwork';
 import type { ProductInspectionData } from './productInspection';
 import type { SpcData } from './spcTypes';
+import { validateSceneField, validateSceneObjectFields, type SceneFieldDescriptor } from './sceneField';
+import { SCENE_FIELDS } from './sceneFields';
+import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 
-export interface SceneDataPatchResult<K extends FilmSceneDataKey> { data: FilmSceneData[K]; applied: number; ignored: string[] }
+export interface SceneDataPatchResult<K extends FilmSceneDataKey> { data: FilmSceneData[K]; applied: number; ignored: string[]; error?: string }
 export interface SceneDataEntry<K extends FilmSceneDataKey = FilmSceneDataKey> {
   key: K;
   /** Structural check only; scene state functions do the semantic validation. */
@@ -27,8 +30,24 @@ const isReading = (value: unknown) => isRecord(value) && isNumber(value.value) &
 const isPoint = (value: unknown) => isRecord(value) && isNumber(value.x) && isNumber(value.y) && isNumber(value.z);
 const listOf = (value: unknown, check: (item: Record<string, unknown>) => boolean) => Array.isArray(value) && value.every(item => isRecord(item) && check(item));
 
-function patchCollection<K extends FilmSceneDataKey, F extends string>(field: F) {
+/** A patch may only touch declared, patchable fields with values that satisfy their descriptors. */
+function validateChanges(descriptors: readonly SceneFieldDescriptor[], objects: readonly SceneObjectChange[]): string | undefined {
+  for (const change of objects) {
+    for (const key of Object.keys(change)) {
+      if (key === 'id' || key === 'label') continue;
+      const descriptor = descriptors.find(item => item.field === key);
+      if (!descriptor?.patchable) return `패치로 바꿀 수 없는 항목입니다: ${key}`;
+      const result = validateSceneField(descriptor, change[key]);
+      if (!result.ok) return result.reason;
+    }
+  }
+  return undefined;
+}
+
+function patchCollection<K extends FilmSceneDataKey, F extends string>(field: F, descriptors: readonly SceneFieldDescriptor[]) {
   return (data: FilmSceneData[K], objects: readonly SceneObjectChange[]): SceneDataPatchResult<K> => {
+    const error = validateChanges(descriptors, objects);
+    if (error) return { data, applied: 0, ignored: [], error };
     const items = (data as unknown as Record<F, readonly { id: string }[]>)[field];
     const result = patchObjectsById(items, objects);
     return { data: { ...data, [field]: result.items } as FilmSceneData[K], applied: result.applied, ignored: result.ignored };
@@ -38,10 +57,10 @@ function patchCollection<K extends FilmSceneDataKey, F extends string>(field: F)
 const production: SceneDataEntry<'production'> = {
   key: 'production',
   normalize: data => isRecord(data) && isText(data.unit) && isNumber(data.target)
-    && listOf(data.lines, line => isText(line.id) && isText(line.label) && isNumber(line.value))
+    && listOf(data.lines, line => isText(line.id) && isText(line.label) && validateSceneObjectFields(PRODUCTION_LINE_FIELDS, line, { required: true }).ok)
     && (data.selectedId === undefined || data.selectedId === null || typeof data.selectedId === 'string')
     ? data as unknown as ProductionSnapshot : undefined,
-  patch: patchCollection<'production', 'lines'>('lines'),
+  patch: patchCollection<'production', 'lines'>('lines', SCENE_FIELDS.bars),
 };
 
 const environment: SceneDataEntry<'environment'> = {
@@ -50,7 +69,7 @@ const environment: SceneDataEntry<'environment'> = {
     && listOf(data.zones, zone => isText(zone.id) && isText(zone.name) && isNumberOrNull(zone.temperature) && isNumberOrNull(zone.humidity)
       && isRange(zone.temperatureRange) && isRange(zone.humidityRange))
     ? data as unknown as ZoneEnvironmentData : undefined,
-  patch: patchCollection<'environment', 'zones'>('zones'),
+  patch: patchCollection<'environment', 'zones'>('zones', SCENE_FIELDS.wave),
 };
 
 const network: SceneDataEntry<'network'> = {
@@ -60,7 +79,7 @@ const network: SceneDataEntry<'network'> = {
       && isNumber(node.cycleSeconds) && isNumber(node.capacityPerHour) && isNumber(node.queue))
     && listOf(data.links, link => isText(link.from) && isText(link.to) && isNumber(link.bend))
     ? data as unknown as ProcessNetworkData : undefined,
-  patch: patchCollection<'network', 'nodes'>('nodes'),
+  patch: patchCollection<'network', 'nodes'>('nodes', SCENE_FIELDS.network),
 };
 
 const spc: SceneDataEntry<'spc'> = {
@@ -69,7 +88,7 @@ const spc: SceneDataEntry<'spc'> = {
     && [data.nominal, data.lsl, data.usl, data.cpkTarget].every(isNumber)
     && listOf(data.subgroups, group => isText(group.id) && isNumberList(group.values))
     ? data as unknown as SpcData : undefined,
-  patch: patchCollection<'spc', 'subgroups'>('subgroups'),
+  patch: patchCollection<'spc', 'subgroups'>('subgroups', SCENE_FIELDS.spc),
 };
 
 const energy: SceneDataEntry<'energy'> = {

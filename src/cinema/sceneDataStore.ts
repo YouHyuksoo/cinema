@@ -41,6 +41,7 @@ export function createSceneDataStore(initial: FilmSceneData = DEFAULT_FILM_SCENE
       if (!entry) return { ok: false, scene, reason: `데이터를 받지 않는 장면입니다: ${scene}` };
       if (!entry.patch) return { ok: false, scene, reason: `${scene} 장면은 객체 패치를 지원하지 않습니다. 전체 교체 문서를 보내 주세요.` };
       const result = entry.patch(data[entry.key], objects);
+      if (result.error) return { ok: false, scene, reason: result.error };
       if (result.applied === 0) return { ok: false, scene, reason: `일치하는 객체가 없습니다: ${result.ignored.join(', ')}` };
       commit(entry.key, result.data, { source, at });
       return { ok: true, scene, applied: result.applied, ignored: result.ignored };

@@ -71,3 +71,13 @@ describe('scene data store', () => {
     expect(store.provenance('production')).toBeUndefined();
   });
 });
+
+describe('scene data store patch validation', () => {
+  it('refuses a patch whose value violates the field descriptor and keeps the data', () => {
+    const store = createSceneDataStore();
+    const before = store.get();
+    const result = store.patch({ scene: 'bars', source: 'push', at: '2026-09-08T09:00:00+09:00', objects: [{ id: 'LINE-01', value: 'abc' }] });
+    expect(result).toEqual({ ok: false, scene: 'bars', reason: expect.stringContaining('숫자') });
+    expect(store.get()).toBe(before);
+  });
+});

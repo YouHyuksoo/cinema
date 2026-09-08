@@ -2,12 +2,10 @@ import { barTelemetryLayout } from './barTelemetryGeometry';
 import { drawBarChart } from './components/drawBarChart';
 import { drawTelemetryBar } from './components/drawTelemetryBar';
 import type { ProductionLine } from './productionSnapshot';
-import { formatSceneField, validateSceneObjectFields, type SceneFieldDescriptor } from './sceneField';
+import { formatSceneField, validateSceneObjectFields } from './sceneField';
+import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 
-/** Expected format of one production line; targets and units come from the snapshot data. */
-export const PRODUCTION_LINE_FIELDS: readonly SceneFieldDescriptor[] = [
-  { field: 'value', label: '생산량', kind: 'number', min: 0, decimals: 0, patchable: true, aliases: /생산량|실적|수량|값/, default: true },
-];
+export { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 
 const isText = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 

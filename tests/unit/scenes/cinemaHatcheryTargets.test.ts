@@ -3,6 +3,7 @@ import { DEFAULT_FILM_SCENE_DATA, mergeFilmSceneData } from '@/cinema/filmSceneD
 import { HATCHERY_FIELDS, HATCHERY_PATCH_SCENES, hatcheryObjectCatalog, resolveHatcheryTarget, resolveHatcheryValueCommand,
   SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from '@/cinema/hatcheryTargets';
 import { parseSceneObjectPatch } from '@/cinema/sceneDataDocument';
+import { SCENE_FIELDS } from '@/cinema/sceneFields';
 
 const data = DEFAULT_FILM_SCENE_DATA;
 const patchOf = (input: string, source = data) => {
@@ -113,5 +114,24 @@ describe('HATCHERY tool contract', () => {
     expect(catalog).toContain('reflow');
     expect(catalog).toContain('capacityPerHour');
     expect(catalog).not.toContain('SG-25 ');
+  });
+});
+
+describe('HATCHERY fields derive from scene field descriptors', () => {
+  it('lists exactly the patchable fields that have spoken aliases', () => {
+    for (const scene of HATCHERY_PATCH_SCENES) {
+      expect(HATCHERY_FIELDS[scene].map(field => field.field))
+        .toEqual(SCENE_FIELDS[scene].filter(field => field.patchable && field.aliases).map(field => field.field));
+    }
+  });
+  it('formats replies and the catalog with descriptor units and ranges', () => {
+    expect(patchOf('존 3 온도 31.5로').reply).toContain('31.5°C');
+    expect(patchOf('라인 2 470으로').reply).toContain('470EA');
+    expect(hatcheryObjectCatalog(data)).toContain('°C');
+    expect(hatcheryObjectCatalog(data)).toContain('범위 0~100');
+  });
+  it('rejects tool values outside the declared range', () => {
+    expect(toolCallToPatch({ scene: 'wave', objects: [{ id: 'ZONE 01', field: 'humidity', value: 120 }] }, data).ok).toBe(false);
+    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE-01', field: 'value', value: -1 }] }, data).ok).toBe(false);
   });
 });
