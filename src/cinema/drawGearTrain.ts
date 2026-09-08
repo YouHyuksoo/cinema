@@ -1,6 +1,6 @@
 import { drivenGear, mainGear } from './gearGeometry';
 import { drawGear } from './components/drawGear';
-import { filmText, signalColor, smooth, windowAt, type FilmFonts } from './filmDrawing';
+import { filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
 import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint } from './filmFocus';
 export { DEFAULT_FONTS, filmText, signalColor, smooth, windowAt, type FilmFonts } from './filmDrawing';
 
@@ -73,7 +73,6 @@ export function drawGearTrain(ctx: CanvasRenderingContext2D, t: number, fonts: F
   leader(ctx, [[thermalAnchor.x, thermalAnchor.y], [813, 208], [1130, 208]], analysis, heat);
   const analysisText = smooth(15, 17, t) * (1 - smooth(21, 23, t));
   text('01 / CORRELATION FOUND', 833, 189, 11, analysisText * .75, true, 'left', signalColor(heat, 1));
-  text('변화는 연결되어 있습니다.', 833, 248, 22, analysisText);
   text('온도 +16.4°C  /  양품률 −2.8%p', 833, 280, 15, analysisText * .8);
   text('냉각 계통 확인을 권장합니다.', 833, 309, 14, analysisText * .55);
 
@@ -82,5 +81,4 @@ export function drawGearTrain(ctx: CanvasRenderingContext2D, t: number, fonts: F
   leader(ctx, [[outputAnchor.x, outputAnchor.y], [274, 316], [118, 316]], production, 0);
   text('LINE 01 / RUNNING', 118, 344, 11, production * .7, true);
   text('생산 흐름 유지 중', 118, 369, 16, production * .8);
-  text('하나의 공정. 서로 연결된 신호.', 620, 637, 16, windowAt(13, 23, t) * .5, false, 'center');
 }

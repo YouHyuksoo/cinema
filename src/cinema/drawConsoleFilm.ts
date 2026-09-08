@@ -1,7 +1,7 @@
 import { drawGear } from './components/drawGear';
 import { drawInfoPanel, infoPanelFocusProjection, type InfoPanelLine } from './components/drawInfoPanel';
 import { drawRotor } from './components/drawRotor';
-import { DEFAULT_FONTS, filmText, signalColor, smooth, windowAt, type FilmFonts } from './filmDrawing';
+import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
 import { drivenGear, type Gear } from './gearGeometry';
 import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint } from './filmFocus';
 import { beginFilmViewport, fillFilmViewport, type FilmViewportInsets } from './filmViewport';
@@ -84,9 +84,6 @@ export function drawConsoleFilm(ctx: CanvasRenderingContext2D, width: number, he
   drawRotor(ctx, { x: 1048, y: 602, radius: 36, time: t, speed: .85, reveal: smooth(10, 12, t) * release, heat: .2, variant: 'orbit' });
   text('STREAM SYNC', 988, 606, 10, smooth(12, 13, t) * .55, true, 'right');
   ctx.restore();
-  text('회전이 신호를 모으고, 문장이 정보를 완성합니다.', 638, 585, 14, windowAt(15, 25, t) * .7);
   filmText(ctx, fonts, 'J / 03', 72, 76, 14, .6, true);
   filmText(ctx, fonts, 'INFORMATION CONSOLE', 72, 99, 10, .4, true);
-  const phase = t < 4 ? '01 / CONNECT' : t < 12 ? '02 / DECODE' : t < 25 ? '03 / INTERPRET' : '04 / RELEASE';
-  filmText(ctx, fonts, phase, 72, 689, 10, .5, true);
 }

@@ -3,6 +3,8 @@ import { drawHolographicCore } from './components/drawHolographicCore';
 import { drawProjectedFilmSurface } from './components/drawProjectedFilmSurface';
 import { drawSpcControlCharts, SPC_CONTROL_SIZE } from './components/drawSpcControlCharts';
 import { drawSpcHistogram, SPC_HISTOGRAM_SIZE } from './components/drawSpcHistogram';
+import { drawSpcInspection } from './components/drawSpcInspection';
+import { drawSpcSequence } from './components/drawSpcSequence';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
 import { beginFilmViewport, type FilmViewportInsets } from './filmViewport';
 import { DEFAULT_SPC_DATA } from './spcData';
@@ -17,12 +19,14 @@ export function drawSpcFilm(ctx: CanvasRenderingContext2D, width: number, height
   fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: SpcData = DEFAULT_SPC_DATA) {
   const view = beginFilmViewport(ctx, width, height, insets), state = spcSceneState(time);
   drawCornerField(ctx, view, state.time, state.capability * .6 + state.controlFocus * .2);
+  ctx.save(); ctx.fillStyle = 'rgba(4,11,16,.44)';
+  ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top); ctx.restore();
   const analysis = analyzeSpc(data);
   const text = (value: string, x: number, y: number, size: number, alpha: number, mono = false,
     align: CanvasTextAlign = 'left', heat = 0) =>
     filmText(ctx, fonts, value, x, y, size, state.reveal * alpha, mono, align, signalColor(heat, 1));
-  text('SPC / PROCESS INTELLIGENCE', 72, 76, 14, .8, true);
-  text(data?.name ?? '측정 데이터 없음', 72, 101, 12, .56);
+  text('SPC', 72, 69, 12, .6, true);
+  text(data?.name ?? '측정 데이터 없음', 1208, 102, 12, .56, false, 'right');
   if (!analysis.valid) {
     text('SPC 데이터를 확인해 주세요', 640, 326, 28, .9, false, 'center', 1);
     text(analysis.reason, 640, 367, 15, .8, false, 'center');
@@ -41,36 +45,10 @@ export function drawSpcFilm(ctx: CanvasRenderingContext2D, width: number, height
   ctx.restore();
 
   const inspection = (1 - smooth(12, 14, state.time)) * smooth(2, 3.5, state.time);
-  const selected = analysis.focusGroupIndex;
   const heat = analysis.outOfControl ? 1 : 0;
-  if (inspection > .001) {
-    const focus = state.controlFocus, x = 839 - focus * 14;
-    const focusedR = analysis.r.violations[selected], series = focusedR ? analysis.r : analysis.xbar;
-    const selectedValue = series.values[selected];
-    if (anchor && focus > .01) {
-      ctx.save(); ctx.globalAlpha = state.reveal * inspection * focus;
-      ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y);
-      ctx.bezierCurveTo(anchor.x + 60, anchor.y - 42, x - 56, 243, x - 16, 243);
-      ctx.strokeStyle = signalColor(heat, .56); ctx.lineWidth = 1.1; ctx.stroke();
-      ctx.restore();
-    }
-    text('SUBGROUP / INSPECTION', x, 206, 12, inspection * .58, true);
-    text(focus > .1 ? `${data.subgroups[selected].id} · ${focusedR ? 'R 범위' : 'X̄ 평균'}` : '측정 흐름 수집', x, 245,
-      25, inspection * .95, false, 'left', heat * focus);
-    if (focus > .01) {
-      text(numeric(selectedValue, 4), x, 315, 52, inspection * focus, true, 'left', heat);
-      text(data.unit, x + 245, 315, 17, inspection * focus * .7, true);
-      text(series.violations[selected] ? '3σ 관리한계 이탈' : '평균에서 가장 먼 부분군', x, 350, 17,
-        inspection * focus * .95, false, 'left', heat);
-      text(`군 평균  ${numeric(analysis.xbar.values[selected], 4)} ${data.unit}`, x, 396, 15, inspection * focus * .78, true);
-      text(`군 범위  ${numeric(analysis.r.values[selected], 4)} ${data.unit}`, x, 425, 15, inspection * focus * .78, true);
-    } else {
-      text(`${data.subgroups.length} × ${analysis.subgroupSize}`, x, 315, 52, inspection * .9, true);
-      text(`부분군 ${data.subgroups.length}개 · 실측 ${analysis.totalSamples}개`, x, 350, 17, inspection * .68);
-    }
-    text(`관리한계 이탈 부분군  ${analysis.violationCount}개`, x, 479, 15, inspection * .8, false, 'left', heat);
-    text('UCL / LCL = 측정값으로 계산한 관리한계', x, 510, 12, inspection * .5);
-  }
+  drawSpcSequence(ctx, fonts, state);
+  drawSpcInspection(ctx, fonts, data, analysis, { time: state.time,
+    focus: state.controlFocus, opacity: inspection * state.reveal, anchor });
 
   if (state.histogramOpacity > .001) {
     ctx.save(); ctx.globalAlpha = state.histogramOpacity;
@@ -110,9 +88,5 @@ export function drawSpcFilm(ctx: CanvasRenderingContext2D, width: number, height
     640, 596, 14, reading * .84, false, 'center', heat);
     text(`군내 σ = R̄ / d₂   ·   설정 목표 Cpk ≥ ${numeric(data.cpkTarget, 2)}`, 640, 622, 12, reading * .53, true, 'center');
   }
-  const phase = state.phase === 'control' ? '관리한계와 부분군 변화를 추적합니다.'
-    : state.phase === 'distribution' ? '측정 분포를 펼쳐 규격 한계와 비교합니다.'
-      : state.phase === 'capability' ? '같은 측정 데이터로 공정능력을 읽습니다.' : '전체 측정 흐름으로 돌아갑니다.';
-  text(phase, 72, 689, 11, .6);
   text(`${analysis.totalSamples} READINGS / DEMO DATA`, 1208, 689, 10, .48, true, 'right');
 }

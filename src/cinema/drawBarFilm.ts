@@ -78,7 +78,7 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
     ctx.strokeStyle = signalColor(heat, .65); ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = signalColor(heat, .6); ctx.fillRect(955, 278, 25, 2);
     ctx.restore();
-    text(`${selected.label} / FOCUS`, 955, 302, 15, read, true, heat);
+    text(selected.label, 955, 302, 15, read, true, heat);
     text('ACTUAL OUTPUT', 955, 325, 9, read * .52, true);
     text(selected.value.toLocaleString('en-US'), 952, 374, 49, read, true, heat);
     text('EA', 1070, 372, 13, read * .67, true, heat);
@@ -90,7 +90,6 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
     text(`Δ ${signedDifference} EA`, 955, 493, 22, read, true, heat);
     text(difference < 0 ? `목표까지 ${Math.abs(difference)} EA 추가 필요`
       : difference > 0 ? `목표보다 ${difference} EA 초과 달성` : '설정한 생산 목표 달성', 956, 519, 12, read * .76, false, heat);
-    text('TRUE ZERO / TARGET REFERENCED', 955, 550, 9, read * .38, true);
     ctx.restore();
   }
   const summary = smooth(4.6, 6.3, t);
@@ -106,5 +105,4 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
     ctx.fillStyle = signalColor(0, .45); ctx.fillRect(item.x - 9, 607, 2, 34);
     ctx.restore();
   }
-  text(t < 6 ? 'BUILD / 수량 전개' : t < 11 ? 'APPROACH / 라인 접근' : t < 21.5 ? 'FOCUS / 목표 대비' : t < 25 ? 'RETURN / 비교 공간으로' : 'RELEASE / 다음 형태', 72, 689, 10, .5, true);
 }

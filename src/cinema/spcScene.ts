@@ -5,6 +5,13 @@ export const SPC_FILM_SECONDS = 40;
 export interface SpcPanelPose { x: number; y: number; depth: number; yaw: number; pitch: number }
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
+/** The sample matrix and plotted trace share the same last visible subgroup. */
+export function spcTraceHead(time: number, count: number, series: 'xbar' | 'r' = 'xbar') {
+  const start = series === 'r' ? 2.5 : 2;
+  if (!Number.isFinite(time) || time < start || count < 1) return -1;
+  return smooth(start, 8, time) * (count - 1);
+}
+
 /** The chart surfaces retain their data while the camera changes their position and depth. */
 export function spcSceneState(time: number) {
   const t = Number.isFinite(time) ? Math.max(0, Math.min(SPC_FILM_SECONDS, time)) : 0;

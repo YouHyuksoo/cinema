@@ -1,9 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { CORNER_PRODUCTION } from '@/cinema/cornerSequence';
-import { METRIC_MORPH_POINT_COUNT, metricMorphCloud, morphMetricPoints } from '@/cinema/metricMorphGeometry';
-import { UNFOLD_METRICS } from '@/cinema/unfoldMetrics';
+import { METRIC_MORPH_POINT_COUNT, metricMorphCloud, metricNumberCloud, morphMetricPoints } from '@/cinema/metricMorphGeometry';
+import { UNFOLD_METRICS, unfoldMetricsState } from '@/cinema/unfoldMetrics';
 
 describe('numbers becoming metric charts', () => {
+  it('counts with numeral strokes while preserving chart data and the final morph source', () => {
+    for (const [index, metric] of UNFOLD_METRICS.entries()) {
+      const finalCloud = metricMorphCloud(metric.id);
+      const halfway = unfoldMetricsState(2 + index * 6 + 1).items[index];
+      const counted = metricNumberCloud(metric.id, halfway.displayValue);
+      expect(counted.source).toHaveLength(METRIC_MORPH_POINT_COUNT);
+      expect(counted.contours).toHaveLength(halfway.displayValue.length);
+      expect(counted.source).not.toEqual(finalCloud.source);
+      expect(counted.target).toBe(finalCloud.target);
+      expect(counted.source.every(point => Object.values(point).every(Number.isFinite))).toBe(true);
+      expect(metricNumberCloud(metric.id, metric.value)).toBe(finalCloud);
+      expect(metricNumberCloud(metric.id, metric.value).source).toBe(morphMetricPoints(metric.id, 0));
+    }
+  });
+
+  it('anchors fractional and integer slots when the rising count gains a digit', () => {
+    for (const metric of UNFOLD_METRICS) {
+      const zero = metric.value.includes('.') ? '0.0' : '0';
+      const counted = metricNumberCloud(metric.id, zero);
+      const finalCloud = metricMorphCloud(metric.id);
+      const rightEdge = (cloud: typeof counted) => Math.max(...cloud.contours.flat().map(point => point[0]));
+      expect(rightEdge(counted)).toBe(rightEdge(finalCloud));
+      if (metric.value.includes('.')) {
+        expect(counted.contours[zero.indexOf('.')]).toEqual(finalCloud.contours[metric.value.indexOf('.')]);
+      }
+    }
+  });
+
+  it('reconstructs the same counted glyph after another reading or a backward seek', () => {
+    for (const metric of UNFOLD_METRICS) {
+      const zero = metric.value.includes('.') ? '0.0' : '0';
+      const first = metricNumberCloud(metric.id, zero);
+      expect(metricNumberCloud(metric.id, zero)).toBe(first);
+      metricNumberCloud(metric.id, metric.value.includes('.') ? '1.2' : '12');
+      expect(metricNumberCloud(metric.id, zero)).toEqual(first);
+    }
+  });
+
   it('preserves the same particles from readable number strokes to each chart', () => {
     for (const metric of UNFOLD_METRICS) {
       const cloud = metricMorphCloud(metric.id);

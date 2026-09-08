@@ -92,9 +92,5 @@ export function drawPlanarVisorFilm(ctx: CanvasRenderingContext2D, width: number
   for (let y = Math.floor(view.top / 4) * 4; y < view.bottom; y += 4) ctx.fillRect(view.left, y, view.right - view.left, .5);
   filmText(ctx, fonts, 'VISOR / PANORAMIC SWEEP', 72, 76, 14, .68 * reveal, true);
   filmText(ctx, fonts, 'LINE 01 · OPTICAL TELEMETRY', 72, 99, 10, .35 * reveal, true);
-  const phase = t < 4 ? 'PCB 로더부터 언로더까지 · SMT 8공정 라인' : t < 7 ? '리플로우 06 · 냉각부 대상 고정'
-    : t < 11 ? '대상 전진 · 가까이 확대해 열원을 확인합니다.' : t < 23 ? '온도 상승 감지 · 냉각 계통을 확인합니다.'
-      : t < 26.7 ? '팬 출력 상승 · 냉각 반응을 관찰합니다.' : '대상을 제자리로 돌려보내고 전체 라인으로 축소합니다.';
-  filmText(ctx, fonts, phase, 620, 592, 16, .8 * reveal, false, 'center', signalColor(heat, 1));
-  filmText(ctx, fonts, `${t < 7 ? 'ACQUIRE' : t < 11 ? 'FOCUS' : t < 23 ? 'ANALYZE' : 'RECOVER'} / SIMULATION`, 72, 689, 10, .5, true);
+  filmText(ctx, fonts, 'SIMULATION', 72, 689, 10, .5, true);
 }

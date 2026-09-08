@@ -81,13 +81,5 @@ export function drawCornerFilm(ctx: CanvasRenderingContext2D, width: number, hei
 
   const presence = smooth(.1, 1.2, time) * state.release;
   filmText(ctx, fonts, 'CORNER / SEQUENTIAL COMPOSITION', 72, 76, 14, presence * .7, true);
-  filmText(ctx, fonts, '한 번에 하나의 정보 · 네 귀퉁이에 남기는 기록', 72, 100, 11, presence * .48);
-  const active = state.activeIndex === null ? undefined : state.items[state.activeIndex];
-  const directions = ['오른쪽 위', '오른쪽 아래', '왼쪽 위', '왼쪽 아래'];
-  const phase = summary.opacity > .01 ? '네 가지 정보를 모아, 지금 필요한 핵심을 읽습니다.'
-    : active ? active.parkProgress > 0 ? `${active.item.label} · ${directions[active.index]}로 축소 이동합니다.`
-      : `${active.index + 1} / 4 · ${active.item.label}을 가까이 확인합니다.`
-      : state.parkedCount === 4 ? '네 정보가 자리 잡았습니다. 핵심 정보를 불러옵니다.' : '다음 정보를 불러옵니다.';
-  filmText(ctx, fonts, phase, 640, 614, 16, presence * .8, false, 'center');
-  filmText(ctx, fonts, `${String(state.parkedCount).padStart(2, '0')} / 04  ·  SIMULATION`, 72, 689, 10, presence * .52, true);
+  filmText(ctx, fonts, 'SIMULATION', 72, 689, 10, presence * .52, true);
 }

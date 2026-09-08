@@ -169,10 +169,7 @@ export function drawScanFilm(ctx: CanvasRenderingContext2D, width: number, heigh
 
   text('J / 03', 72, 76, 14, .6, true);
   text('EQUIPMENT SCAN', 72, 99, 10, .4, true);
-  text('흐름 속에서, 설비를 읽다.', 726, 192, 22, windowAt(.2, 4.8, t));
-  text('12개 설비 · 연속 상태 탐색', 728, 221, 13, windowAt(.5, 5, t) * .55);
-  text('연결된 설비의 윤곽을 탐색합니다.', 114, 191, 16, windowAt(3.8, 9.2, t) * .8);
-  text('하나의 이탈 신호를 찾았습니다.', 726, 193, 22, windowAt(9.4, 14, t));
+  text('12개 설비', 728, 221, 13, windowAt(.5, 5, t) * .55);
   ctx.save(); applyFocusProjection(ctx, readoutProjection);
   text('THERMAL TRACE / SMT 03', 730, 216, 11, readout * .75, true, signalColor(1, 1));
   text('공정 온도', 730, 280, 16, readout * .75);
@@ -182,8 +179,4 @@ export function drawScanFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   text('열 변화가 지속됩니다. 냉각 계통을 확인하세요.', 730, 430, 14, readout * .83);
   text('직전 60초 / 온도 변화', 731, 531, 11, readout * .5);
   ctx.restore();
-  text('다음 흐름으로, 탐색을 이어갑니다.', 694, 558, 21, windowAt(18.5, 21.8, t));
-  const phase = t < 3 ? 'ACQUIRE / 신호 수집' : t < 9 ? 'SCAN / 설비 탐색'
-    : t < 14 ? 'FOCUS / 이탈 감지' : t < 18 ? 'READ / 온도 분석' : 'RELEASE / 탐색 재개';
-  text(phase, 72, 689, 10, .5, true);
 }

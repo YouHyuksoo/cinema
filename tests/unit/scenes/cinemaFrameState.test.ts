@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { drawSignalFilm } from '@/cinema/drawSignalFilm';
 import { drawTransparentMachineFilm } from '@/cinema/drawTransparentMachineFilm';
-import { chapterStart, type FilmId } from '@/cinema/filmProgram';
+import { advanceFilm, chapterStart, type FilmId } from '@/cinema/filmProgram';
+import { TRACE_LOOP } from '@/cinema/workOrderTraceTiming';
+import { SMT_LINE } from '@/cinema/smtLine';
 
 // Only the DOM-backed raster surface is omitted; scene, background and frame code run unchanged.
 vi.mock('@/cinema/components/drawProjectedFilmSurface', () => ({ drawProjectedFilmSurface: () => undefined }));
@@ -26,6 +28,7 @@ function canvasFixture(initial: Partial<Paint> = {}) {
     lineDash: [], fillStyle: '#000000', strokeStyle: '#000000', lineWidth: 1, ...initial,
   };
   const stack: Record<string, unknown>[] = [], fills: Fill[] = [];
+  const texts: { value: string; x: number; y: number; opacity: number }[] = [];
   const paint = (): Paint => ({
     globalAlpha: state.globalAlpha as number,
     globalCompositeOperation: state.globalCompositeOperation as string,
@@ -39,6 +42,7 @@ function canvasFixture(initial: Partial<Paint> = {}) {
     save: () => stack.push({ ...state, lineDash: [...state.lineDash as number[]] }),
     restore: () => { state = stack.pop() ?? state; },
     fillRect: (...rect: number[]) => fills.push({ ...paint(), fillStyle: state.fillStyle, rect }),
+    fillText: (value: string, x: number, y: number) => texts.push({ value, x, y, opacity: state.globalAlpha as number }),
     getLineDash: () => [...state.lineDash as number[]],
     setLineDash: (segments: number[]) => { state.lineDash = [...segments]; },
     createLinearGradient: gradient, createRadialGradient: gradient, createConicGradient: gradient,
@@ -50,7 +54,7 @@ function canvasFixture(initial: Partial<Paint> = {}) {
     get: (_target, key) => typeof key === 'string' ? methods[key] ?? state[key] ?? noop : undefined,
     set: (_target, key, value) => { state[String(key)] = value; return true; },
   }) as CanvasRenderingContext2D;
-  return { ctx, fills, paint, stack };
+  return { ctx, fills, texts, paint, stack };
 }
 
 function expectOpaqueBackground(fill: Fill) {
@@ -64,6 +68,24 @@ function expectOpaqueBackground(fill: Fill) {
 }
 
 describe('cinema frame paint isolation', () => {
+  it('keeps all eight machines and settled readouts visible across a trace repeat without a blackout', () => {
+    const before = chapterStart('trace') + TRACE_LOOP.end - .01;
+    const after = advanceFilm(before, .02, 'chapter');
+    const frames = [before, after].map(time => {
+      const fixture = canvasFixture();
+      drawSignalFilm(fixture.ctx, 1280, 720, time);
+      const machines = fixture.texts.filter(text => text.y === 459);
+      expect(machines.map(text => text.value)).toEqual(SMT_LINE.map(equipment => equipment.label));
+      expect(machines.every(text => text.opacity >= .46)).toBe(true);
+      expect(fixture.texts.find(text => text.value === '투입 대기')?.opacity).toBeCloseTo(.8);
+      expect(fixture.texts.find(text => text.value === 'WO-260908-001')).toMatchObject({ x: 97, y: 189, opacity: 1 });
+      expect(fixture.fills.some(fill => fill.fillStyle === 'rgba(4,11,16,0)' && fill.rect.join(',') === '0,0,1280,720')).toBe(true);
+      expect(fixture.stack).toHaveLength(0);
+      return machines.map(({ x, y }) => ({ x, y }));
+    });
+    expect(frames[1]).toEqual(frames[0]);
+  });
+
   it.each([0, 35.5, 35.98, 36])('keeps machine annotation opacity inside its scope at %s seconds', time => {
     const fixture = canvasFixture({ globalAlpha: .37 });
     drawTransparentMachineFilm(fixture.ctx, 1280, 720, time);

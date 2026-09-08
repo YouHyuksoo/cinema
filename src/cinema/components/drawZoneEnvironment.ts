@@ -1,9 +1,11 @@
 import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
 import type { ZoneEnvironmentState } from '../zoneEnvironment';
-import { drawSensorInstrument, drawSensorRotor, sensorReading } from './drawSensorInstrument';
+import { drawSensorRotor, sensorReading } from './drawSensorInstrument';
 import { drawZoneTemperatureHistory } from './drawZoneTemperatureHistory';
-import { environmentFocusConnection, environmentFocusLayout } from '../environmentLayout';
+import { environmentFocusConnection } from '../environmentLayout';
 import { drawEnvironmentLink } from './drawEnvironmentLink';
+import { ENVIRONMENT_GAUGES, environmentGaugeState } from '../environmentGauge';
+import { drawEnvironmentGauge } from './drawEnvironmentGauge';
 
 /** Ten suspended sensor stations share their projection with the selected station's tether. */
 export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState) {
@@ -58,18 +60,20 @@ export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmF
 export function drawEnvironmentFocus(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState) {
   const selected = state.selected;
   if (!selected) return;
-  const alpha = state.reveal * state.focusOpacity, zone = selected.zone;
-  drawEnvironmentLink(ctx, environmentFocusConnection(state), alpha * state.focus,
+  const motion = environmentGaugeState(state);
+  const alpha = state.reveal * motion.opacity, zone = selected.zone;
+  const { temperature, humidity } = ENVIRONMENT_GAUGES;
+  drawEnvironmentLink(ctx, environmentFocusConnection(state), alpha * motion.assembly * state.focus,
     selected.status === 'outside' ? 1 : .25, state.elapsed, 2.1);
-  const frame = environmentFocusLayout(state.focus);
-  ctx.save(); ctx.translate(frame.x, frame.y); ctx.scale(frame.scale, frame.scale); ctx.translate(-frame.x, -frame.y);
-  filmText(ctx, fonts, `${zone.id}  /  ${zone.name}`, 640, 260, 19, alpha, false, 'center');
-  drawSensorInstrument(ctx, fonts, 222, 282, zone.temperature, zone.temperatureRange, false, alpha, state.elapsed);
-  drawSensorInstrument(ctx, fonts, 686, 282, zone.humidity, zone.humidityRange, true, alpha, state.elapsed);
-  // A narrow spine makes the two sensor channels read as one instrument assembly.
-  ctx.strokeStyle = signalColor(.25, alpha * .65); ctx.lineWidth = 1.3;
-  ctx.beginPath(); ctx.moveTo(594, 310); ctx.lineTo(640, 330); ctx.lineTo(686, 310);
-  ctx.moveTo(594, 462); ctx.lineTo(640, 442); ctx.lineTo(686, 462); ctx.stroke();
-  drawSensorRotor(ctx, 640, 386, 19, 1, state.elapsed, .4, alpha * .8);
-  ctx.restore();
+  filmText(ctx, fonts, zone.id, 640, 313, 18, alpha * motion.readingOpacity, true, 'center');
+  filmText(ctx, fonts, zone.name, 640, 335, 13, alpha * motion.readingOpacity * .85, false, 'center');
+  // Both channels stay mounted while the selected station and its tether advance.
+  const linkAlpha = alpha * motion.assembly * .7;
+  drawEnvironmentLink(ctx, [{ x: temperature.x + temperature.radius, y: temperature.y }, { x: 622, y: temperature.y }],
+    linkAlpha, .1, state.elapsed, 1.3);
+  drawEnvironmentLink(ctx, [{ x: 658, y: humidity.y }, { x: humidity.x - humidity.radius, y: humidity.y }],
+    linkAlpha, .1, state.elapsed, 1.3);
+  drawSensorRotor(ctx, 640, temperature.y, 15, 1, state.elapsed, .1, linkAlpha);
+  drawEnvironmentGauge(ctx, fonts, temperature, zone.temperature, zone.temperatureRange, false, motion, alpha);
+  drawEnvironmentGauge(ctx, fonts, humidity, zone.humidity, zone.humidityRange, true, motion, alpha);
 }

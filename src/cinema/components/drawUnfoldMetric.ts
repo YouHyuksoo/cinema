@@ -1,5 +1,5 @@
 import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
-import { metricMorphCloud, morphMetricPoints } from '../metricMorphGeometry';
+import { metricNumberCloud, morphMetricPoints } from '../metricMorphGeometry';
 import type { UnfoldMetricState, UnfoldMetricsState } from '../unfoldMetrics';
 import { drawMetricChart } from './drawMetricChart';
 import { infoPanelFrame } from './infoPanelFrame';
@@ -9,7 +9,7 @@ export function drawUnfoldMetric(ctx: CanvasRenderingContext2D, fonts: FilmFonts
   item: UnfoldMetricState, state: UnfoldMetricsState) {
   if (item.opacity <= .001 || item.scale <= .001) return;
   const { metric, opacity, morph } = item;
-  const cloud = metricMorphCloud(metric.id);
+  const cloud = metricNumberCloud(metric.id, item.displayValue);
   const chartReveal = smooth(.45, .98, morph);
   const digitPresence = 1 - smooth(.02, .5, morph);
   ctx.save(); ctx.translate(item.x, item.y); ctx.rotate(item.rotation); ctx.scale(item.scale, item.scale);
@@ -35,7 +35,7 @@ export function drawUnfoldMetric(ctx: CanvasRenderingContext2D, fonts: FilmFonts
   }
 
   drawMetricChart(ctx, fonts, metric, chartReveal, opacity, state.elapsed);
-  const points = morphMetricPoints(metric.id, morph);
+  const points = morph === 0 ? cloud.source : morphMetricPoints(metric.id, morph);
   const previous = morph > .01 && morph < .99 ? morphMetricPoints(metric.id, Math.max(0, morph - .045)) : null;
   ctx.globalAlpha = opacity;
   if (previous) {
@@ -62,8 +62,5 @@ export function drawUnfoldMetric(ctx: CanvasRenderingContext2D, fonts: FilmFonts
   text(metric.unit, 235, 68, 31, digitPresence * .8, true);
   text(metric.reference, -340, 145, 18, chartReveal * .75);
   text(metric.difference, 338, 145, 20, chartReveal, false, 'right', metric.heat);
-  if (morph > .001 && morph < .999) {
-    text('TRANSFORMING', 0, 126, 10, Math.sin(morph * Math.PI) * .75, true, 'center');
-  }
   ctx.restore();
 }

@@ -16,7 +16,7 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
     <div className={styles.footer}>
       <FilmCameraControls camera={camera} />
       {!camera.preview && <><div className={styles.chapterDetail}>
-        <span>{chapter.subtitle}</span>
+        <span>{chapter.title}</span>
         <span className={styles.time}>{localTime.toFixed(1)} / {chapter.duration}초</span>
       </div>
       <input className={styles.seek} type="range" min={0} max={chapter.duration} step={0.1} value={localTime}

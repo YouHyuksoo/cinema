@@ -77,7 +77,7 @@ export function zoneEnvironmentState(time: number, data: ZoneEnvironmentData = D
       pitch: .3, distance: 850, scale: 1 });
     const front = project({ x: 0, y: 0, z: 0 });
     // A different phase/period per station creates gentle suspended motion, not a moving row.
-    // Readings stay on their top/bottom anchors; only the separate central instruments enlarge.
+    // Cards stay on their top/bottom anchors while the fixed central gauges switch readings.
     const hover = smooth(.5, 1.8, elapsed) * (1 - smooth(timing.fadeOut, ENVIRONMENT_FILM_SECONDS, elapsed)) * (1 - lift * .7);
     const phase = elapsed * Math.PI * 2 / (6.2 + index % 4 * .45) + index * 2.399;
     const driftX = Math.sin(phase * .73) * 2 * hover;

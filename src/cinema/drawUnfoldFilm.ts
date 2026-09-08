@@ -35,7 +35,6 @@ export function drawUnfoldFilm(ctx: CanvasRenderingContext2D, width: number, hei
     ctx.beginPath(); ctx.ellipse(640, 345, 80 + ring * 32, 20 + ring * 7, -.12, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
-  filmText(ctx, fonts, '수치가 형태를 갖추기 시작합니다', 640, 413, 17, introduction * presence, false, 'center');
 
   for (const item of [...state.items].sort((a, b) => a.focus - b.focus)) {
     if (item.settled > .01 && item.settled < .99) {
@@ -76,16 +75,5 @@ export function drawUnfoldFilm(ctx: CanvasRenderingContext2D, width: number, hei
     filmText(ctx, fonts, '=', 835, 397, 24, summary * .5, true);
   }
 
-  filmText(ctx, fonts, 'METRICS / DATA TRANSFORMATION', 72, 76, 14, presence * .65, true);
-  filmText(ctx, fonts, overview > .5 ? '흩어진 지표가 하나의 생산 현황으로' : '숫자가 차트가 되고, 차트가 현황이 됩니다', 72, 104, 20, presence * .92);
   filmText(ctx, fonts, '시연 데이터 / 목표 · 실적 · 품질 · 속도', 1208, 104, 11, presence * .5, false, 'right');
-  const active = state.activeIndex === null ? null : state.items[state.activeIndex];
-  const phase = elapsed < 2 ? '01 / READ THE NUMBER' : overview > 0 ? '04 / PRODUCTION SYNTHESIS'
-    : active && active.morph < .01 ? '01 / READ THE NUMBER' : active && active.settled < .01 ? '02 / NUMBER TO CHART' : '03 / PLACE THE CHART';
-  filmText(ctx, fonts, phase, 72, 689, 10, presence * .5, true);
-  const caption = overview > 0 ? '계획과 실적의 차이에 품질·사이클 지표를 함께 놓고 읽습니다.'
-    : active ? active.settled > .01 ? '완성된 차트가 자리를 잡고, 다음 지표를 위한 공간을 만듭니다.'
-      : active.morph > .01 ? `${active.metric.label} · 숫자의 빛 조각이 차트의 형태로 이어집니다.`
-        : `${active.metric.label}  /  ${active.metric.reference}` : '숫자 → 형태 → 배치 → 종합';
-  filmText(ctx, fonts, caption, 640, 655, 14, presence * .7, false, 'center');
 }

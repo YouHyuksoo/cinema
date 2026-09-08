@@ -56,6 +56,8 @@ export interface UnfoldMetricState {
   rotation: number;
   port: { x: number; y: number };
   appear: number;
+  countProgress: number;
+  displayValue: string;
   morph: number;
   settled: number;
 }
@@ -90,13 +92,18 @@ export function unfoldMetricsState(time: number): UnfoldMetricsState {
   const items = UNFOLD_METRICS.map((metric, index): UnfoldMetricState => {
     const localTime = elapsed - (2 + index * 6);
     const appear = smooth(0, 1, localTime);
+    const countTime = Math.max(0, Math.min(1, (localTime - .55) / 1.4));
+    const countProgress = 1 - (1 - countTime) ** 3;
+    const precision = metric.value.split('.')[1]?.length ?? 0;
+    const displayValue = countProgress === 1 ? metric.value
+      : (metric.numericValue * countProgress).toFixed(precision);
     const morph = smooth(2.5, 4, localTime);
     const settled = smooth(4, 5.7, localTime);
     const position = chartPosition(metric.target, settled);
     const scale = mix(.9, 1, appear) * mix(1, metric.target.scale, settled);
     const backgroundDim = activeIndex !== null && index < activeIndex ? 1 - .85 * frontPresence : 1;
     return {
-      metric, index, ...position, scale, appear, morph, settled,
+      metric, index, ...position, scale, appear, countProgress, displayValue, morph, settled,
       opacity: presence * appear * backgroundDim,
       focus: appear * (1 - settled),
       reveal: appear,

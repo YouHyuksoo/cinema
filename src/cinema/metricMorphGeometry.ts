@@ -16,10 +16,12 @@ const SOURCE_SAMPLES = METRIC_MORPH_POINT_COUNT / STROKE_LANES;
 const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 const mix = (a: number, b: number, progress: number) => a + (b - a) * progress;
 
-function numberContours(value: string): RibbonGlyphPoint[][] {
+function numberContours(value: string, layoutValue = value): RibbonGlyphPoint[][] {
   const advances = [...value].map(character => character === '.' ? 31 : 108);
   const width = advances.reduce((sum, advance) => sum + advance, 0) - 20;
-  let cursor = -width / 2;
+  const layoutWidth = [...layoutValue].reduce((sum, character) => sum + (character === '.' ? 31 : 108), 0) - 20;
+  // Keep the decimal and units anchored when a count gains another digit.
+  let cursor = layoutWidth / 2 - width;
   return [...value].map((character, index) => {
     const glyphWidth = character === '.' ? 23 : 88;
     const contour = (RIBBON_NUMBER_GLYPHS[character] ?? []).map(([x, y]): RibbonGlyphPoint => [
@@ -102,6 +104,7 @@ function chartPoints(metricId: MetricMorphId): MorphPoint[] {
 }
 
 const CLOUDS = new Map<MetricMorphId, MetricMorphCloud>();
+const COUNT_CLOUDS = new Map<MetricMorphId, { value: string; cloud: MetricMorphCloud }>();
 
 /** Both representations use the same particles, so no number is swapped for another object. */
 export function metricMorphCloud(metricId: MetricMorphId): MetricMorphCloud {
@@ -111,6 +114,19 @@ export function metricMorphCloud(metricId: MetricMorphId): MetricMorphCloud {
   const contours = numberContours(metric.value);
   const cloud = { contours, source: sampleNumber(contours, metric.heat), target: chartPoints(metricId) };
   CLOUDS.set(metricId, cloud);
+  return cloud;
+}
+
+/** Retain only the latest counted value per metric; its final strokes are the morph source. */
+export function metricNumberCloud(metricId: MetricMorphId, displayValue: string): MetricMorphCloud {
+  const finalCloud = metricMorphCloud(metricId);
+  const metric = UNFOLD_METRICS.find(item => item.id === metricId)!;
+  if (displayValue === metric.value) return finalCloud;
+  const cached = COUNT_CLOUDS.get(metricId);
+  if (cached?.value === displayValue) return cached.cloud;
+  const contours = numberContours(displayValue, metric.value);
+  const cloud = { contours, source: sampleNumber(contours, metric.heat), target: finalCloud.target };
+  COUNT_CLOUDS.set(metricId, { value: displayValue, cloud });
   return cloud;
 }
 

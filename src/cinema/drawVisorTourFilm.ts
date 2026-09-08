@@ -31,11 +31,6 @@ export function drawVisorTourFilm(ctx: CanvasRenderingContext2D, width: number, 
   }
   filmText(ctx,fonts,'VISOR / SMT FACTORY',65,72,17,presence*.9,true);
   filmText(ctx,fonts,'05 LINES / 40 MACHINES / DEMO',65,95,10,presence*.6,true);
-  const phase=state.localTime<3?'라인 입구 · 로더에서 공정 진행 방향을 바라봅니다.'
-    :state.localTime<6?`${label} · 통로를 따라 이동 중`
-      :state.localTime<12?label+' · '+stop.title:'입구로 돌아와 다음 라인으로 이동합니다.';
-  filmText(ctx,fonts,phase,640,620,13,presence*.9,false,'center');
   SMT_FACTORY_STOPS.forEach((item,i)=>filmText(ctx,fonts,`LINE ${String(item.line).padStart(2,'0')} · ${item.title}`,235+i*310,663,12,
     presence*(state.index===i?.95:.38),false,'left',signalColor(state.index===i?heat:0,1)));
-  filmText(ctx,fonts,'5개 라인 · 통로 이동 → 설비 접근 → 진단 → 다음 라인',640,692,10,presence*.48,false,'center');
 }

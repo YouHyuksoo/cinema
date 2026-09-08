@@ -32,5 +32,4 @@ export function drawTransparentMachineFilm(ctx: CanvasRenderingContext2D, width:
   }
   ctx.restore();
   text('0'+(state.system+1)+' / '+RACE_SYSTEMS[state.system],389,651,12,.9);
-  text('TRANSPARENT STRUCTURE / ENGINEERING VISUALIZATION',357,678,9,.48);
 }

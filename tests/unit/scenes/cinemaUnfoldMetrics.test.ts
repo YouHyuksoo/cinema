@@ -55,6 +55,54 @@ describe('numbers that become charts and assemble a metric summary', () => {
     }
   });
 
+  it('shows zero first and counts every metric upward with its original precision', () => {
+    UNFOLD_METRICS.forEach((metric, index) => {
+      const start = 2 + index * 6;
+      const zero = unfoldMetricsState(start + .4).items[index];
+      expect(zero.opacity).toBeGreaterThan(0);
+      expect(zero.countProgress).toBe(0);
+      expect(zero.displayValue).toBe(index === 3 ? '0' : '0.0');
+      let previous = 0;
+      for (let step = 0; step <= 140; step++) {
+        const item = unfoldMetricsState(start + .55 + step / 100).items[index];
+        const reading = Number(item.displayValue);
+        expect(item.displayValue).toMatch(index === 3 ? /^\d+$/ : /^\d+\.\d$/);
+        expect(reading).toBeGreaterThanOrEqual(previous);
+        expect(reading).toBeLessThanOrEqual(metric.numericValue);
+        expect(item.morph).toBe(0);
+        previous = reading;
+      }
+      const midway = unfoldMetricsState(start + 1.25).items[index];
+      expect(midway.countProgress).toBeCloseTo(.875);
+      expect(Number(midway.displayValue)).toBeGreaterThan(0);
+      expect(Number(midway.displayValue)).toBeLessThan(metric.numericValue);
+    });
+  });
+
+  it('holds the exact target before morphing and keeps it throughout the completed chart', () => {
+    UNFOLD_METRICS.forEach((metric, index) => {
+      const start = 2 + index * 6;
+      for (const delay of [1.95, 2.2, 2.5, 3.25, 5.7]) {
+        const item = unfoldMetricsState(start + delay).items[index];
+        expect(item.countProgress).toBe(1);
+        expect(item.displayValue).toBe(metric.value);
+        if (delay <= 2.5) expect(item.morph).toBe(0);
+      }
+    });
+  });
+
+  it('reconstructs count-up values on backward seeks and resets each metric to zero', () => {
+    UNFOLD_METRICS.forEach((_, index) => {
+      const time = 2 + index * 6 + 1.1;
+      const expected = unfoldMetricsState(time).items[index];
+      unfoldMetricsState(28);
+      expect(unfoldMetricsState(time).items[index]).toEqual(expected);
+      expect(unfoldMetricsState(0).items[index]).toMatchObject({
+        countProgress: 0, displayValue: index === 3 ? '0' : '0.0',
+      });
+    });
+  });
+
   it('preserves every completed chart while the later numbers are introduced', () => {
     for (let index = 0; index < 4; index++) {
       for (let time = 2 + index * 6 + 5.7; time <= 30; time += .15) {
@@ -107,7 +155,7 @@ describe('numbers that become charts and assemble a metric summary', () => {
       const state = unfoldMetricsState(time);
       for (const item of state.items) {
         expect([item.x, item.y, item.scale, item.rotation, item.port.x, item.port.y].every(Number.isFinite)).toBe(true);
-        for (const value of [item.appear, item.morph, item.settled, item.focus, item.opacity]) {
+        for (const value of [item.appear, item.countProgress, item.morph, item.settled, item.focus, item.opacity]) {
           expect(value).toBeGreaterThanOrEqual(0);
           expect(value).toBeLessThanOrEqual(1);
         }

@@ -1,4 +1,4 @@
-import { DEFAULT_FONTS, drawGearTrain, gearFocusAt, GEAR_FILM_SECONDS as FILM_SECONDS, filmText, signalColor, smooth, windowAt, type FilmFonts } from './drawGearTrain';
+import { DEFAULT_FONTS, drawGearTrain, gearFocusAt, GEAR_FILM_SECONDS as FILM_SECONDS, filmText, signalColor, smooth, type FilmFonts } from './drawGearTrain';
 import { TAU } from './gearGeometry';
 import { applyFocusProjection } from './filmFocus';
 import { beginFilmViewport, fillFilmViewport, type FilmViewportInsets } from './filmViewport';
@@ -63,10 +63,5 @@ export function drawGearFilm(ctx: CanvasRenderingContext2D, width: number, heigh
     filmText(ctx, fonts, value, x, y, size, opacity, mono, align);
   text('J / 03', 72, 76, 14, .6, true);
   text('COUPLED SIGNALS', 72, 99, 10, .4, true);
-  text('모든 흐름에는 신호가 있다.', 620, 565, 21, windowAt(.3, 5, t), false, 'center');
-  text('신호들이 서로 맞물립니다.', 620, 620, 18, windowAt(5, 11, t), false, 'center');
-  text('다시, 안정된 흐름으로.', 620, 575, 22, windowAt(23, 27.8, t), false, 'center');
-  const phase = t < 5 ? '01 / OBSERVE' : t < 12 ? '02 / ENGAGE' : t < 23 ? '03 / UNDERSTAND' : '04 / RELEASE';
-  text(phase, 72, 689, 10, .5, true);
   text('SIGNAL FILM / SIMULATED', 1208, 689, 10, .4, true, 'right');
 }

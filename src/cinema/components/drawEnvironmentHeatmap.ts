@@ -12,7 +12,6 @@ export function drawEnvironmentHeatmap(ctx: CanvasRenderingContext2D, fonts: Fil
   const model = environmentHeatmap(state.zones.map(item => item.zone));
   const projection = environmentHeatmapProjection(state.elapsed);
   const alpha = reveal * state.reveal;
-  filmText(ctx, fonts, 'VISOR 3D / ' + projection.phase, 166, 176, 16, alpha);
   filmText(ctx, fonts, '05 LINES · 예시 배치 / 센서값 보간', 1114, 176, 11, alpha * .65, false, 'right');
   ctx.save();
   ctx.beginPath(); ctx.rect(145, 198, 990, 412); ctx.clip();

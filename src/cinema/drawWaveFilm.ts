@@ -32,15 +32,9 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   drawEnvironmentZones(ctx, fonts, state);
   drawEnvironmentFocus(ctx, fonts, state);
   drawEnvironmentHeatmap(ctx, fonts, state);
-  if (!state.selected && state.showIntro && map < .001) {
-    text(state.zones.length ? '현장의 공기를 읽다' : 'ZONE 데이터 대기 중', 433, 356, 32, .9);
-    text('온도와 습도 · 구역별 환경 상태', 433, 394, 15, .6);
-    text('TEMPERATURE  /  RELATIVE HUMIDITY', 433, 428, 11, .4, true);
+  if (!state.zones.length && !state.selected && state.showIntro && map < .001) {
+    text('ZONE 데이터 대기 중', 433, 356, 32, .9);
   }
-  text(map > .5 ? 'SENSOR SPACE / 온도 분포'
-    : state.historyPhase > .5 ? 'ZONE 01—05 / TOP     ·     ZONE 06—10 / BOTTOM'
-    : state.selected ? `ZONE TOUR / ${String(state.selected.index + 1).padStart(2, '0')} OF ${state.zones.length}`
-      : 'ALL ZONES / 전체 환경', 72, 689, 10, .55, true);
   text(map > .5 ? '센서값 보간 · 설치 공간은 예시 배치'
     : data === DEFAULT_ENVIRONMENT_DATA ? '시연 데이터 · 온도 이력 / 관리 범위 예시' : '전달 데이터 · 최근 24시간', 945, 689, 11, .5);
 }

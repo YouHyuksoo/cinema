@@ -1,14 +1,11 @@
-import { FILM_DURATIONS } from './filmProgram';
 import { SMT_LINE, type SmtEquipment } from './smtLine';
+import { TRACE_TIMING } from './workOrderTraceTiming';
+
+export { TRACE_TIMING } from './workOrderTraceTiming';
 
 /** Illustrative order and inspection results, not a live MES production record. */
 export const TRACE_WORK_ORDER = {
   id: 'WO-260908-001', product: 'CONTROL PCB', line: 'SMT LINE 01', quantity: 120,
-} as const;
-
-export const TRACE_TIMING = {
-  createdAt: .6, launchAt: 2.4, unitInterval: .06, stageDuration: 1.25,
-  summaryAt: 20, fadeAt: 23, endAt: FILM_DURATIONS.trace,
 } as const;
 
 export interface WorkOrderTraceUnit {

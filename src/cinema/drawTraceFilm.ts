@@ -13,7 +13,7 @@ export function drawTraceFilm(ctx: CanvasRenderingContext2D, width: number, heig
   const view = beginFilmViewport(ctx, width, height, insets);
   const state = workOrderTraceState(time), t = state.elapsed;
   const presence = smooth(.1, .65, t) * (1 - smooth(TRACE_TIMING.fadeAt, TRACE_TIMING.endAt, t));
-  const linePresence = smooth(1.3, 3, t) * presence;
+  const linePresence = smooth(1.3, TRACE_TIMING.launchAt, t) * presence;
   ctx.fillStyle = '#040b10'; fillFilmViewport(ctx, view);
   const wash = ctx.createRadialGradient(640, 380, 10, 640, 380, 620);
   wash.addColorStop(0, signalColor(0, .075 * presence)); wash.addColorStop(1, signalColor(0, 0));
@@ -73,14 +73,11 @@ export function drawTraceFilm(ctx: CanvasRenderingContext2D, width: number, heig
   drawWorkOrderReadouts(ctx, fonts, state, presence);
 
   filmText(ctx, fonts, 'WORK ORDER / PRODUCTION TRACE', 72, 76, 14, presence * .72, true);
-  filmText(ctx, fonts, '워크오더에서 생산 실적까지', 72, 104, 20, presence * .95);
   filmText(ctx, fonts, `${TRACE_WORK_ORDER.line}  /  시연 데이터`, 1208, 104, 12, presence * .55, false, 'right');
-  const caption = !state.created ? '생산을 시작할 워크오더를 생성합니다.' : t < TRACE_TIMING.launchAt
-    ? '작업 지시가 라인으로 전달되고 PCB 투입을 준비합니다.' : state.phase === 'complete'
-      ? `지시 ${TRACE_WORK_ORDER.quantity} EA → 양품 ${state.completedGood} EA + 불량 ${state.defectCount} EA · 작업 종료`
-      : state.defectCount > 0 ? '검사에서 검출된 불량은 분리되고, 통과한 PCB는 다음 공정으로 이동합니다.'
-        : 'PCB가 로더에서 출발해 인쇄·검사·실장 공정을 차례로 통과합니다.';
-  filmText(ctx, fonts, caption, 640, 657, 14, presence * .8, false, 'center');
+  if (state.phase === 'complete') {
+    filmText(ctx, fonts, `지시 ${TRACE_WORK_ORDER.quantity} EA → 양품 ${state.completedGood} EA + 불량 ${state.defectCount} EA · 작업 종료`,
+      640, 657, 14, presence * .8, false, 'center');
+  }
   const phase = t < TRACE_TIMING.launchAt ? '01 / CREATE WORK ORDER' : state.phase === 'complete'
     ? '04 / PRODUCTION RESULT' : state.completedGood > 0 ? '03 / ACCUMULATE OUTPUT' : '02 / PROCESS & INSPECT';
   filmText(ctx, fonts, phase, 72, 689, 10, presence * .5, true);

@@ -30,7 +30,6 @@ export function drawPieFilm(ctx: CanvasRenderingContext2D, width: number, height
     radius: presentation.dimension === '2d' ? 170 : 235, thickness: 70, tilt: .60, time: t - 1, data: PRODUCTION_LINES,
     activeIndex: SELECTED_LINE_INDEX, selection, focus: chartFocus, rotation, opacity: release, presentation,
   });
-  text('다섯 라인, 하나의 생산 흐름.', 110, 180, 16, intro * .64);
   text('전체 생산량', 844, 189, 16, intro * .65);
   text(PRODUCTION_TOTAL.toLocaleString('en-US'), 840, 247, 53, intro, true);
   text('EA', 1031, 246, 18, intro * .56, true);
@@ -69,5 +68,4 @@ export function drawPieFilm(ctx: CanvasRenderingContext2D, width: number, height
     text(`${item.value.toLocaleString('en-US')} EA`, x, 642, 22, alpha, true);
     text(`${(item.value / PRODUCTION_TOTAL * 100).toFixed(1)}%`, x + 174, 641, 15, alpha * .7, true, 'right', item.color);
   });
-  text(t < 5 ? 'ASSEMBLE / 흐름의 조립' : t < 11 ? 'APPROACH / 구성 접근' : t < 21.5 ? 'ISOLATE / 조각 분석' : t < 25 ? 'RETURN / 흐름으로 복귀' : 'RELEASE / 다음 흐름', 72, 689, 10, .5, true);
 }

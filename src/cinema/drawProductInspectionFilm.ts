@@ -49,7 +49,6 @@ export function drawProductInspectionFilm(ctx: CanvasRenderingContext2D, width: 
 
   const presence = state.reveal;
   filmText(ctx, fonts, 'PRODUCT / INTERNAL INSPECTION', 72, 76, 14, presence * .8, true);
-  filmText(ctx, fonts, '외피를 열고, 숨겨진 오차를 읽습니다', 72, 101, 12, presence * .54);
   filmText(ctx, fonts, data.serial, 72, 124, 11, presence * .6, true);
   filmText(ctx, fonts, data.name, 1208, 102, 13, presence * .76, false, 'right');
 
@@ -91,14 +90,8 @@ export function drawProductInspectionFilm(ctx: CanvasRenderingContext2D, width: 
     const text = summary.unavailable ? `측정 확인 ${summary.unavailable}개 · 적합 ${summary.passed} / ${summary.total}`
       : summary.failed ? `공차 이탈 ${summary.failed}개 · 재검사 필요` : `전체 ${summary.total}개 항목 적합`;
     filmText(ctx, fonts, text, 640, 567, 23, state.finale, false, 'center', signalColor(summary.failed ? 1 : 0, 1));
-    filmText(ctx, fonts, 'INSPECTION COMPLETE / PARTS REMAIN TRACEABLE', 640, 596, 10,
+    filmText(ctx, fonts, 'INSPECTION COMPLETE', 640, 596, 10,
       state.finale * .64, true, 'center');
-  } else {
-    const instruction = state.elapsed < 2.8 ? '제품을 불러옵니다 · 정밀 구동 모듈'
-      : state.elapsed < 7 ? '외피 분리 · 내부 구조 투과 분석'
-        : state.elapsed >= 28 ? '검사 결과 종합 · 각 부위의 측정 기록을 모읍니다'
-        : `${state.inspection! + 1} / 3 · 검사 위치로 접근 · 실제 측정값과 공차 비교`;
-    filmText(ctx, fonts, instruction, 640, 568, 14, presence * .76, false, 'center');
   }
 
   PRODUCT_ZONES.forEach((zone, index) => {

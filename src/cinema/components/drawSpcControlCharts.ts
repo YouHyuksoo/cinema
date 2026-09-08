@@ -1,5 +1,7 @@
-import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
+import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
+import { spcTraceHead } from '../spcScene';
 import type { SpcControlSeries, SpcData, ValidSpcAnalysis } from '../spcTypes';
+import { drawSpcControlTrace } from './drawSpcControlTrace';
 
 export const SPC_CONTROL_SIZE = { width: 680, height: 410 } as const;
 
@@ -25,7 +27,7 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
   ctx.save(); ctx.globalAlpha = alpha; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowBlur = 0;
   ctx.setLineDash([]);
   const drawSeries = (key: 'xbar' | 'r', series: SpcControlSeries, top: number, bottom: number,
-    titleY: number, title: string, start: number) => {
+    titleY: number, title: string) => {
     if (!series.values.length) return;
     const minimum = key === 'r' ? 0 : Math.min(series.lower, series.center, series.upper, ...series.values);
     const maximum = Math.max(series.upper, series.center, series.lower, ...series.values);
@@ -37,15 +39,36 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
     const xFor = (index: number) => series.values.length === 1 ? (left + right) / 2
       : left + index / (series.values.length - 1) * chartWidth;
     const points = series.values.map((value, index) => ({ x: xFor(index), y: yFor(value) }));
-    const head = smooth(start, 8, time) * (points.length - 1);
-    const visible = time >= start;
+    const head = spcTraceHead(time, points.length, key);
+    const visible = head >= 0;
     const last = Math.floor(head);
     const precision = Math.max(3, Math.min(6, Math.ceil(-Math.log10(Math.max(.000001, high - low))) + 2));
     const format = (value: number) => Number.isFinite(value) ? value.toFixed(precision) : '—';
 
-    text(title, left, titleY, 18, .94, 0, 'left', false);
+    text(title, left, titleY, 21, .97, 0, 'left', false);
     text(`${data.unit} · n = ${analysis.subgroupSize}`, right, titleY, 12, .55, 0, 'right');
     text('CONTROL LIMITS', 538, titleY, 12, .46);
+
+    // Control corridors use the calculated limits, with a luminous edge on the measurement plane.
+    const upperY = yFor(series.upper), lowerY = yFor(series.lower);
+    const band = ctx.createLinearGradient(0, upperY, 0, Math.max(upperY + 1, lowerY));
+    band.addColorStop(0, signalColor(0, .12)); band.addColorStop(.5, signalColor(0, .025));
+    band.addColorStop(1, signalColor(0, .095));
+    ctx.fillStyle = band; ctx.fillRect(left, upperY, chartWidth, Math.max(0, lowerY - upperY));
+    ctx.fillStyle = signalColor(1, .035);
+    ctx.fillRect(left, top, chartWidth, Math.max(0, upperY - top));
+    ctx.fillRect(left, lowerY, chartWidth, Math.max(0, bottom - lowerY));
+    ctx.beginPath();
+    for (let index = 0; index < points.length; index += 5) {
+      const x = xFor(index); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+    }
+    ctx.strokeStyle = signalColor(0, .08); ctx.lineWidth = .75; ctx.stroke();
+    if (focus > .001) {
+      const x = xFor(selectedIndex), heat = series.violations[selectedIndex] ? 1 : 0;
+      ctx.fillStyle = signalColor(heat, focus * .09); ctx.fillRect(x - 10, top, 20, bottom - top);
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+      ctx.strokeStyle = signalColor(heat, focus * .3); ctx.setLineDash([2, 4]); ctx.stroke(); ctx.setLineDash([]);
+    }
 
     // Labels remain separate even when a zero-variation sample makes the limits coincide.
     const limits = [
@@ -59,12 +82,14 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
       const y = yFor(limit.value), central = index === 1;
       ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y);
       ctx.setLineDash(central ? [5, 6] : [2, 5]);
-      ctx.strokeStyle = signalColor(central ? 0 : .24, central ? .28 : .24);
-      ctx.lineWidth = central ? .8 : 1; ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = signalColor(central ? 0 : .65, central ? .44 : .48);
+      ctx.lineWidth = central ? 1 : 1.2; ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(left - 5, y - 4); ctx.lineTo(left, y); ctx.lineTo(left - 5, y + 4);
+      ctx.strokeStyle = signalColor(central ? 0 : .65, .76); ctx.lineWidth = 1.5; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(right + 3, y); ctx.lineTo(529, y); ctx.lineTo(536, labels[index] - 4);
       ctx.strokeStyle = signalColor(0, .22); ctx.lineWidth = .75; ctx.stroke();
-      text(limit.name, 541, labels[index], 12, central ? .74 : .63);
-      text(format(limit.value), 673, labels[index], 12, .91, 0, 'right');
+      text(limit.name, 541, labels[index], 12, central ? .74 : .8, central ? 0 : .65);
+      text(format(limit.value), 673, labels[index], 13, .96, central ? 0 : .65, 'right');
     });
 
     // Only subgroup ticks sit below the plot; there is no full-screen grid or specification line.
@@ -83,45 +108,22 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
     }
 
     if (!visible) return;
-    const trace = () => {
-      ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
-      for (let index = 1; index <= last; index++) ctx.lineTo(points[index].x, points[index].y);
-      if (last < points.length - 1) {
-        const portion = head - last, a = points[last], b = points[last + 1];
-        ctx.lineTo(a.x + (b.x - a.x) * portion, a.y + (b.y - a.y) * portion);
-      }
-    };
-    trace(); ctx.strokeStyle = signalColor(0, .12); ctx.lineWidth = 4.5; ctx.stroke();
-    ctx.strokeStyle = signalColor(0, .92); ctx.lineWidth = 1.5; ctx.stroke();
-    for (let index = 0; index <= last; index++) {
-      const point = points[index], violation = series.violations[index];
-      const selected = key === selectedSeries && index === selectedIndex;
-      const heat = violation ? 1 : 0;
-      const lit = smooth(start + (index / Math.max(1, points.length - 1)) * (8 - start) - .12,
-        start + (index / Math.max(1, points.length - 1)) * (8 - start) + .16, time);
-      ctx.beginPath(); ctx.arc(point.x, point.y, violation ? 3.8 : 2.6, 0, Math.PI * 2);
-      ctx.fillStyle = signalColor(heat, .42 + lit * .53); ctx.fill();
-      if (violation) {
-        ctx.beginPath(); ctx.arc(point.x, point.y, 6.7, 0, Math.PI * 2);
-        ctx.strokeStyle = signalColor(1, .6); ctx.lineWidth = 1; ctx.stroke();
-      }
-      if (selected) {
-        selectedPoint = point;
-        if (focus > .001) {
-          const pulse = .5 + .5 * Math.sin(time * 3.2);
-          ctx.beginPath(); ctx.arc(point.x, point.y, 9 + pulse * 3, 0, Math.PI * 2);
-          ctx.strokeStyle = signalColor(heat, focus * (.62 - pulse * .2)); ctx.lineWidth = 1.5; ctx.stroke();
-          const align = point.x > right - 80 ? 'right' : 'left';
-          const labelX = point.x + (align === 'right' ? -11 : 11);
-          const labelY = point.y < top + 25 ? point.y + 22 : point.y - 14;
-          text(format(series.values[index]), labelX, labelY, 14, focus * .96, heat, align);
-        }
+    drawSpcControlTrace(ctx, { points, series, head, baseline: yFor(key === 'r' ? 0 : series.center),
+      upperY, lowerY, top, bottom, selected: key === selectedSeries ? selectedIndex : null, focus, time });
+    if (key === selectedSeries && selectedIndex <= last) {
+      selectedPoint = points[selectedIndex];
+      if (focus > .001) {
+        const point = selectedPoint, heat = series.violations[selectedIndex] ? 1 : 0;
+        const align = point.x > right - 110 ? 'right' : 'left';
+        const labelX = point.x + (align === 'right' ? -28 : 28);
+        const labelY = point.y < top + 25 ? point.y + 23 : point.y - 18;
+        text(data.subgroups[selectedIndex].id, labelX, labelY, 13, focus * .96, heat, align);
       }
     }
   };
 
-  drawSeries('xbar', analysis.xbar, 49, 160, 25, 'X̄  /  군 평균 관리도', 2);
-  drawSeries('r', analysis.r, 250, 357, 226, 'R  /  군 범위 관리도', 2.5);
+  drawSeries('xbar', analysis.xbar, 49, 160, 25, 'X̄  /  군 평균 관리도');
+  drawSeries('r', analysis.r, 250, 357, 226, 'R  /  군 범위 관리도');
   text(`부분군 ${String(data.subgroups.length).padStart(2, '0')}개  ·  군 크기 ${analysis.subgroupSize}`, left, 407, 12, .54, 0, 'left', false);
   text('SUBGROUP ORDER →', right, 407, 12, .44, 0, 'right');
   ctx.restore();

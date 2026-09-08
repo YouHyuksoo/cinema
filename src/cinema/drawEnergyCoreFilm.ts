@@ -33,7 +33,6 @@ export function drawEnergyCoreFilm(ctx: CanvasRenderingContext2D, width: number,
     ctx.bezierCurveTo(pulse.x + 30, 363, anchor.x, 370, anchor.x, anchor.y);
     ctx.strokeStyle = signalColor(channel.heat, .9); ctx.lineWidth = .9; ctx.stroke(); ctx.restore();
   }
-  text(time < 3 ? '전력 · 생산량 · 효율의 흐름을 연결합니다' : time >= 27 ? '전체 파워 게이지로 돌아갑니다' : `${channel.title} 게이지 확대 · 에너지 파동 추적`, 72, 648, 13, .7);
   text('POWER CHANNELS / 03', 72, 689, 10, .5, true);
-  text('시연 데이터 · 지표 기반 파동', 990, 689, 11, .5);
+  text('시연 데이터', 990, 689, 11, .5);
 }

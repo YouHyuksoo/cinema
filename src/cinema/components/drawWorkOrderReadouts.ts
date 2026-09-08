@@ -62,7 +62,7 @@ function drawInspection(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: 
   const label = state.phase === 'complete' ? '검사 이력 / 불량 분리 완료' : event ? '검사 이벤트 / 불량 검출' : '검사 이벤트 / 검출 대기';
   filmText(ctx, fonts, label, 94, 551, 12, opacity * .7, false, 'left', signalColor(event ? 1 : 0, 1));
   const detail = event ? `${SMT_LINE[event.stageIndex].label} · PCB ${String(event.serial).padStart(3, '0')} · ${event.label}`
-    : 'SPI → MAOI → AOI 검사 이력을 연결합니다.';
+    : 'SPI → MAOI → AOI';
   filmText(ctx, fonts, detail, 94, 580, 17, opacity * .96);
   const inspection = state.stages.filter(stage => ['spi', 'maoi', 'aoi'].includes(stage.equipment.id));
   inspection.forEach((stage, index) => {
@@ -101,7 +101,7 @@ function drawOutputHistory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, stat
 
 export function drawWorkOrderReadouts(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: WorkOrderTraceState, presence: number) {
   drawOrder(ctx, fonts, state, presence);
-  const opacity = presence * smooth(2.1, 3.2, state.elapsed);
+  const opacity = presence * smooth(2.1, TRACE_TIMING.launchAt, state.elapsed);
   drawCounters(ctx, fonts, state, opacity);
   drawInspection(ctx, fonts, state, opacity);
   drawOutputHistory(ctx, fonts, state, opacity);
