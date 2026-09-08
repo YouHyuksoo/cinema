@@ -1,4 +1,4 @@
-import { drawBarChart } from './components/drawBarChart';
+import { productionLineObject } from './productionLineObject';
 import { drawChartStage } from './drawChartStage';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
 import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint } from './filmFocus';
@@ -52,7 +52,7 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
   ctx.strokeStyle = signalColor(0, .65); ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = signalColor(0, .8); ctx.fillRect(139, 157, 3, 5);
   ctx.restore();
-  const anchors = drawBarChart(ctx, fonts, {
+  const anchors = productionLineObject.drawAll(ctx, fonts, {
     x: 150, y: 280, width: 690, height: 250, time: t - 1.1,
     data: lines, maxValue: state.maximum, target: target > 0 ? target : undefined, unit, activeIndex, focus, opacity: release, presentation,
   });
