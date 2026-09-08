@@ -1,0 +1,13 @@
+{
+  "sources": [
+    { "id": "mes", "name": "SOLMAX MES", "kind": "oracle", "host": "db.example.local", "port": 1521, "serviceName": "SVEHICLEPDB", "user": "READ_ONLY_USER", "password": "" }
+  ],
+  "feeds": [
+    {
+      "feed": "production", "sourceId": "mes", "enabled": true, "intervalSeconds": 30,
+      "sql": "SELECT l.LINE_CODE AS ID, l.LINE_NAME AS LABEL, NVL(p.ACTUAL_QTY, 0) AS VALUE, NVL(l.DAY_PLAN_QTY, 0) AS TARGET, 'EA' AS UNIT FROM IP_PRODUCT_LINE l LEFT JOIN (SELECT LINE_CODE, SUM(ACTUAL_QTY) AS ACTUAL_QTY FROM IP_PRODUCT_SMD_PLAN WHERE PLAN_DATE >= TRUNC(SYSDATE) - 14 GROUP BY LINE_CODE) p ON p.LINE_CODE = l.LINE_CODE WHERE l.MES_DISPLAY_YN = 'Y' AND l.LINE_PRODUCT_DIVISION = 'SMD' ORDER BY l.MES_DISPLAY_SEQUENCE",
+      "header": { "unit": "UNIT", "target": "TARGET" },
+      "collections": { "lines": { "fields": { "id": "ID", "label": "LABEL", "value": "VALUE" } } }
+    }
+  ]
+}

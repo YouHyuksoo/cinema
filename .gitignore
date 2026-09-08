@@ -48,3 +48,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# HATCHERY data source configuration (server-only, contains credentials)
+/config/hatchery.sources.json
