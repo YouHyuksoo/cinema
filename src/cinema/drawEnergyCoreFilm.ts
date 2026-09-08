@@ -1,6 +1,7 @@
 import { DEFAULT_ENERGY_DATA, energyCoreState, type EnergyCoreData } from './energyCore';
 import { ENERGY_CHANNELS, energyPowerReading } from './energyPower';
-import { drawEnergyPowerGauge, drawEnergyPulse } from './components/drawEnergyPower';
+import { drawEnergyPowerGauge } from './components/drawEnergyPower';
+import { drawEnergyReactor } from './components/drawEnergyReactor';
 import { drawCornerField } from './components/drawCornerField';
 import { DEFAULT_FONTS, filmText, signalColor, type FilmFonts } from './filmDrawing';
 import { beginFilmViewport, type FilmViewportInsets } from './filmViewport';
@@ -14,9 +15,9 @@ export function drawEnergyCoreFilm(ctx: CanvasRenderingContext2D, width: number,
   drawCornerField(ctx, view, time, state.focus * .5);
   const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false) =>
     filmText(ctx, fonts, value, x, y, size, state.opacity * alpha, mono, 'left', signalColor(channel.heat, 1));
-  text('ENERGY / POWER FLOW', 72, 76, 14, .8, true);
+  text('ENERGY / ARC REACTOR', 72, 76, 14, .8, true);
   text(data.name, 72, 102, 10, .5, true);
-  const pulse = drawEnergyPulse(ctx, time, reading, channel.heat);
+  const pulse = drawEnergyReactor(ctx, time, data, state);
   ctx.save();
   applyFocusProjection(ctx, focusProjection({ x: 222, y: 235, focus: state.focus, depth: 65, lift: 4 }));
   text(`${channel.label} / ${channel.title}`, 110, 174, 13, .7, true);

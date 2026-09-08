@@ -132,7 +132,7 @@
 | 메뉴 / ID | 데이터·상태 | 재사용 그리기 부품 | 장면 조립 / 동작 |
 | --- | --- | --- | --- |
 | 13 살아 있는 공정망 / network | processNetwork.ts · ProcessNetworkData / DEFAULT_PROCESS_DATA | components/drawProcessNetwork.ts | drawProcessNetworkFilm.ts · 데이터로 병목 선택, 방향을 가진 흐름·대기 입자, 접근·원인 분석·회복값 보간·전체 복귀 |
-| 14 에너지 파동 / energy | energyCore.ts · EnergyCoreData / DEFAULT_ENERGY_DATA, energyPower.ts | components/drawEnergyPower.ts | drawEnergyCoreFilm.ts · 12가닥 입체 에너지 파동과 72분절 파워 게이지. 전력·생산량·효율을 순서대로 확대·복귀하며 기준 초과 비율은 숫자로 유지한다. 파동은 측정 전기 파형이 아닌 지표 기반 시연이며 0 입력은 진폭 0이다. |
+| 14 에너지 파동 / energy | energyCore.ts · EnergyCoreData / DEFAULT_ENERGY_DATA, energyPower.ts, energyReactor.ts(리액터 기하·코일 점화·아크) | components/drawEnergyReactor.ts, components/drawEnergyPower.ts(게이지) | drawEnergyCoreFilm.ts · 홀로그램 아크 리액터: 바닥 프로젝터 링·광원 원뿔 위에 동심 링 3개(전력·생산량·효율)가 48분절 점등 게이지로 서로 다른 속도·기울기로 돌고, 코일 24개가 조립 구간(0.3~2.8초)에 시계 방향으로 점화되며, 플라즈마 코어 밝기는 효율, 전기 아크 개수(최대 6)는 전력 비율을 따른다(0 입력은 코어 소등·아크 없음, 기준 초과는 경고색). 링 뒷면·뒤쪽 코일은 반투명, 메리디안 와이어프레임과 스캔라인으로 입체감을 준다. 포커스 지표의 링만 앞으로 살짝 분리되고 리더선이 72분절 게이지로 이어진다. 리액터는 x 470~1120, y 30~405 안에 머물러 좌측 판독·하단 게이지와 겹치지 않는다. 검증: cinemaEnergyReactor.test.ts. |
 | 15 제품 내부 검사 / product | productInspection.ts · ProductInspectionData / DEFAULT_PRODUCT_DATA | components/drawProductCutaway.ts | drawProductInspectionFilm.ts · 하우징·엔드캡 분리, 축·베어링·권선 검사, 실제값과 공차 비교, PASS/FAIL과 종합 판정 |
 | 16 SPC 분석 / spc | spcTypes.ts · SpcData / spcData.ts · DEFAULT_SPC_DATA / spcStatistics.ts / spcScene.ts | components/drawSpcControlCharts.ts · drawSpcHistogram.ts · drawHolographicCore.ts | drawSpcFilm.ts · X̄–R 이상 부분군 확인 → 관리도 후퇴·기울임 → 실측 히스토그램 접근 → 양측 차트 후퇴·중앙 Cpk 코어 확대 → 전체 복귀 |
 
