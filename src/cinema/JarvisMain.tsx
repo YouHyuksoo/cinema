@@ -1,0 +1,78 @@
+'use client';
+
+import { useState } from 'react';
+import { useJarvisVoice } from './useJarvisVoice';
+import { JarvisWave } from './JarvisWave';
+import { JarvisConversationTrail } from './JarvisConversationTrail';
+import { JarvisIgnition } from './JarvisIgnition';
+import { JarvisMainHeader } from './JarvisMainHeader';
+import { JarvisTemperatureAlerts } from './JarvisTemperatureAlerts';
+import { JarvisStream } from './JarvisStream';
+import { JarvisOperations, JarvisQualityEnergy } from './JarvisOperations';
+import { JarvisChannelDials } from './JarvisChannelDials';
+import { JarvisVoiceSettings } from './JarvisVoiceSettings';
+import { JarvisAiVoiceSettings } from './JarvisAiVoiceSettings';
+import { JarvisDialogue } from './JarvisDialogue';
+import { jarvisOverview } from './jarvisCommands';
+import { JARVIS_PHASE_LABELS } from './jarvisAudio';
+import type { FilmCamera } from './useFilmCamera';
+import type { FilmId } from './filmProgram';
+import styles from './jarvis.module.css';
+import streamStyles from './jarvisStream.module.css';
+
+const overview = jarvisOverview();
+export function JarvisMain({ camera, onChapter }: { camera: FilmCamera; onChapter: (id: FilmId) => void }) {
+  const voice = useJarvisVoice(onChapter);
+  const [input, setInput] = useState('');
+  const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
+  const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
+  const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
+  return <section className={styles.main} aria-label="자비스 메인 메뉴">
+    <JarvisMainHeader camera={camera} />
+    <div className={styles.body}>
+    <JarvisStream title="OPERATIONS / STREAM" label="좌측 운영 정보" speed={15}>
+    <section className={styles.left}>
+      <div className={styles.sectionTitle}>SESSION / CONNECTIONS</div>
+      <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
+        <dt>음성 인식</dt><dd>{voice.configured ? 'OpenAI Realtime' : voice.supported === null ? '확인 중' : voice.supported ? '브라우저' : '미지원'}</dd>
+        <dt>현장 명령</dt><dd>사용 가능</dd><dt>자유 대화 AI</dt><dd>{voice.configured === null ? '확인 중' : voice.configured ? 'OpenAI 설정됨' : '미연결'}</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
+    </section>
+    <JarvisOperations onChapter={onChapter} />
+    <section className={styles.left}>
+      <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
+      {voice.configured ? <JarvisAiVoiceSettings voice={voice.realtimeVoice} active={voice.active} effect={voice.robotVoice}
+        onVoice={voice.setRealtimeVoice} onEffect={voice.setRobotVoice} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
+      <p className={styles.notice}>{voice.configured ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : '대화 시작을 누르고 자비스에게 말을 걸어보세요.'}</p>
+      <p className={styles.notice}>최근 질문: {voice.transcript || '아직 입력한 질문이 없습니다.'}</p>
+      {(voice.error || voice.statusError || camera.error) && <p className={styles.error} role="alert">{voice.error || voice.statusError || camera.error}</p>}
+      <div className={styles.quick}>{['현장 요약', '살아 있는 공정망 보여줘', '에너지 보여줘', 'SPC 분석 보여줘'].map(q =>
+        <button key={q} disabled={busy} onClick={() => void voice.ask(q)}>{q}</button>)}</div>
+      <p className={styles.notice}>{voice.configured ? 'AI 생성 음성입니다. 대화 중 마이크 음성·질문·시연 정보가 OpenAI로 전송되며 사용량에 따라 과금됩니다. 세션은 최대 10분이며 종료·화면 이탈 시 연결을 닫습니다. 카메라는 화면에만 표시합니다.' : '카메라는 화면에만 표시합니다. 음성 인식은 브라우저 서비스를 이용합니다. 자유 대화 AI는 미연결 상태입니다.'}</p>
+    </section>
+    </JarvisStream>
+    <div className={styles.center} role="region" aria-label="중앙 음성 대화">
+      <div className={styles.voiceHeading}><h1>{JARVIS_PHASE_LABELS[voice.phase]}</h1><span data-active={voice.active}>{voice.active ? '● SESSION ON' : '○ STANDBY'}</span></div>
+      <div className={styles.wave}>
+        <JarvisConversationTrail messages={voice.messages} />
+        <JarvisWave audio={voice.audioRef} />
+      </div>
+      <JarvisIgnition active={voice.active} phase={voice.phase} disabled={voice.configured === null}
+        onInterrupt={voice.stopReply} onToggle={() => {
+          if (voice.active) { voice.stop(); camera.stop(); }
+          else { void voice.start(); void camera.start(); }
+        }} />
+      <JarvisDialogue key={reply} text={reply} source={voice.source} />
+      <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
+        <label className={styles.srOnly} htmlFor="jarvis-message">자비스에게 질문</label>
+        <input id="jarvis-message" placeholder="자비스에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
+        <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>
+      </form>
+    </div>
+    <JarvisStream title="INTELLIGENCE / STREAM" label="우측 분석 정보" speed={19} side="right">
+      <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials /></section>
+      <JarvisQualityEnergy onChapter={onChapter} />
+      <JarvisTemperatureAlerts zones={overview.zones} onDetails={() => onChapter('wave')} />
+    </JarvisStream>
+    </div>
+  </section>;
+}

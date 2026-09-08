@@ -1,0 +1,37 @@
+.identity { --neon:#ff53ba; min-width:0; display:flex; align-items:center; justify-content:center; color:var(--neon); }
+.identity svg { display:block; width:100%; height:auto; overflow:visible; }
+.signal,.line,.word,.underline,.node { animation-duration:12s; animation-iteration-count:infinite; animation-timing-function:linear; }
+.signal { transform-box:view-box; transform-origin:50% 50%; animation-name:signalCollapse; }
+.signal path { fill:none; stroke:var(--neon); stroke-width:1.5; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.wave { filter:drop-shadow(0 0 4px #ff32a8) drop-shadow(0 0 9px #ff32a866); }
+.signal .echo { opacity:.3; stroke-width:1; }
+.signal .filament { stroke:#ffd1ec; stroke-width:.65; opacity:.7; }
+.drift { animation:signalDrift 2.4s ease-in-out infinite alternate; }
+.line { fill:none; stroke:#ffb8e3; stroke-width:1.4; stroke-linecap:round; opacity:0; animation-name:traceFlash; filter:drop-shadow(0 0 5px #ff24a3); }
+.word { font:500 35px var(--font-label),sans-serif; letter-spacing:1px; fill:var(--neon); stroke:#ffd3ec; stroke-width:.45; paint-order:stroke fill; opacity:0; clip-path:inset(50% 0); animation-name:wordReveal; filter:drop-shadow(0 0 3px #ff30aa) drop-shadow(0 0 10px #ff30aa88); }
+.underline { fill:none; stroke:var(--neon); stroke-width:.7; stroke-dasharray:134; stroke-dashoffset:134; opacity:0; animation-name:underlineReveal; }
+.node { fill:#ffd0ed; opacity:.5; animation-name:nodeFade; filter:drop-shadow(0 0 4px #ff30aa); }
+@keyframes signalCollapse {
+  0%,20% { opacity:1; transform:scaleY(1); }
+  30%,38% { opacity:1; transform:scaleY(.015); }
+  44%,86% { opacity:0; transform:scaleY(.015); }
+  92% { opacity:1; transform:scaleY(.015); }
+  100% { opacity:1; transform:scaleY(1); }
+}
+@keyframes signalDrift { from { transform:translateX(-2px); } to { transform:translateX(2px); } }
+@keyframes traceFlash { 0%,26% { opacity:0; } 31%,38% { opacity:1; } 49%,85% { opacity:0; } 90%,92% { opacity:.9; } 100% { opacity:0; } }
+@keyframes wordReveal {
+  0%,36% { opacity:0; clip-path:inset(50% 0); fill:transparent; }
+  41% { opacity:1; clip-path:inset(42% 0); fill:transparent; }
+  51% { opacity:1; clip-path:inset(0); fill:var(--neon); }
+  80% { opacity:1; clip-path:inset(0); fill:var(--neon); }
+  89%,100% { opacity:0; clip-path:inset(50% 0); fill:transparent; }
+}
+@keyframes underlineReveal { 0%,48% { opacity:0; stroke-dashoffset:134; } 58%,80% { opacity:.45; stroke-dashoffset:0; } 89%,100% { opacity:0; stroke-dashoffset:-134; } }
+@keyframes nodeFade { 0%,35% { opacity:.7; } 48%,83% { opacity:0; } 94%,100% { opacity:.7; } }
+@media(prefers-reduced-motion:reduce) {
+  .identity * { animation:none; }
+  .signal,.line,.node { opacity:0; }
+  .word { opacity:1; clip-path:none; fill:var(--neon); }
+  .underline { opacity:.35; stroke-dashoffset:0; }
+}

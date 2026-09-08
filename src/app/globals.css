@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --hud-bg: oklch(0.13 0.02 240);
+  --hud-cyan: oklch(0.85 0.13 210);
+  --hud-cyan-dim: oklch(0.55 0.09 210);
+  --hud-amber: oklch(0.85 0.17 85);
+  --hud-red: oklch(0.68 0.23 25);
+  --hud-green: oklch(0.82 0.19 150);
+  --hud-text: oklch(0.93 0.02 210);
+  --hud-text-dim: oklch(0.7 0.03 210);
+  --hud-status: var(--hud-cyan);
+}
+
+html, body { margin: 0; background: var(--hud-bg); color: var(--hud-text); overflow: hidden; }
+
+.font-display { font-family: var(--font-display), var(--font-korean), sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+.font-label { font-family: var(--font-label), var(--font-korean), sans-serif; }
+.font-mono-hud { font-family: var(--font-mono), var(--font-korean), monospace; }
+
+@keyframes hud-spin { to { transform: rotate(360deg); } }
+@keyframes hud-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes hud-glitch {
+  0% { clip-path: inset(0 0 90% 0); transform: translateX(-4px); }
+  50% { clip-path: inset(40% 0 30% 0); transform: translateX(4px); }
+  100% { clip-path: inset(0); transform: none; }
+}
+.hud-glow { filter: drop-shadow(0 0 6px var(--hud-status)); }
+.hud-scanlines {
+  background: repeating-linear-gradient(0deg, transparent 0 3px, oklch(0 0 0 / 0.18) 3px 4px);
+  pointer-events: none;
+}

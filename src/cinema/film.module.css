@@ -1,0 +1,120 @@
+.page { --film-dock-space: 156px; --film-accent: #5fe3ff; --film-accent-soft: #b6f6ff; --film-ink: #b1cdd4; --film-muted: #9eb7bd; --film-dim: #67818a; --film-bg: #040b10; --film-panel: #071319; --film-line: #28434d; position: relative; height: 100dvh; display: block; overflow: hidden; isolation: isolate; background: var(--film-bg); font-family: var(--font-label), var(--font-korean), sans-serif; }
+.header, .footer { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--film-muted); font-size: 12px; letter-spacing: .12em; }
+.header { position: absolute; top: 16px; left: 24px; right: 24px; z-index: 2; width: auto; max-width: none; pointer-events: none; font-size: 10px; text-shadow: 0 1px 8px var(--film-bg); opacity: .8; }
+.header span:first-child { color: var(--film-ink); font-family: var(--font-mono), monospace; }
+.screen { position: absolute; inset: 0; width: 100%; height: 100%; }
+.canvas { width: 100%; height: 100%; display: block; }
+.screenToggle { position: absolute; inset: 0; width: 100%; height: 100%; display: block; margin: 0; padding: 0; appearance: none; border: 0; border-radius: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
+.screenToggle:disabled { cursor: default; }
+.screenToggle:focus-visible { outline: 1px solid var(--film-accent); outline-offset: -6px; }
+.footer { display: block; padding-top: 0; letter-spacing: .03em; }
+.chapterDetail { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0 6px; color: var(--film-muted); font-size: 12px; }
+.time { flex-shrink: 0; font-family: var(--font-mono), monospace; color: var(--film-dim); }
+.seek { display: block; width: 100%; height: 14px; margin: 3px 0 10px; accent-color: var(--film-accent); cursor: pointer; }
+.seek:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 4px; }
+.controlRow { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.simulation { color: var(--film-dim); font-size: 11px; }
+.footer small { color: var(--film-dim); }
+.controls { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; margin-left: auto; }
+.speedControl { display: flex; align-items: center; gap: 8px; }
+.speedControl select { color: var(--film-ink); background: var(--film-panel); border: 1px solid var(--film-line); border-radius: 2px; font: inherit; padding: 6px 8px; cursor: pointer; }
+.speedControl select:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 3px; }
+.textureRow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; padding: 8px 0 12px; margin-bottom: 8px; border-bottom: 1px solid var(--film-line); }
+.textureIntensity { display: flex; align-items: center; gap: 10px; color: var(--film-muted); }
+.textureIntensity input { width: clamp(90px, 12vw, 160px); height: 14px; accent-color: var(--film-accent); cursor: pointer; }
+.textureIntensity input:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 4px; }
+.textureIntensity input:disabled { opacity: .35; cursor: default; }
+.textureValue { width: 4ch; text-align: right; font-family: var(--font-mono), monospace; font-variant-numeric: tabular-nums; }
+.textureDescription { color: var(--film-dim); font-size: 11px; margin-left: auto; }
+.chartSettings { min-width: 0; margin: 0 0 12px; padding: 6px 0 12px; border: 0; border-bottom: 1px solid var(--film-line); }
+.chartSettings legend { padding: 0; color: var(--film-ink); font-size: 11px; }
+.chartSettingsRow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
+.footer button { background: transparent; border: 0; color: var(--film-ink); cursor: pointer; font: inherit; padding: 8px 0; }
+.footer button:hover:not(:disabled) { color: var(--film-accent); }
+.footer button:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 5px; }
+.themeSettings { min-width: 0; margin: 0 0 12px; padding: 6px 0 12px; border: 0; border-bottom: 1px solid var(--film-line); }
+.themeSettings legend { padding: 0; color: var(--film-ink); font-size: 11px; }
+.themeSelection { margin-left: 12px; color: var(--film-dim); font-size: 10px; }
+.themeChoices { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.themeSettings .themeButton { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 8px; border: 1px solid var(--film-line); border-radius: 3px; color: var(--film-muted); background: transparent; font: inherit; font-size: 11px; line-height: 18px; cursor: pointer; }
+.themeSettings .themeButton[aria-pressed="true"] { border-color: var(--film-accent); color: var(--film-ink); background: color-mix(in srgb, var(--film-accent) 8%, transparent); }
+.themeSettings .themeButton:hover:not(:disabled) { color: var(--film-accent-soft); border-color: var(--film-accent); }
+.themeSettings .themeButton:focus-visible { outline: 2px solid var(--film-accent-soft); outline-offset: 3px; }
+.themeSettings .themeButton:disabled { opacity: .4; cursor: default; }
+.themeSwatch { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+.themeCheck { flex: 0 0 12px; opacity: 0; }
+.cameraSettings { min-width: 0; margin: 0 0 12px; padding: 6px 0 12px; border: 0; border-bottom: 1px solid var(--film-line); }
+.cameraSettings legend { padding: 0; color: var(--film-ink); font-size: 12px; }
+.cameraActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; }
+.cameraSettings .cameraButton { border: 1px solid var(--film-accent); padding: 7px 12px; margin: 6px 0; border-radius: 3px; }
+.cameraState { color: var(--film-accent-soft); font-size: 11px; }
+.cameraMirror { display: flex; align-items: center; gap: 7px; color: var(--film-muted); }
+.cameraMirror input { accent-color: var(--film-accent); }
+.cameraNote { margin: 7px 0 0; color: var(--film-muted); font-size: 11px; line-height: 1.6; }
+.cameraError { color: var(--film-accent-soft); font-size: 12px; line-height: 1.7; }
+.cameraDockError { width: 100%; max-width: 940px; margin: 0 auto 8px; padding: 8px 12px; box-sizing: border-box; color: var(--film-accent-soft); background: var(--film-panel); border-left: 2px solid var(--film-accent); pointer-events: auto; font-size: 12px; line-height: 1.6; }
+.themeButton[aria-pressed="true"] .themeCheck { opacity: 1; }
+.filmDock { position: fixed; z-index: 3; inset: auto 0 0; display: flex; flex-direction: column; gap: 4px; padding: 20px clamp(16px, 3vw, 48px) max(10px, env(safe-area-inset-bottom)); color: var(--film-ink); font-size: 12px; background: linear-gradient(transparent, color-mix(in srgb, var(--film-bg) 80%, transparent) 34%, color-mix(in srgb, var(--film-bg) 95%, transparent)); pointer-events: none; }
+.dockBar { width: 100%; max-width: 940px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; pointer-events: auto; }
+.dockStatus, .dockActions { display: flex; align-items: center; gap: 12px; }
+.dockStatus { min-width: 0; font-size: 11px; }
+.dockStatusLight { width: 4px; height: 4px; flex-shrink: 0; background: var(--film-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--film-accent) 60%, transparent); transform: rotate(45deg); }
+.dockTime { color: var(--film-dim); font: 10px var(--font-mono), monospace; font-variant-numeric: tabular-nums; }
+.dockAction { padding: 9px 4px; min-height: 36px; color: var(--film-ink); background: transparent; border: 0; font: inherit; cursor: pointer; white-space: nowrap; }
+.dockAction:hover { color: var(--film-accent-soft); }
+.dockAction:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 3px; }
+.dockSettings { pointer-events: auto; width: 100%; max-width: 1000px; max-height: min(440px, calc(100dvh - var(--film-dock-space) - 44px)); overflow-y: auto; overscroll-behavior: contain; align-self: center; margin-bottom: 8px; padding: 16px 20px; background: color-mix(in srgb, var(--film-panel) 95%, transparent); border: 1px solid var(--film-line); backdrop-filter: blur(12px); }
+.chapterMenu { pointer-events: auto; display: grid; grid-template-columns: repeat(var(--film-chapter-count, 16), minmax(60px, 1fr)); gap: 4px; width: 100%; max-width: 1100px; margin: 0 auto; padding-top: 7px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--film-line) transparent; }
+.chapterButton { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; min-height: 82px; padding: 0 2px 3px; color: var(--film-muted); background: transparent; border: 0; font: inherit; cursor: pointer; perspective: 500px; }
+.hexTile { position: relative; display: block; width: 58px; height: 65px; max-width: 100%; transform: translateZ(0); transition: transform .2s ease-out, filter .2s ease-out, color .2s ease-out; }
+.hexFrame { display: block; width: 100%; height: 100%; overflow: visible; stroke-width: 1; }
+.hexBack { fill: color-mix(in srgb, var(--film-panel) 55%, transparent); stroke: color-mix(in srgb, var(--film-accent) 16%, transparent); }
+.hexFace { fill: color-mix(in srgb, var(--film-panel) 80%, transparent); stroke: color-mix(in srgb, var(--film-accent) 34%, transparent); transition: fill .2s, stroke .2s; }
+.hexInset { stroke: color-mix(in srgb, var(--film-accent) 10%, transparent); stroke-width: .65; }
+.hexAccent { stroke: color-mix(in srgb, var(--film-accent) 40%, transparent); transition: stroke .2s; }
+.chapterIcon { position: absolute; width: 30px; height: 30px; top: 14px; left: 50%; margin-left: -15px; }
+.chapterLabel { font-size: 10px; letter-spacing: .04em; white-space: nowrap; line-height: 15px; }
+.chapterButton[aria-current] { color: var(--film-accent-soft); }
+.chapterButton[aria-current] .hexTile { transform: translateY(-3px) translateZ(22px); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--film-accent) 25%, transparent)); }
+.chapterButton[aria-current] .hexFace { fill: color-mix(in srgb, var(--film-accent) 16%, transparent); stroke: var(--film-accent); }
+.chapterButton[aria-current] .hexAccent { stroke: var(--film-accent-soft); }
+.chapterButton:hover:not(:disabled), .chapterButton:focus-visible { color: var(--film-accent-soft); }
+.chapterButton:hover:not(:disabled) .hexTile, .chapterButton:focus-visible .hexTile { transform: translateY(-5px) translateZ(30px); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--film-accent) 30%, transparent)); }
+.chapterButton:focus-visible { outline: 1px solid var(--film-accent); outline-offset: 2px; border-radius: 3px; }
+.chapterButton:disabled { opacity: .35; cursor: default; }
+@media (max-width: 800px) {
+  .header { left: 16px; right: 16px; font-size: 9px; }
+  .chapterDetail { font-size: 11px; }
+  .controlRow { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .controls { gap: 14px; }
+  .textureRow { gap: 10px 18px; }
+  .textureDescription { width: 100%; margin-left: 0; font-size: 10px; }
+  .dockSettings { padding: 12px; }
+}
+@media (max-width: 680px) {
+  .page { --film-dock-space: 390px; }
+  .filmDock { padding-top: 12px; }
+  .chapterMenu { grid-template-columns: repeat(4, minmax(48px, 1fr)); max-width: 440px; gap: 2px 4px; }
+  .chapterButton { min-height: 73px; }
+  .hexTile { width: 50px; height: 56px; }
+  .chapterIcon { top: 11px; width: 27px; height: 27px; margin-left: -13.5px; }
+  .dockBar { max-width: 440px; gap: 8px; }
+  .dockActions { gap: 10px; }
+  .dockAction { font-size: 11px; }
+  .dockStatus { gap: 7px; }
+  .dockTime { display: none; }
+}
+@media (max-height: 500px) {
+  .page { --film-dock-space: 116px; }
+  .filmDock { padding-top: 6px; padding-bottom: 4px; }
+  .chapterMenu { display: flex; max-width: 940px; overflow-x: auto; gap: 2px; padding: 6px 3px 3px; scrollbar-width: thin; scrollbar-color: var(--film-line) transparent; }
+  .chapterButton { flex: 1 0 60px; min-height: 61px; }
+  .hexTile { width: 38px; height: 43px; }
+  .chapterIcon { top: 8px; width: 22px; height: 22px; margin-left: -11px; }
+  .chapterLabel { font-size: 9px; }
+  .dockAction { min-height: 28px; padding: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hexTile, .hexFace, .hexAccent { transition: none; }
+  .chapterButton[aria-current] .hexTile, .chapterButton:hover:not(:disabled) .hexTile, .chapterButton:focus-visible .hexTile { transform: none; }
+}
