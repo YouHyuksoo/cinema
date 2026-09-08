@@ -88,7 +88,7 @@ export function productionScale(lines, target): number
 ```
 
 - `selectProductionLine`: `selectedId`가 정규화된 목록에 있으면 그 인덱스. 없으면 `value < target`인 라인 중 `value / target`이 가장 낮은 라인. 동률이면 앞 항목. 미달 라인이 없으면 `undefined`.
-- `productionScale`: `max(최대 value, target, 1)`에 15% 여유를 두고 자릿수에 맞는 "보기 좋은 값"(1·2·5·10 배수)으로 올림.
+- `productionScale`: `max(최대 value, target, 1)`에 15% 여유를 두고 자릿수에 맞는 "보기 좋은 값"(1·1.2·1.5·2·2.5·3·4·5·6·8·10 단계)으로 올림.
 - 값이 유한하지 않거나 음수면 0으로 취급한다(기존 `barTelemetryGeometry`의 `positive`와 같은 규칙).
 - `target`이 유한하지 않거나 0 이하면 0으로 취급하고, 달성률·미달 판정은 하지 않는다(선택 없음).
 
