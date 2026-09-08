@@ -7,7 +7,8 @@ sources:
   - src/cinema/sceneObject.ts
   - src/cinema/drawSignalFilm.ts
   - src/cinema/useFilmPlayback.ts
-verifiedCommit: 303daf7
+  - src/cinema/staticSceneData.ts
+verifiedCommit: 736ccd2
 ---
 
 # 장면 데이터 계약 (Scene Data Contract)
@@ -70,7 +71,7 @@ HATCHERY의 모든 화면(장면)은 이 계약에 따라 데이터를 받고, �
   - MES 폴링: 주기마다 장면별 전체 교체 문서.
   - 설비/센서 푸시: 객체 패치.
   - HATCHERY(AI): 도구 호출 결과를 객체 패치로 변환. `source: 'hatchery'`.
-  - 정적 JSON: `public/cinema/data/<scene>.json`에 전체 교체 문서를 두고 시작 시 읽는다. `source: 'static'`.
+  - 정적 JSON: `public/cinema/data/scenes.json`에 전체 교체 문서 배열을 두면 시작 시 한 번 읽어 저장소에 넣는다(`staticSceneData.ts`). 파일이 없으면 기본 시연 데이터를 유지한다. 예시: `public/cinema/data/scenes.example.json`. `source: 'static'`.
 - 화면은 장면별 마지막 `source`·`at`을 표시할 수 있어야 한다(출처 표시).
 
 ### 5. 장면 적합성 등급
