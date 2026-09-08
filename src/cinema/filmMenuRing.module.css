@@ -1,4 +1,13 @@
-.menu { position:relative; width:100%; max-width:1040px; height:144px; margin:0 auto; overflow:visible; pointer-events:auto; color:var(--film-ink); transition:height .65s cubic-bezier(.4,0,.2,1); }
+.menu {
+  --film-accent:#ff79c6;
+  --film-accent-soft:#ffc2e5;
+  --film-panel:#282a36;
+  --film-muted:#d7b5d8;
+  --film-bg:#191a21;
+  --film-ink:#ffe6f4;
+  --film-line:color-mix(in srgb,var(--film-accent) 28%,transparent);
+  position:relative; width:100%; max-width:1040px; height:144px; margin:0 auto; overflow:visible; pointer-events:auto; color:var(--film-ink); transition:height .65s cubic-bezier(.4,0,.2,1);
+}
 .menu[data-menu-open=false] { height:0; pointer-events:none; }
 .ringControls { position:relative; }
 .menu[data-menu-phase=closed] .ringControls,.menu[data-menu-phase=morphing] .ringControls { visibility:hidden; pointer-events:none; }

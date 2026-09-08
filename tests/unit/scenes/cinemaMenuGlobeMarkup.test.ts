@@ -10,6 +10,19 @@ const render = (menuOpen: boolean) => renderToStaticMarkup(createElement(FilmCha
 }));
 
 describe('collapsed chapter globe accessibility', () => {
+  it('shares the Dracula pink palette between the open ring and collapsed globe', () => {
+    const css = readFileSync(new URL('../../../src/cinema/filmMenuRing.module.css', import.meta.url), 'utf8');
+    const globeCss = readFileSync(new URL('../../../src/cinema/filmMenuGlobe.module.css', import.meta.url), 'utf8');
+    const palette = css.match(/\.menu\s*\{([^}]+)\}/)?.[1];
+    expect(globeCss).not.toMatch(/--film-[\w-]+\s*:/);
+    expect(palette).toBeDefined();
+    expect(palette).toContain('--film-accent:#ff79c6');
+    expect(palette).toContain('--film-accent-soft:#ffc2e5');
+    expect(palette).toContain('--film-panel:#282a36');
+    expect(palette).toContain('--film-muted:#d7b5d8');
+    expect(palette).toContain('--film-bg:#191a21');
+  });
+
   it('keeps one decorative globe face per chapter and only one expand button', () => {
     const html = render(false);
     for (const chapter of FILM_CHAPTERS) {

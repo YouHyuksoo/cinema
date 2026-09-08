@@ -1,3 +1,4 @@
+/* Palette is inherited from the shared menu so ring and globe stay identical. */
 .layer {
   position:fixed;
   inset:0;
