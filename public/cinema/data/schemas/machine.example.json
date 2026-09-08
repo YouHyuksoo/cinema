@@ -1,0 +1,107 @@
+{
+  "feed": "machine",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "name": "HYBRID RACE CAR / DEMO",
+    "systems": [
+      {
+        "id": "battery",
+        "label": "배터리",
+        "value": 84.2,
+        "unit": "%"
+      },
+      {
+        "id": "coolant",
+        "label": "냉각수",
+        "value": 72,
+        "unit": "°C"
+      },
+      {
+        "id": "flow",
+        "label": "유량",
+        "value": 120,
+        "unit": "L/min"
+      },
+      {
+        "id": "engine",
+        "label": "엔진",
+        "value": 789,
+        "unit": "°C"
+      },
+      {
+        "id": "exhaust",
+        "label": "배기",
+        "value": 835,
+        "unit": "°C"
+      },
+      {
+        "id": "pressure",
+        "label": "압력",
+        "value": 4.2,
+        "unit": "bar"
+      },
+      {
+        "id": "frontLoad",
+        "label": "전방 하중",
+        "value": 46.5,
+        "unit": "%"
+      },
+      {
+        "id": "rearLoad",
+        "label": "후방 하중",
+        "value": 53.5,
+        "unit": "%"
+      },
+      {
+        "id": "brake-fl",
+        "label": "브레이크 FL",
+        "value": 640,
+        "unit": "°C"
+      },
+      {
+        "id": "brake-fr",
+        "label": "브레이크 FR",
+        "value": 610,
+        "unit": "°C"
+      },
+      {
+        "id": "brake-rl",
+        "label": "브레이크 RL",
+        "value": 920,
+        "unit": "°C"
+      },
+      {
+        "id": "brake-rr",
+        "label": "브레이크 RR",
+        "value": 892,
+        "unit": "°C"
+      },
+      {
+        "id": "suspension-fl",
+        "label": "서스펜션 FL",
+        "value": 14,
+        "unit": "mm"
+      },
+      {
+        "id": "suspension-fr",
+        "label": "서스펜션 FR",
+        "value": 12,
+        "unit": "mm"
+      },
+      {
+        "id": "suspension-rl",
+        "label": "서스펜션 RL",
+        "value": 24,
+        "unit": "mm"
+      },
+      {
+        "id": "suspension-rr",
+        "label": "서스펜션 RR",
+        "value": 20,
+        "unit": "mm"
+      }
+    ]
+  }
+}

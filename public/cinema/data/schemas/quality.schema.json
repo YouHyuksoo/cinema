@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/quality",
+  "title": "품질 SPC 측정 (quality)",
+  "description": "SPC 장면이 읽는다(부분군 수·크기 무관). 코너·펼침의 양품률과 상단 지표의 이탈 수도 파생 예정. 갱신: 부분군 완성 시 이벤트, 또는 1~5분 폴링. 장면: spc, corners, unfold.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "측정 항목",
+      "type": "string",
+      "minLength": 1
+    },
+    "unit": {
+      "description": "단위",
+      "type": "string",
+      "minLength": 1
+    },
+    "nominal": {
+      "description": "공칭값",
+      "type": "number"
+    },
+    "lsl": {
+      "description": "규격 하한",
+      "type": "number"
+    },
+    "usl": {
+      "description": "규격 상한",
+      "type": "number"
+    },
+    "cpkTarget": {
+      "description": "Cpk 목표",
+      "type": "number",
+      "minimum": 0
+    },
+    "subgroups": {
+      "type": "array",
+      "description": "부분군",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "values": {
+            "description": "측정값",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "values"
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "unit",
+    "nominal",
+    "lsl",
+    "usl",
+    "cpkTarget",
+    "subgroups"
+  ],
+  "additionalProperties": true
+}

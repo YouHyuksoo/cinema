@@ -1,0 +1,292 @@
+{
+  "feed": "environment",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "title": "생산 현장 / 환경 모니터링",
+    "historyEnd": 1788739200000,
+    "zones": [
+      {
+        "id": "ZONE 01",
+        "name": "자재 입고",
+        "temperature": 23.2,
+        "humidity": 46,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 22.2
+          },
+          {
+            "at": 1788656400000,
+            "value": 22.6
+          },
+          {
+            "at": 1788660000000,
+            "value": 23
+          }
+        ]
+      },
+      {
+        "id": "ZONE 02",
+        "name": "자재 보관",
+        "temperature": 22.8,
+        "humidity": 44,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 23.1
+          },
+          {
+            "at": 1788656400000,
+            "value": 23.4
+          },
+          {
+            "at": 1788660000000,
+            "value": 23.5
+          }
+        ]
+      },
+      {
+        "id": "ZONE 03",
+        "name": "인쇄 공정",
+        "temperature": 24.1,
+        "humidity": 48,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 26.2
+          },
+          {
+            "at": 1788656400000,
+            "value": 26.1
+          },
+          {
+            "at": 1788660000000,
+            "value": 25.8
+          }
+        ]
+      },
+      {
+        "id": "ZONE 04",
+        "name": "실장 공정",
+        "temperature": 25.3,
+        "humidity": 51,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 26.9
+          },
+          {
+            "at": 1788656400000,
+            "value": 26.6
+          },
+          {
+            "at": 1788660000000,
+            "value": 26.2
+          }
+        ]
+      },
+      {
+        "id": "ZONE 05",
+        "name": "리플로우",
+        "temperature": 26.7,
+        "humidity": 43,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 27.8
+          },
+          {
+            "at": 1788656400000,
+            "value": 27.4
+          },
+          {
+            "at": 1788660000000,
+            "value": 27
+          }
+        ]
+      },
+      {
+        "id": "ZONE 06",
+        "name": "검사 공정",
+        "temperature": 29.4,
+        "humidity": 47,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 28.8
+          },
+          {
+            "at": 1788656400000,
+            "value": 28.5
+          },
+          {
+            "at": 1788660000000,
+            "value": 28.5
+          }
+        ]
+      },
+      {
+        "id": "ZONE 07",
+        "name": "조립 공정",
+        "temperature": 24.8,
+        "humidity": 52,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 23.4
+          },
+          {
+            "at": 1788656400000,
+            "value": 23.5
+          },
+          {
+            "at": 1788660000000,
+            "value": 23.8
+          }
+        ]
+      },
+      {
+        "id": "ZONE 08",
+        "name": "검사 대기",
+        "temperature": 23.9,
+        "humidity": 64,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 21.9
+          },
+          {
+            "at": 1788656400000,
+            "value": 22.3
+          },
+          {
+            "at": 1788660000000,
+            "value": 22.7
+          }
+        ]
+      },
+      {
+        "id": "ZONE 09",
+        "name": "포장 공정",
+        "temperature": 23.1,
+        "humidity": 49,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 21.8
+          },
+          {
+            "at": 1788656400000,
+            "value": 22.4
+          },
+          {
+            "at": 1788660000000,
+            "value": 22.8
+          }
+        ]
+      },
+      {
+        "id": "ZONE 10",
+        "name": "완제품 보관",
+        "temperature": 22.6,
+        "humidity": 45,
+        "temperatureRange": {
+          "min": 20,
+          "max": 28
+        },
+        "humidityRange": {
+          "min": 40,
+          "max": 60
+        },
+        "temperatureHistory": [
+          {
+            "at": 1788652800000,
+            "value": 23.1
+          },
+          {
+            "at": 1788656400000,
+            "value": 23.2
+          },
+          {
+            "at": 1788660000000,
+            "value": 23.2
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "feed": "workOrder",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "orderId": "WO-260908-001",
+    "product": "CONTROL PCB",
+    "line": "SMT LINE 01",
+    "quantity": 120,
+    "defects": [
+      {
+        "id": "D-0007",
+        "label": "납량 부족",
+        "serial": 7,
+        "equipmentId": "spi"
+      },
+      {
+        "id": "D-0027",
+        "label": "부품 위치 편차",
+        "serial": 27,
+        "equipmentId": "maoi"
+      },
+      {
+        "id": "D-0061",
+        "label": "납땜 브리지",
+        "serial": 61,
+        "equipmentId": "aoi"
+      },
+      {
+        "id": "D-0083",
+        "label": "부품 위치 편차",
+        "serial": 83,
+        "equipmentId": "maoi"
+      }
+    ]
+  }
+}

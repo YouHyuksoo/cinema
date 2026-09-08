@@ -1,0 +1,381 @@
+{
+  "feed": "equipment",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "lines": 5,
+    "stations": [
+      {
+        "id": "L1-loader",
+        "label": "L1 PCB 로더",
+        "english": "PCB LOADER",
+        "line": 1,
+        "order": 1,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L1-printer",
+        "label": "L1 스크린프린터",
+        "english": "SCREEN PRINTER",
+        "line": 1,
+        "order": 2,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L1-spi",
+        "label": "L1 SPI",
+        "english": "3D SPI",
+        "line": 1,
+        "order": 3,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L1-mounter",
+        "label": "L1 마운터",
+        "english": "CHIP MOUNTER",
+        "line": 1,
+        "order": 4,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L1-maoi",
+        "label": "L1 MAOI",
+        "english": "POST-MOUNT AOI",
+        "line": 1,
+        "order": 5,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L1-reflow",
+        "label": "L1 리플로우",
+        "english": "REFLOW OVEN",
+        "line": 1,
+        "order": 6,
+        "kind": "thermal",
+        "status": "running",
+        "temperature": 78.2,
+        "fan": 62
+      },
+      {
+        "id": "L1-aoi",
+        "label": "L1 AOI",
+        "english": "3D AOI",
+        "line": 1,
+        "order": 7,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L1-unloader",
+        "label": "L1 언로더",
+        "english": "PCB UNLOADER",
+        "line": 1,
+        "order": 8,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L2-loader",
+        "label": "L2 PCB 로더",
+        "english": "PCB LOADER",
+        "line": 2,
+        "order": 1,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L2-printer",
+        "label": "L2 스크린프린터",
+        "english": "SCREEN PRINTER",
+        "line": 2,
+        "order": 2,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L2-spi",
+        "label": "L2 SPI",
+        "english": "3D SPI",
+        "line": 2,
+        "order": 3,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L2-mounter",
+        "label": "L2 마운터",
+        "english": "CHIP MOUNTER",
+        "line": 2,
+        "order": 4,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L2-maoi",
+        "label": "L2 MAOI",
+        "english": "POST-MOUNT AOI",
+        "line": 2,
+        "order": 5,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L2-reflow",
+        "label": "L2 리플로우",
+        "english": "REFLOW OVEN",
+        "line": 2,
+        "order": 6,
+        "kind": "thermal",
+        "status": "running",
+        "temperature": 78.2,
+        "fan": 62
+      },
+      {
+        "id": "L2-aoi",
+        "label": "L2 AOI",
+        "english": "3D AOI",
+        "line": 2,
+        "order": 7,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L2-unloader",
+        "label": "L2 언로더",
+        "english": "PCB UNLOADER",
+        "line": 2,
+        "order": 8,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L3-loader",
+        "label": "L3 PCB 로더",
+        "english": "PCB LOADER",
+        "line": 3,
+        "order": 1,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L3-printer",
+        "label": "L3 스크린프린터",
+        "english": "SCREEN PRINTER",
+        "line": 3,
+        "order": 2,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L3-spi",
+        "label": "L3 SPI",
+        "english": "3D SPI",
+        "line": 3,
+        "order": 3,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L3-mounter",
+        "label": "L3 마운터",
+        "english": "CHIP MOUNTER",
+        "line": 3,
+        "order": 4,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L3-maoi",
+        "label": "L3 MAOI",
+        "english": "POST-MOUNT AOI",
+        "line": 3,
+        "order": 5,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L3-reflow",
+        "label": "L3 리플로우",
+        "english": "REFLOW OVEN",
+        "line": 3,
+        "order": 6,
+        "kind": "thermal",
+        "status": "running",
+        "temperature": 78.2,
+        "fan": 62
+      },
+      {
+        "id": "L3-aoi",
+        "label": "L3 AOI",
+        "english": "3D AOI",
+        "line": 3,
+        "order": 7,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L3-unloader",
+        "label": "L3 언로더",
+        "english": "PCB UNLOADER",
+        "line": 3,
+        "order": 8,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L4-loader",
+        "label": "L4 PCB 로더",
+        "english": "PCB LOADER",
+        "line": 4,
+        "order": 1,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L4-printer",
+        "label": "L4 스크린프린터",
+        "english": "SCREEN PRINTER",
+        "line": 4,
+        "order": 2,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L4-spi",
+        "label": "L4 SPI",
+        "english": "3D SPI",
+        "line": 4,
+        "order": 3,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L4-mounter",
+        "label": "L4 마운터",
+        "english": "CHIP MOUNTER",
+        "line": 4,
+        "order": 4,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L4-maoi",
+        "label": "L4 MAOI",
+        "english": "POST-MOUNT AOI",
+        "line": 4,
+        "order": 5,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L4-reflow",
+        "label": "L4 리플로우",
+        "english": "REFLOW OVEN",
+        "line": 4,
+        "order": 6,
+        "kind": "thermal",
+        "status": "running",
+        "temperature": 78.2,
+        "fan": 62
+      },
+      {
+        "id": "L4-aoi",
+        "label": "L4 AOI",
+        "english": "3D AOI",
+        "line": 4,
+        "order": 7,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L4-unloader",
+        "label": "L4 언로더",
+        "english": "PCB UNLOADER",
+        "line": 4,
+        "order": 8,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L5-loader",
+        "label": "L5 PCB 로더",
+        "english": "PCB LOADER",
+        "line": 5,
+        "order": 1,
+        "kind": "transport",
+        "status": "running"
+      },
+      {
+        "id": "L5-printer",
+        "label": "L5 스크린프린터",
+        "english": "SCREEN PRINTER",
+        "line": 5,
+        "order": 2,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L5-spi",
+        "label": "L5 SPI",
+        "english": "3D SPI",
+        "line": 5,
+        "order": 3,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L5-mounter",
+        "label": "L5 마운터",
+        "english": "CHIP MOUNTER",
+        "line": 5,
+        "order": 4,
+        "kind": "production",
+        "status": "running"
+      },
+      {
+        "id": "L5-maoi",
+        "label": "L5 MAOI",
+        "english": "POST-MOUNT AOI",
+        "line": 5,
+        "order": 5,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L5-reflow",
+        "label": "L5 리플로우",
+        "english": "REFLOW OVEN",
+        "line": 5,
+        "order": 6,
+        "kind": "thermal",
+        "status": "running",
+        "temperature": 78.2,
+        "fan": 62
+      },
+      {
+        "id": "L5-aoi",
+        "label": "L5 AOI",
+        "english": "3D AOI",
+        "line": 5,
+        "order": 7,
+        "kind": "quality",
+        "status": "running"
+      },
+      {
+        "id": "L5-unloader",
+        "label": "L5 언로더",
+        "english": "PCB UNLOADER",
+        "line": 5,
+        "order": 8,
+        "kind": "transport",
+        "status": "running"
+      }
+    ]
+  }
+}

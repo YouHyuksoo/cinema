@@ -9,7 +9,8 @@
     "lint": "eslint src tests",
     "typecheck": "tsc --noEmit --incremental false",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit"
+    "test:unit": "vitest run tests/unit",
+    "docs:feeds": "node scripts/docs-feeds.mjs"
   },
   "dependencies": {
     "next": "16.3.4",

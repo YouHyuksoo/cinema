@@ -1,0 +1,32 @@
+{
+  "feed": "energy",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "name": "SMT LINE / ENERGY MONITOR",
+    "readings": [
+      {
+        "id": "power",
+        "label": "전력",
+        "value": 92.4,
+        "capacity": 140,
+        "unit": "kW"
+      },
+      {
+        "id": "production",
+        "label": "생산량",
+        "value": 1267,
+        "capacity": 1450,
+        "unit": "EA"
+      },
+      {
+        "id": "efficiency",
+        "label": "효율",
+        "value": 94.8,
+        "capacity": 100,
+        "unit": "%"
+      }
+    ]
+  }
+}

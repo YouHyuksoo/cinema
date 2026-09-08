@@ -20,6 +20,10 @@ export interface SceneFieldDescriptor {
   aliases?: RegExp;
   /** Field assumed when a command names the object but no field. */
   default?: boolean;
+  /** May be absent from documents (contract columns marked 선택). */
+  optional?: boolean;
+  /** Column description for the generated contract tables. */
+  description?: string;
 }
 export type SceneFieldResult = { ok: true; value: unknown } | { ok: false; reason: string };
 
@@ -58,7 +62,7 @@ export function validateSceneObjectFields(descriptors: readonly SceneFieldDescri
   for (const descriptor of descriptors) {
     const present = Object.prototype.hasOwnProperty.call(raw, descriptor.field);
     if (!present) {
-      if (options.required) return { ok: false, reason: `${descriptor.label}(${descriptor.field}) 값이 없습니다.` };
+      if (options.required && !descriptor.optional) return { ok: false, reason: `${descriptor.label}(${descriptor.field}) 값이 없습니다.` };
       continue;
     }
     const result = validateSceneField(descriptor, raw[descriptor.field]);

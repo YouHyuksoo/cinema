@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/workOrder",
+  "title": "워크오더 · 불량 (workOrder)",
+  "description": "변화 추적 장면이 워크오더와 불량 목록을 읽도록 이관한다. PCB 이동 연출은 시간으로 계산한다. 설비 순서는 equipment 피드를 따른다. 갱신: 워크오더 생성·완료와 검사 판정 이벤트. 장면: trace.",
+  "type": "object",
+  "properties": {
+    "orderId": {
+      "description": "워크오더 번호",
+      "type": "string",
+      "minLength": 1
+    },
+    "product": {
+      "description": "제품",
+      "type": "string",
+      "minLength": 1
+    },
+    "line": {
+      "description": "라인",
+      "type": "string",
+      "minLength": 1
+    },
+    "quantity": {
+      "description": "지시 수량",
+      "type": "number",
+      "minimum": 1
+    },
+    "defects": {
+      "type": "array",
+      "description": "불량 판정",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "description": "불량 유형",
+            "type": "string",
+            "minLength": 1
+          },
+          "serial": {
+            "description": "개체 일련번호",
+            "type": "number",
+            "minimum": 1
+          },
+          "equipmentId": {
+            "description": "판정 설비 id",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "serial",
+          "equipmentId",
+          "label"
+        ]
+      }
+    }
+  },
+  "required": [
+    "orderId",
+    "product",
+    "line",
+    "quantity",
+    "defects"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,43 @@
+{
+  "feed": "production",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "unit": "EA",
+    "target": 800,
+    "lines": [
+      {
+        "id": "LINE-01",
+        "label": "LINE 01",
+        "value": 860,
+        "color": "#5fe3ff"
+      },
+      {
+        "id": "LINE-02",
+        "label": "LINE 02",
+        "value": 720,
+        "color": "#79b7a9"
+      },
+      {
+        "id": "LINE-03",
+        "label": "LINE 03",
+        "value": 940,
+        "color": "#c4e7f0"
+      },
+      {
+        "id": "LINE-04",
+        "label": "LINE 04",
+        "value": 610,
+        "color": "#ffc168",
+        "accent": true
+      },
+      {
+        "id": "LINE-05",
+        "label": "LINE 05",
+        "value": 790,
+        "color": "#398698"
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/production",
+  "title": "라인 생산 실적 (production)",
+  "description": "막대·파이가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다. 갱신: 10~30초 폴링. 장면: bars, pie, corners, unfold.",
+  "type": "object",
+  "properties": {
+    "unit": {
+      "description": "수량 단위 · 예: EA",
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "description": "라인당 목표",
+      "type": "number",
+      "minimum": 0
+    },
+    "selectedId": {
+      "description": "강조 라인 id · 없으면 목표 미달 중 달성률 최저 라인을 강조",
+      "type": "string",
+      "minLength": 1
+    },
+    "lines": {
+      "type": "array",
+      "description": "생산 라인",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "value": {
+            "description": "생산량",
+            "type": "number",
+            "minimum": 0
+          },
+          "color": {
+            "description": "표시 색",
+            "type": "string"
+          },
+          "accent": {
+            "description": "강조 표시",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "unit",
+    "target",
+    "lines"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,132 @@
+{
+  "feed": "process",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "title": "SMT LINE / 01",
+    "demandPerHour": 480,
+    "nodes": [
+      {
+        "id": "load",
+        "label": "자재 투입",
+        "code": "LOAD",
+        "position": {
+          "x": -420,
+          "y": 75,
+          "z": 80
+        },
+        "cycleSeconds": 5.8,
+        "capacityPerHour": 620,
+        "queue": 2
+      },
+      {
+        "id": "print",
+        "label": "솔더 인쇄",
+        "code": "PRINT",
+        "position": {
+          "x": -270,
+          "y": -110,
+          "z": -20
+        },
+        "cycleSeconds": 6.4,
+        "capacityPerHour": 560,
+        "queue": 4
+      },
+      {
+        "id": "mount",
+        "label": "부품 실장",
+        "code": "MOUNT",
+        "position": {
+          "x": -100,
+          "y": 75,
+          "z": 20
+        },
+        "cycleSeconds": 7.1,
+        "capacityPerHour": 510,
+        "queue": 9
+      },
+      {
+        "id": "reflow",
+        "label": "리플로우",
+        "code": "REFLOW",
+        "position": {
+          "x": 100,
+          "y": -30,
+          "z": 30
+        },
+        "cycleSeconds": 9.6,
+        "capacityPerHour": 380,
+        "queue": 42,
+        "recovery": {
+          "cycleSeconds": 7.1,
+          "capacityPerHour": 510,
+          "queue": 8
+        }
+      },
+      {
+        "id": "aoi",
+        "label": "광학 검사",
+        "code": "AOI",
+        "position": {
+          "x": 285,
+          "y": 70,
+          "z": -30
+        },
+        "cycleSeconds": 6.8,
+        "capacityPerHour": 540,
+        "queue": 3
+      },
+      {
+        "id": "unload",
+        "label": "제품 배출",
+        "code": "OUT",
+        "position": {
+          "x": 430,
+          "y": -45,
+          "z": 120
+        },
+        "cycleSeconds": 5.9,
+        "capacityPerHour": 610,
+        "queue": 1
+      }
+    ],
+    "links": [
+      {
+        "id": "load>print",
+        "label": "자재 투입 → 솔더 인쇄",
+        "from": "load",
+        "to": "print",
+        "bend": -78
+      },
+      {
+        "id": "print>mount",
+        "label": "솔더 인쇄 → 부품 실장",
+        "from": "print",
+        "to": "mount",
+        "bend": 68
+      },
+      {
+        "id": "mount>reflow",
+        "label": "부품 실장 → 리플로우",
+        "from": "mount",
+        "to": "reflow",
+        "bend": -65
+      },
+      {
+        "id": "reflow>aoi",
+        "label": "리플로우 → 광학 검사",
+        "from": "reflow",
+        "to": "aoi",
+        "bend": 65
+      },
+      {
+        "id": "aoi>unload",
+        "label": "광학 검사 → 제품 배출",
+        "from": "aoi",
+        "to": "unload",
+        "bend": -65
+      }
+    ]
+  }
+}

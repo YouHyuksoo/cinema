@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/process",
+  "title": "공정 처리능력 · 대기 (process)",
+  "description": "공정망이 읽는다. 코너·펼침의 사이클 타임과 상단 지표의 병목도 파생 예정. 갱신: 10~30초 폴링. 장면: network, corners, unfold.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "description": "공정망 이름",
+      "type": "string",
+      "minLength": 1
+    },
+    "demandPerHour": {
+      "description": "시간당 수요",
+      "type": "number",
+      "minimum": 0
+    },
+    "nodes": {
+      "type": "array",
+      "description": "공정",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "code": {
+            "description": "공정 코드",
+            "type": "string",
+            "minLength": 1
+          },
+          "queue": {
+            "description": "대기량 · 단위 개",
+            "type": "number",
+            "minimum": 0
+          },
+          "capacityPerHour": {
+            "description": "처리능력 · 단위 개/시",
+            "type": "number",
+            "minimum": 0
+          },
+          "cycleSeconds": {
+            "description": "사이클 · 단위 초",
+            "type": "number",
+            "minimum": 0
+          },
+          "position": {
+            "description": "3D 위치",
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          },
+          "recovery": {
+            "description": "회복 시나리오 값",
+            "type": "object",
+            "properties": {
+              "cycleSeconds": {
+                "type": "number"
+              },
+              "capacityPerHour": {
+                "type": "number"
+              },
+              "queue": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "code",
+          "queue",
+          "capacityPerHour",
+          "cycleSeconds",
+          "position"
+        ]
+      }
+    },
+    "links": {
+      "type": "array",
+      "description": "공정 연결",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "from": {
+            "description": "출발 공정 id",
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "description": "도착 공정 id",
+            "type": "string",
+            "minLength": 1
+          },
+          "bend": {
+            "description": "곡선 정도",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "from",
+          "to"
+        ]
+      }
+    }
+  },
+  "required": [
+    "title",
+    "demandPerHour",
+    "nodes",
+    "links"
+  ],
+  "additionalProperties": true
+}

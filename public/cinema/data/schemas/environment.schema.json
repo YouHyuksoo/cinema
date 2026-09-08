@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/environment",
+  "title": "환경 구역 온습도 (environment)",
+  "description": "온습도 장면이 읽는다. 최대 10구역까지 표시하고 초과분은 생략한다. 상단 지표의 평균·이탈도 파생. 갱신: 30~60초 폴링 또는 센서 푸시. 장면: wave.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "description": "화면 제목",
+      "type": "string",
+      "minLength": 1
+    },
+    "historyEnd": {
+      "description": "이력 마지막 시각(epoch ms)",
+      "type": "number"
+    },
+    "zones": {
+      "type": "array",
+      "description": "구역",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "name": {
+            "description": "구역 이름",
+            "type": "string",
+            "minLength": 1
+          },
+          "temperature": {
+            "description": "온도 · 단위 °C",
+            "type": "number"
+          },
+          "humidity": {
+            "description": "습도 · 단위 %",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "temperatureRange": {
+            "description": "온도 관리 범위",
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ]
+          },
+          "humidityRange": {
+            "description": "습도 관리 범위",
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ]
+          },
+          "temperatureHistory": {
+            "description": "24시간 온도 이력",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "number"
+                },
+                "value": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "at",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "name",
+          "temperature",
+          "humidity",
+          "temperatureRange",
+          "humidityRange"
+        ]
+      }
+    }
+  },
+  "required": [
+    "title",
+    "zones"
+  ],
+  "additionalProperties": true
+}

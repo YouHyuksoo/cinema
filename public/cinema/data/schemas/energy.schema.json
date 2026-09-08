@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/energy",
+  "title": "에너지 사용 (energy)",
+  "description": "지금 화면은 power·production·efficiency 고정 키 구조(L1)를 받는다. 이 피드는 id가 power | production | efficiency인 배열이며 이관 시 화면이 배열을 읽도록 바꾼다. 갱신: 5~30초 폴링. 장면: energy.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "설비/라인 이름",
+      "type": "string",
+      "minLength": 1
+    },
+    "readings": {
+      "type": "array",
+      "description": "에너지 지표",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "value": {
+            "description": "현재 값",
+            "type": "number",
+            "minimum": 0
+          },
+          "capacity": {
+            "description": "용량·목표",
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "description": "단위",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "value",
+          "capacity",
+          "unit"
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "readings"
+  ],
+  "additionalProperties": true
+}

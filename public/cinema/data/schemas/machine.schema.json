@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/machine",
+  "title": "설비 계통 진단(예시 장면) (machine)",
+  "description": "투명 설비 분석 장면의 계통 값(배터리·냉각수·유량·엔진·배기·압력·하중)을 읽도록 이관한다. 브레이크·서스펜션 4개 값은 id에 위치를 붙인다(brake-fl 등). 갱신: 5~10초 폴링. 장면: machine.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "설비 이름",
+      "type": "string",
+      "minLength": 1
+    },
+    "systems": {
+      "type": "array",
+      "description": "계통 값",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "value": {
+            "description": "값",
+            "type": "number"
+          },
+          "unit": {
+            "description": "단위",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "systems"
+  ],
+  "additionalProperties": true
+}
