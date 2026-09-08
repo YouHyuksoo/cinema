@@ -15,8 +15,8 @@ describe('film scene data injection', () => {
   });
 
   it('routes injected production lines into the bar scene', () => {
-    const data: FilmSceneData = { production: { unit: 'EA', target: 800,
-      lines: [{ id: 'SMT-A', label: 'SMT A', value: 640 }, { id: 'SMT-B', label: 'SMT B', value: 910 }] } };
+    const data: FilmSceneData = mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, { production: { unit: 'EA', target: 800,
+      lines: [{ id: 'SMT-A', label: 'SMT A', value: 640 }, { id: 'SMT-B', label: 'SMT B', value: 910 }] } });
     const fixture = canvasFixture();
     drawSignalFilm(fixture.ctx, 1280, 720, chapterStart('bars') + 8, undefined, undefined, undefined, null, null, data);
     const drawn = fixture.texts.map(text => text.value);
