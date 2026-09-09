@@ -195,9 +195,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     update.current = next => {
       if (next.menuOpen === input.menuOpen) {
         const turnChanged = next.turn !== input.turn; input = next;
-        if (!turnChanged) return;
+        // The cached ring target only feeds a morph in progress. While the ring is open, every
+        // pointermove changes `turn`; re-measuring 16 tiles there forces layout on each mouse event
+        // and made dragging stutter. The close transition re-measures from the live tiles anyway.
+        if (!turnChanged || currentPhase !== 'morphing') return;
         measure(); cacheRing();
-        if (currentPhase === 'morphing' && next.menuOpen) {
+        if (next.menuOpen) {
           from = current.map(pose => ({ ...pose })); fromPerspective = { ...perspective };
           elapsed = 0; previousTime = null;
         }
