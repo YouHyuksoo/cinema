@@ -148,3 +148,22 @@ export function mixMenuPose(from: MenuPose, to: MenuPose, progress: number): Req
     scale: mix(from.scale, to.scale), opacity: mix(from.opacity, to.opacity),
   };
 }
+
+/** After the menu folds into the globe it rests at full size, then eases down to half so it stays out of the way. */
+export const GLOBE_REST_DELAY_MS = 4000;
+export const GLOBE_SHRINK_MS = 1400;
+export const GLOBE_GROW_MS = 350;
+export const GLOBE_REST_SCALE = .5;
+
+/** Advance the 0..1 rest amount: 0 = full globe, 1 = resting size. `awake` (hover, focus, drag) always grows. */
+export function globeRestStep(rest: number, idleMs: number, elapsedMs: number, awake: boolean) {
+  const target = !awake && idleMs >= GLOBE_REST_DELAY_MS ? 1 : 0;
+  const rate = elapsedMs / (target ? GLOBE_SHRINK_MS : GLOBE_GROW_MS);
+  return Math.max(0, Math.min(1, rest + Math.sign(target - rest) * Math.min(rate, Math.abs(target - rest))));
+}
+
+/** Visual scale for a rest amount, eased so the change starts and ends softly. */
+export function globeRestScale(rest: number) {
+  const t = Math.max(0, Math.min(1, rest)), eased = t * t * (3 - 2 * t);
+  return 1 - (1 - GLOBE_REST_SCALE) * eased;
+}

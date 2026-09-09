@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GLOBE_GROW_MS, GLOBE_REST_DELAY_MS, GLOBE_REST_SCALE, GLOBE_SHRINK_MS, globeRestScale, globeRestStep,
   clampGlobeCenter,
   globeDiameter,
   globeFaceSize,
@@ -167,5 +168,22 @@ describe('menu pose transition', () => {
   it('accepts existing ring poses with a zero pitch default', () => {
     const ring = ringPose(0, 0, 16, 300);
     expect(mixMenuPose(ring, globePose(0, 16, 56, 0), 0)).toEqual({ ...ring, pitch: 0 });
+  });
+});
+
+describe('globe resting size', () => {
+  it('stays full until the rest delay, then eases to half and grows back quickly when awake', () => {
+    expect(globeRestScale(0)).toBe(1);
+    expect(globeRestScale(1)).toBe(GLOBE_REST_SCALE);
+    let rest = 0;
+    for (let idle = 0; idle < GLOBE_REST_DELAY_MS; idle += 16) rest = globeRestStep(rest, idle, 16, false);
+    expect(rest).toBe(0);
+    for (let idle = GLOBE_REST_DELAY_MS; idle < GLOBE_REST_DELAY_MS + GLOBE_SHRINK_MS + 16; idle += 16) rest = globeRestStep(rest, idle, 16, false);
+    expect(rest).toBe(1);
+    expect(globeRestScale(.5)).toBeGreaterThan(GLOBE_REST_SCALE);
+    expect(globeRestScale(.5)).toBeLessThan(1);
+    let grown = rest;
+    for (let step = 0; step < GLOBE_GROW_MS / 16 + 1; step++) grown = globeRestStep(grown, 99999, 16, true);
+    expect(grown).toBe(0);
   });
 });

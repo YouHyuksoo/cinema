@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { clampGlobeCenter, globeDiameter, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
-  isGlobeDrag, mixMenuPose, type MenuPose, type Point } from './filmMenuGlobe';
+  globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, type MenuPose, type Point } from './filmMenuGlobe';
 import { ringPose } from './filmMenuRing';
 
 type Phase = 'open' | 'closed' | 'morphing';
@@ -42,6 +42,9 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     let globeCenter = globeRestingCenter(viewport, diameter);
     let perspective = { ...globeCenter }, fromPerspective = { ...globeCenter };
     let momentum = { x: 0, y: 0 };
+    // Resting size: after the globe has been idle a while it eases to half; hover, focus or drag wakes it.
+    let rest = 0, idleMs = 0, awake = false;
+    const restScale = () => globeRestScale(rest);
     let pointer: null | { id: number; origin: Point; center: Point; lastCenter: Point;
       lastTime: number; dragged: boolean; velocity: Point } = null;
     let suppressClick = false;
@@ -62,10 +65,13 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       globeCenter = globeRestingCenter(viewport, diameter, rememberedCenter.current);
       button.style.width = `${diameter}px`; button.style.height = `${diameter}px`;
     };
-    const globe = () => Array.from({ length: count }, (_, index) => {
-      const pose = globePose(index, count, radius, angle);
-      return { ...pose, x: globeCenter.x + pose.x, y: globeCenter.y + pose.y, scale: faceScale };
-    });
+    const globe = () => {
+      const sized = restScale();
+      return Array.from({ length: count }, (_, index) => {
+        const pose = globePose(index, count, radius * sized, angle);
+        return { ...pose, x: globeCenter.x + pose.x, y: globeCenter.y + pose.y, scale: faceScale * sized };
+      });
+    };
     const ring = (capture = false) => {
       const origin = stageCenter();
       return Array.from({ length: count }, (_, index) => {
@@ -110,7 +116,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       floating.style.transform = `translateY(${floatingY}px)`;
       const visualY = currentPhase === 'closed' ? floatingY : 0;
       overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y + visualY}px`;
-      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y + floatingY}px,0) translate(-50%,-50%)`;
+      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y + floatingY}px,0) translate(-50%,-50%) scale(${restScale()})`;
     };
     const stopFrame = () => { if (raf) cancelAnimationFrame(raf); raf = 0; previousTime = null; };
     const releaseActivePointer = () => {
@@ -124,6 +130,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       }
     };
     const finish = () => {
+      rest = 0; idleMs = 0;
       current = input.menuOpen ? targetRing() : globe(); floatingY = 0; elapsed = 0; floatTime = 0;
       perspective = input.menuOpen ? ringPerspective() : { ...globeCenter };
       publish(input.menuOpen ? 'open' : 'closed'); draw();
@@ -148,6 +155,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
           globeCenter = next.center; momentum = next.velocity; rememberedCenter.current = globeCenter;
         }
         floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / 4800);
+        idleMs += delta; rest = globeRestStep(rest, idleMs, delta, awake);
         perspective = { ...globeCenter }; current = globe(); draw();
       }
       schedule();
@@ -156,7 +164,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     actions.current = {
       start(pointerId, point, time) {
         if (currentPhase !== 'closed' || pointer) return false;
-        stopFrame(); momentum = { x: 0, y: 0 }; suppressClick = false;
+        stopFrame(); momentum = { x: 0, y: 0 }; suppressClick = false; awake = true; idleMs = 0;
         globeCenter = clampGlobeCenter({ x: globeCenter.x, y: globeCenter.y + floatingY }, viewport, diameter);
         rememberedCenter.current = globeCenter; floatingY = 0; perspective = { ...globeCenter };
         pointer = { id: pointerId, origin: point, center: globeCenter, lastCenter: globeCenter,
@@ -183,11 +191,11 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
           const speed = Math.hypot(pointer.velocity.x, pointer.velocity.y), scale = speed > .55 ? .55 / speed : 1;
           momentum = { x: pointer.velocity.x * scale, y: pointer.velocity.y * scale };
         } else momentum = { x: 0, y: 0 };
-        suppressClick = wasDrag; pointer = null; setDragging(false); schedule();
+        suppressClick = wasDrag; pointer = null; idleMs = 0; setDragging(false); schedule();
       },
       cancel(pointerId) {
         if (!pointer || pointer.id !== pointerId) return;
-        pointer = null; momentum = { x: 0, y: 0 }; suppressClick = false; setDragging(false); schedule();
+        pointer = null; momentum = { x: 0, y: 0 }; suppressClick = false; idleMs = 0; setDragging(false); schedule();
       },
       blockClick() { const blocked = suppressClick; suppressClick = false; return blocked; },
     };
@@ -226,8 +234,10 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       if (document.hidden) { momentum = { x: 0, y: 0 }; releaseActivePointer(); }
       else schedule();
     };
+    const wake = () => { awake = true; idleMs = 0; schedule(); };
+    const sleep = () => { awake = button.matches(':hover') || button.matches(':focus-visible'); idleMs = 0; };
     const preference = () => {
-      stopFrame(); momentum = { x: 0, y: 0 }; floatingY = 0;
+      stopFrame(); momentum = { x: 0, y: 0 }; floatingY = 0; rest = 0;
       if (reduced.matches) finish(); else schedule();
     };
     measure(); cacheRing(); current = input.menuOpen ? targetRing() : globe();
@@ -236,8 +246,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const observer = new ResizeObserver(resize); observer.observe(element);
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); short.addEventListener('change', resize); schedule();
+    button.addEventListener('pointerenter', wake); button.addEventListener('pointerleave', sleep);
+    button.addEventListener('focus', wake); button.addEventListener('blur', sleep);
     return () => {
       stopFrame(); releaseActivePointer(); observer.disconnect(); update.current = null; actions.current = null;
+      button.removeEventListener('pointerenter', wake); button.removeEventListener('pointerleave', sleep);
+      button.removeEventListener('focus', wake); button.removeEventListener('blur', sleep);
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);
       reduced.removeEventListener('change', preference); short.removeEventListener('change', resize);
     };
