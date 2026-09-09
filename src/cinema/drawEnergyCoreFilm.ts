@@ -1,39 +1,60 @@
-import { DEFAULT_ENERGY_DATA, energyCoreState, type EnergyCoreData } from './energyCore';
-import { ENERGY_CHANNELS, energyPowerReading } from './energyPower';
-import { drawEnergyPowerGauge } from './components/drawEnergyPower';
-import { drawEnergyReactor } from './components/drawEnergyReactor';
-import { drawCornerField } from './components/drawCornerField';
-import { DEFAULT_FONTS, filmText, signalColor, type FilmFonts } from './filmDrawing';
-import { beginFilmViewport, type FilmViewportInsets } from './filmViewport';
-import { applyFocusProjection, focusProjection } from './filmFocus';
+import { DEFAULT_ENERGY_DATA, ENERGY_LAYERS, type EnergyCoreData } from './energyCore';
+import { ENERGY_PALETTE, energyBoardState } from './energyDashboard';
+import { drawEnergyRing, mixHex } from './components/drawEnergyRing';
+import { drawEnergyHudBoard } from './components/drawEnergyHudBoard';
+import { drawEnergyInfoBoard } from './components/drawEnergyInfoBoard';
+import { drawSevenSegment, withAlpha } from './components/drawHudPanel';
+import { DEFAULT_FONTS, type FilmFonts } from './filmDrawing';
+import { beginFilmViewport, fillFilmViewport, type FilmViewportInsets } from './filmViewport';
+import { smooth } from './filmDrawing';
 
+/**
+ * Energy scene: act one is a cyan HUD dashboard (glass panels, gear ring, holographic pedestal),
+ * act two a violet infographic (wedge ring, dot matrix, checks, waves). The ring stays in place
+ * and morphs across the cut at ENERGY_BOARD_SWITCH; both acts read the same energy data.
+ */
 export function drawEnergyCoreFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
   fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: EnergyCoreData = DEFAULT_ENERGY_DATA) {
-  const state = energyCoreState(time), channel = ENERGY_CHANNELS[state.index], reading = data[channel.key];
-  const metric = energyPowerReading(reading);
+  const state = energyBoardState(time);
   const view = beginFilmViewport(ctx, width, height, insets);
-  drawCornerField(ctx, view, time, state.focus * .5);
-  const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false) =>
-    filmText(ctx, fonts, value, x, y, size, state.opacity * alpha, mono, 'left', signalColor(channel.heat, 1));
-  text('ENERGY / ARC REACTOR', 72, 76, 14, .8, true);
-  text(data.name, 72, 102, 10, .5, true);
-  const pulse = drawEnergyReactor(ctx, time, data, state);
+  const hud = ENERGY_PALETTE.hud, info = ENERGY_PALETTE.infographic;
   ctx.save();
-  applyFocusProjection(ctx, focusProjection({ x: 222, y: 235, focus: state.focus, depth: 65, lift: 4 }));
-  text(`${channel.label} / ${channel.title}`, 110, 174, 13, .7, true);
-  text(metric.available ? reading.value.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '—', 107, 239, 60, 1, true);
-  text(reading.unit, 113, 274, 23, .75, true);
-  text(metric.available ? `기준 ${reading.capacity.toLocaleString('en-US')} ${reading.unit}` : '데이터 확인', 113, 312, 13, .7);
-  text(metric.available ? `${(metric.ratio * 100).toFixed(1)}%  /  ${metric.over ? '기준 초과' : '기준 대비'}` : '유효한 측정값과 기준이 필요합니다', 113, 341, 11, .8, true);
-  ctx.restore();
-  const anchors = ENERGY_CHANNELS.map((item, index) => drawEnergyPowerGauge(ctx, fonts, index, time, data[item.key]));
-  if (state.readout > 0) {
-    const anchor = anchors[state.index];
-    ctx.save(); ctx.globalAlpha = state.opacity * state.readout * .3;
-    ctx.beginPath(); ctx.moveTo(pulse.x, pulse.y);
-    ctx.bezierCurveTo(pulse.x + 30, 363, anchor.x, 370, anchor.x, anchor.y);
-    ctx.strokeStyle = signalColor(channel.heat, .9); ctx.lineWidth = .9; ctx.stroke(); ctx.restore();
+  ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.lineCap = 'butt'; ctx.textBaseline = 'alphabetic';
+  // Every scene starts from the film's opaque base so nothing from the previous chapter bleeds through.
+  ctx.globalAlpha = 1; ctx.fillStyle = '#040b10'; fillFilmViewport(ctx, view);
+  // Backdrop: navy for the HUD, violet for the infographic, with a faint perspective grid.
+  const backdrop = ctx.createLinearGradient(0, view.top, 0, view.bottom);
+  backdrop.addColorStop(0, mixHex('#04102a', '#1a0a4a', state.blend));
+  backdrop.addColorStop(1, mixHex(hud.background, info.background, state.blend));
+  ctx.globalAlpha = state.opacity; ctx.fillStyle = backdrop;
+  ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
+  ctx.globalAlpha = state.opacity * .12; ctx.strokeStyle = mixHex(hud.line, info.line, state.blend); ctx.lineWidth = 1;
+  for (let x = 72; x <= 1208; x += 56) { ctx.beginPath(); ctx.moveTo(x, 60); ctx.lineTo(x, 650); ctx.stroke(); }
+  for (let y = 60; y <= 650; y += 56) { ctx.beginPath(); ctx.moveTo(72, y); ctx.lineTo(1208, y); ctx.stroke(); }
+  if (state.blend > 0) {
+    // Dotted texture of the infographic act.
+    ctx.globalAlpha = state.opacity * state.blend * .35; ctx.fillStyle = info.channels[1];
+    for (let x = 80; x < 1200; x += 24) for (let y = 70; y < 640; y += 24) ctx.fillRect(x, y, 1.5, 1.5);
   }
-  text('POWER CHANNELS / 03', 72, 689, 10, .5, true);
-  text('시연 데이터', 990, 689, 11, .5);
+
+  // Top readout strip: the three values as segmented digits, coloured per channel.
+  const stripAlpha = state.opacity * smooth(.4, 1.6, state.elapsed);
+  let cursor = 640 - 170;
+  ENERGY_LAYERS.forEach((layer, index) => {
+    const value = data[layer.key].value;
+    const digits = Number.isFinite(value) ? value.toLocaleString('en-US', { maximumFractionDigits: 1, useGrouping: false }) : '--';
+    const color = mixHex(hud.channels[index], info.channels[index], state.blend);
+    const shown = drawSevenSegment(ctx, digits, cursor, 62, 18, color, stripAlpha, { ghost: .05 });
+    ctx.globalAlpha = stripAlpha * .7; ctx.fillStyle = withAlpha(color, .9); ctx.font = `8px ${fonts.mono}`; ctx.textAlign = 'left';
+    ctx.fillText(`${layer.label} ${data[layer.key].unit}`, cursor, 92);
+    cursor += shown + 44;
+  });
+  // Act label sits at the bottom-left, clear of the chapter code the film draws at the top-right.
+  ctx.globalAlpha = state.opacity * .7; ctx.fillStyle = mixHex(hud.dim, info.dim, state.blend); ctx.font = `11px ${fonts.mono}`; ctx.textAlign = 'left';
+  ctx.fillText(state.blend < .5 ? 'ENERGY / HUD DASHBOARD · ACT 1' : 'ENERGY / INFOGRAPHIC · ACT 2', 72, 646);
+
+  drawEnergyHudBoard(ctx, fonts, data, state, time, state.opacity * (1 - state.blend));
+  drawEnergyInfoBoard(ctx, fonts, data, state, time, state.opacity * state.blend);
+  drawEnergyRing(ctx, fonts, data, state, time);
+  ctx.restore();
 }

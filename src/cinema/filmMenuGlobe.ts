@@ -348,7 +348,8 @@ function soccerSphereTexture() {
       data[i] = 255;
       data[i + 1] = 194;
       data[i + 2] = 229;
-      data[i + 3] = Math.round(38 + weight * 110);
+      // Cells keep a base alpha so the folded ball reads as a lit sphere, not just a seam lattice.
+      data[i + 3] = Math.round(64 + weight * 150);
     }
   }
   sphereTexture = { width, height, data };
@@ -394,8 +395,9 @@ function sphereTable(ctx: CanvasRenderingContext2D, size: number): SphereTable {
       index[n] = (y * size + x) * 4;
       lonFrac[n] = Math.atan2(nx, nz) / TAU + 1.5;
       row[n] = ty * tw * 4;
-      light[n] = Math.max(.28, nx * -.32 + ny * -.52 + nz * .79);
-      spec[n] = Math.pow(Math.max(0, nz * .5 + light[n] * .5), 22) * 28;
+      // Ambient floor plus diffuse from the upper-left, and a stronger specular so the ball glows.
+      light[n] = .46 + .6 * Math.max(0, nx * -.32 + ny * -.52 + nz * .79);
+      spec[n] = Math.pow(Math.max(0, nz * .5 + light[n] * .5), 18) * 70;
       alpha[n] = .75 + nz * .25;
       n++;
     }

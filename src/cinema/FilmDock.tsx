@@ -99,7 +99,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
         onExpand={expandMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={(id) => {
           focusIntent.current = 'globe'; setExpanded(false); camera.closePreview(); player.selectChapter(id); onMenuOpenChange(false);
         }} />
-      <FilmMenuCube links={{ admin: '/cinema/admin', ai: '/cinema/ai' }} />
+      {camera.preview && <FilmMenuCube links={{ admin: '/cinema/admin', ai: '/cinema/ai' }} />}
     </div>
   );
 }
