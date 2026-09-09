@@ -1,4 +1,5 @@
 import { smooth } from './filmDrawing';
+import { mix } from './filmMath';
 import { createHoloProjection, type HoloPoint } from './holoSpace';
 
 export const MACHINE_FILM_SECONDS = 36;
@@ -51,7 +52,6 @@ const OPEN_CENTRES: Record<MachinePartId, HoloPoint> = {
   board: { x: -115, y: 58, z: 0 }, battery: { x: 153, y: 55, z: -58 },
   display: { x: 425, y: -5, z: -135 },
 };
-const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const openEase = (start: number, end: number, time: number) => {
   const value = Math.max(0, Math.min(1, (time - start) / (end - start)));
   return 1 - (1 - value) ** 3;

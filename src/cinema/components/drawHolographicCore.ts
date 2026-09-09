@@ -1,5 +1,6 @@
 import { createCoreProjection, CORE_OUTER_RADIUS } from '../cornerCoreGeometry';
 import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
+import { clamp01 as clamp } from '../filmMath';
 
 export interface HolographicCoreOptions {
   time: number;
@@ -18,7 +19,6 @@ export interface HolographicCoreOptions {
 
 const TAU = Math.PI * 2;
 type Projection = ReturnType<typeof createCoreProjection>;
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
 
 function arc(ctx: CanvasRenderingContext2D, plane: Projection, radius: number, z: number,
   start: number, end: number) {

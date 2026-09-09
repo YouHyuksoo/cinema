@@ -1,4 +1,4 @@
-import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
+import { filmText, fitText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
 import { CORNER_CARD_SIZE, type CornerItem } from '../cornerSequence';
 
 export type CornerReadoutItem = Omit<CornerItem, 'corner'>;
@@ -53,10 +53,7 @@ function opticalSurface(ctx: CanvasRenderingContext2D, width: number, height: nu
 
 function fittedText(ctx: CanvasRenderingContext2D, fonts: FilmFonts, text: string, size: number, width: number) {
   ctx.font = `${size}px ${fonts.label}`;
-  if (ctx.measureText(text).width <= width) return text;
-  const characters = Array.from(text);
-  while (characters.length && ctx.measureText(characters.join('') + '…').width > width) characters.pop();
-  return characters.join('') + '…';
+  return fitText(ctx, text, width);
 }
 
 function miniature(ctx: CanvasRenderingContext2D, fonts: FilmFonts, item: CornerReadoutItem,

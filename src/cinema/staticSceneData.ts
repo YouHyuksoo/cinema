@@ -1,4 +1,5 @@
 import type { SceneDataStore } from './sceneDataStore';
+import { CINEMA_BASE_PATH } from './cinemaApi';
 
 /** Optional static feed: an array (or one) of scene data documents served with the site. */
 export const STATIC_SCENE_DATA_PATH = '/cinema/data/scenes.json';
@@ -39,5 +40,5 @@ export async function loadStaticSceneData(store: SceneDataStore, options: Static
 
 /** Browser defaults: global fetch and the Next.js base path baked in at build time. */
 export function browserStaticSceneDataOptions(): StaticSceneDataOptions {
-  return { fetch: typeof fetch === 'function' ? fetch.bind(globalThis) : undefined, basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '' };
+  return { fetch: typeof fetch === 'function' ? fetch.bind(globalThis) : undefined, basePath: CINEMA_BASE_PATH };
 }

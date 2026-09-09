@@ -2,6 +2,7 @@ import { signalColor, smooth, type FilmFonts } from '../filmDrawing';
 import { applyFocusProjection } from '../filmFocus';
 import { barTelemetryLayout, type BarChartOptions, type BarAnchor } from '../barTelemetryGeometry';
 import { drawTelemetryBar } from './drawTelemetryBar';
+import { pad2 } from '../filmMath';
 
 export type { BarDatum, BarChartOptions, BarAnchor } from '../barTelemetryGeometry';
 
@@ -42,7 +43,7 @@ export function drawBarChart(ctx: CanvasRenderingContext2D, fonts: FilmFonts, op
     else {
       ctx.fillStyle = signalColor(heat, .08); ctx.fillRect(channelRight - 29, y - 55, 26, 21);
       text(`T${index + 1}`, channelRight - 16, y - 39, 18 * scale, heat, .96, 'center');
-      text(`CH / ${String(index + 1).padStart(2, '0')}`, channelLeft + 6, y - 43, 9 * scale, heat, .7);
+      text(`CH / ${pad2(index + 1)}`, channelLeft + 6, y - 43, 9 * scale, heat, .7);
       text('OUTPUT', channelLeft + 6, y - 31, 7 * scale, heat, .4);
       for (let mark = 0; mark < 7; mark++) {
         ctx.fillStyle = signalColor(heat, mark < Math.round(value / layout.maximum * 7) ? .4 : .08);

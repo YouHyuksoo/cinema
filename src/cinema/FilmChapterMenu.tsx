@@ -7,6 +7,7 @@ import { ringIndex, ringPose } from './filmMenuRing';
 import { useFilmMenuRing } from './useFilmMenuRing';
 import { FilmMenuGlobe } from './FilmMenuGlobeView';
 import { useFilmMenuGlobe } from './useFilmMenuGlobe';
+import { pad2 } from './filmMath';
 
 const SHORT_LABELS: Partial<Record<FilmId, string>> = {
   wave: '온습도', gears: '기어', scan: '설비 스캔', unfold: '지표', trace: '변화 추적',
@@ -52,7 +53,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
           tabIndex={index === front ? 0 : -1} aria-describedby="film-ring-hint"
           style={{ '--ring-x': `${pose.x}px`, '--ring-y': `${pose.y}px`, '--ring-z': `${pose.z}px`,
             '--ring-yaw': `${pose.yaw}deg`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity } as CSSProperties}
-          aria-label={`${String(index + 1).padStart(2, '0')} ${chapter.title}`}
+          aria-label={`${pad2(index + 1)} ${chapter.title}`}
           aria-current={active === chapter.id ? 'step' : undefined}
           title={`${chapter.title} · ${chapter.subtitle}`} disabled={disabled}
           onFocus={() => { if (!ringBlocked && !pointerActive()) align(index); }}
@@ -73,7 +74,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
       <div className={ringStyles.controls}>
         <button type="button" aria-label="이전 메뉴로 회전" disabled={disabled} onClick={() => align(ringIndex(turn - 1, FILM_CHAPTERS.length))}>‹</button>
         <div className={ringStyles.readout} aria-live={dragging ? 'off' : 'polite'} aria-atomic="true">
-          <strong title={selected.title}>{String(front + 1).padStart(2, '0')} / {FILM_CHAPTERS.length} · {selected.title}</strong>
+          <strong title={selected.title}>{pad2(front + 1)} / {FILM_CHAPTERS.length} · {selected.title}</strong>
           <small>{selected.id === active ? '재생 중 · 클릭하면 다시 시작' : '정면 클릭 · Enter로 실행'}</small>
         </div>
         <button type="button" aria-label="다음 메뉴로 회전" disabled={disabled} onClick={() => align(ringIndex(turn + 1, FILM_CHAPTERS.length))}>›</button>

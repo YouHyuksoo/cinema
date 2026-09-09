@@ -14,7 +14,7 @@ import { drawEnergyCoreFilm } from './drawEnergyCoreFilm';
 import { drawProductInspectionFilm } from './drawProductInspectionFilm';
 import { drawSpcFilm } from './drawSpcFilm';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './drawGearTrain';
-import { chapterAt, FILM_CHAPTERS, FILM_SECONDS, type FilmId } from './filmProgram';
+import { chapterAt, FILM_CHAPTER_BOUNDARIES, FILM_SECONDS, type FilmId } from './filmProgram';
 import type { FilmViewportInsets } from './filmViewport';
 import { DEFAULT_FILM_CHARTS, type FilmChartSettings } from './chartPresentation';
 import type { FactoryInteraction } from './smtFactoryInteraction';
@@ -23,6 +23,7 @@ import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { MachineSubject } from './machinePresentation';
 import type { SceneDataProvenance } from './sceneDataStore';
 import { applyPcbInspectionLayout, pcbInspectionLayout } from './pcbInspectionLayout';
+import { pad2 } from './filmMath';
 
 export { FILM_SECONDS } from './filmProgram';
 export interface MachineRenderOptions { subject?: MachineSubject; provenance?: SceneDataProvenance }
@@ -93,12 +94,8 @@ function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: n
   }
   ctx.fillStyle = signalColor(0, .12); ctx.fillRect(72, 662, 1136, .7);
   ctx.fillStyle = signalColor(0, .55); ctx.fillRect(72, 662, 1136 * (start + localTime) / FILM_SECONDS, .7);
-  let boundary = 0;
-  for (const item of FILM_CHAPTERS.slice(0, -1)) {
-    boundary += item.duration;
-    ctx.fillRect(72 + 1136 * boundary / FILM_SECONDS, 659, 1, 7);
-  }
+  for (const boundary of FILM_CHAPTER_BOUNDARIES) ctx.fillRect(72 + 1136 * boundary / FILM_SECONDS, 659, 1, 7);
   const chapterCode = chapter.id === 'wave' ? 'ENV' : chapter.id.toUpperCase();
-  filmText(ctx, fonts, `${String(index + 1).padStart(2, '0')} / ${chapterCode}`, 1208, 76, 12, .65, true, 'right');
+  filmText(ctx, fonts, `${pad2(index + 1)} / ${chapterCode}`, 1208, 76, 12, .65, true, 'right');
   ctx.restore();
 }

@@ -1,4 +1,5 @@
 import type { SceneDataStore } from './sceneDataStore';
+import { CINEMA_BASE_PATH } from './cinemaApi';
 
 export interface FeedPollStatus { feed: string; enabled: boolean; ok: boolean; at?: string; error?: string; issues: string[]; counts: Record<string, { rows: number; kept: number }>; nextAt?: string }
 export interface FeedPollSummary { mode: 'server' | 'static' | 'error'; feeds: FeedPollStatus[]; applied: number; rejected: string[]; error?: string; at: string }
@@ -54,5 +55,5 @@ export function startFeedPolling(store: SceneDataStore, options: FeedPollingOpti
 }
 
 export function browserFeedPollingOptions(): Pick<FeedPollingOptions, 'fetch' | 'basePath'> {
-  return { fetch: typeof fetch === 'function' ? fetch.bind(globalThis) : undefined, basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '' };
+  return { fetch: typeof fetch === 'function' ? fetch.bind(globalThis) : undefined, basePath: CINEMA_BASE_PATH };
 }

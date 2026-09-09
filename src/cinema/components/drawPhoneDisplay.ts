@@ -1,7 +1,7 @@
 import type { FilmFonts } from '../filmDrawing';
+import { finiteUnit as clamp } from '../filmMath';
 import { phoneCircle, phoneLabel, phoneOutline, phonePath, phonePlate, type PhoneProject } from './phoneDrawing';
 
-const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 
 function appIcon(ctx: CanvasRenderingContext2D, project: PhoneProject, index: number, x: number, y: number, z: number) {
   phonePath(ctx, project, phoneOutline(x, y, z, 35, 35, 8), true);

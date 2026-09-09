@@ -36,6 +36,9 @@ export type FilmId = FilmChapter['id'];
 export type PlaybackMode = 'sequence' | 'chapter';
 export const isVisorChapter = (id: FilmId) => id === 'visor' || id === 'visorPan';
 export const FILM_SECONDS = FILM_CHAPTERS.reduce((total, chapter) => total + chapter.duration, 0);
+/** Film time at which each chapter after the first begins; the progress bar marks these every frame. */
+export const FILM_CHAPTER_BOUNDARIES: readonly number[] = FILM_CHAPTERS.slice(0, -1)
+  .map((_, index) => FILM_CHAPTERS.slice(0, index + 1).reduce((total, chapter) => total + chapter.duration, 0));
 
 export function chapterStart(id: FilmId): number {
   let start = 0;

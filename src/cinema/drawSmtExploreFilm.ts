@@ -4,6 +4,7 @@ import { filmText, signalColor, type FilmFonts } from './filmDrawing';
 import { factoryWorld, SMT_FACTORY_DEPTH, SMT_FACTORY_STATIONS, smtFactoryState, type FactoryState } from './smtFactory';
 import { interactionCamera, type FactoryInteraction } from './smtFactoryInteraction';
 import { strokeSpatialPath } from './inspectionSpace';
+import { pad2 } from './filmMath';
 
 /** Manual view uses the same equipment and perspective as the automatic tour. */
 export function drawSmtExploreFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
@@ -31,7 +32,7 @@ export function drawSmtExploreFilm(ctx: CanvasRenderingContext2D, width: number,
   }
   filmText(ctx, fonts, 'VISOR / SMT FACTORY', 65, 72, 17, .9, true);
   filmText(ctx, fonts, '05 LINES / 40 MACHINES / EXPLORE', 65, 95, 10, .6, true);
-  filmText(ctx, fonts, selected ? `LINE ${String(selected.line).padStart(2, '0')} / ${selected.label} · 선택됨`
+  filmText(ctx, fonts, selected ? `LINE ${pad2(selected.line)} / ${selected.label} · 선택됨`
     : '설비를 클릭하면 선택됩니다.', 640, 620, 13, .9, false, 'center');
   filmText(ctx, fonts, '드래그 회전 · Shift + 드래그 이동 · 휠 확대/축소', 640, 692, 11, .6, false, 'center');
 }

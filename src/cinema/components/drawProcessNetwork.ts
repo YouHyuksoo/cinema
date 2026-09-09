@@ -1,6 +1,7 @@
 import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
 import { processCapacity, processFlowPoint, type ProcessNetworkData, type ProcessNetworkState, type ProcessNodeState } from '../processNetwork';
 import type { HoloPoint } from '../holoSpace';
+import { pad2 } from '../filmMath';
 
 const TAU = Math.PI * 2;
 export interface ProcessNetworkOptions { data: ProcessNetworkData; state: ProcessNetworkState }
@@ -70,7 +71,7 @@ function drawNode(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: Proces
   const labelY = labelAbove ? point.y - radius - 24 * point.scale : point.y + radius + 29 * point.scale;
   filmText(ctx, fonts, entry.node.label, point.x, labelY, 14 + focus * 2,
     alpha * .95, false, 'center');
-  filmText(ctx, fonts, `${String(entry.index + 1).padStart(2, '0')} / ${entry.node.code}`, point.x,
+  filmText(ctx, fonts, `${pad2(entry.index + 1)} / ${entry.node.code}`, point.x,
     labelY + 17 * point.scale, 9, alpha * .5, true, 'center');
   if (entry.selected) {
     const surge = .5 + .5 * Math.sin(state.time * 3.2);
@@ -100,7 +101,7 @@ function drawReadout(ctx: CanvasRenderingContext2D, fonts: FilmFonts, data: Proc
     0, 0, 10, .8, true, signalColor(heat, 1));
   text(target.node.label, 0, 30, 23, .98);
   text('공정 앞 대기', 0, 60, 12, .6);
-  text(String(Math.round(target.reading.queue)).padStart(2, '0'), 0, 118, 62, 1, true, signalColor(heat, 1));
+  text(pad2(Math.round(target.reading.queue)), 0, 118, 62, 1, true, signalColor(heat, 1));
   text('EA', 87, 115, 14, .65, true);
   const rows = [
     { label: '사이클', value: `${target.reading.cycleSeconds.toFixed(1)} s`, x: 0 },

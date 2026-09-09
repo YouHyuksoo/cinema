@@ -1,4 +1,5 @@
 import { smooth } from './filmDrawing';
+import { mix } from './filmMath';
 
 export const CORNER_FILM_SECONDS = 40;
 export const CORNER_FINALE_START = 29.2;
@@ -50,7 +51,6 @@ export interface CornerSequenceState {
 const CENTER = { x: 640, y: 350 };
 const INTRO_SCALE = 1.08;
 const PARKED_SCALE = .64;
-const mix = (from: number, to: number, progress: number) => from + (to - from) * progress;
 
 /** Bend vertically before crossing the parked column, keeping earlier cards unobstructed. */
 function cornerPath(corner: CornerItem['corner'], progress: number) {

@@ -1,4 +1,5 @@
 import type { FilmCamera } from './useFilmCamera';
+import { RangeField } from './FilmFields';
 import styles from './film.module.css';
 
 export interface FilmCameraMode extends FilmCamera {
@@ -32,18 +33,10 @@ export function FilmCameraControls({ camera }: { camera: FilmCameraMode }) {
             <input type="checkbox" checked={camera.mirror} onChange={event => camera.setMirror(event.target.checked)} />
             거울 모드
           </label>
-          <label className={styles.textureIntensity}>
-            <span>얼굴 확대</span>
-            <input type="range" min="1" max="2" step="0.05" value={camera.zoom}
-              aria-label="얼굴 확대" onChange={event => camera.setZoom(Number(event.target.value))} />
-            <span className={styles.textureValue}>{camera.zoom.toFixed(2)}×</span>
-          </label>
-          <label className={styles.textureIntensity}>
-            <span>얼굴 블러</span>
-            <input type="range" min="0" max="100" step="1" value={camera.blur}
-              aria-label="얼굴 블러" onChange={event => camera.setBlur(Number(event.target.value))} />
-            <span className={styles.textureValue}>{camera.blur}%</span>
-          </label>
+          <RangeField label="얼굴 확대" ariaLabel="얼굴 확대" min={1} max={2} step={0.05} value={camera.zoom}
+            display={`${camera.zoom.toFixed(2)}×`} onChange={camera.setZoom} />
+          <RangeField label="얼굴 블러" ariaLabel="얼굴 블러" min={0} max={100} step={1} value={camera.blur}
+            display={`${camera.blur}%`} onChange={camera.setBlur} />
         </div>
       )}
       {camera.error && <p className={styles.cameraError} role="alert">{camera.error}</p>}

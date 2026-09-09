@@ -7,6 +7,7 @@ import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING,
 import { drawEnvironmentHeatmap } from './components/drawEnvironmentHeatmap';
 import { isEnvironmentPortrait } from './environmentMobileLayout';
 import { drawEnvironmentMobile } from './components/drawEnvironmentMobile';
+import { pad2 } from './filmMath';
 
 export const WAVE_FILM_SECONDS = ENVIRONMENT_FILM_SECONDS;
 
@@ -29,7 +30,7 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   text(isMap ? '센서 설치 공간 / 온도 히트맵'
     : state.elapsed >= ENVIRONMENT_TIMING.chartsStart ? '구역별 24시간 온도 변화' : data.title, 72, 110, 20);
   text('공통 온도 눈금 · 점선은 관리 범위', 565, 110, 11, state.historyPhase * (1 - map) * .6);
-  text(`${String(state.zones.length).padStart(2, '0')} ZONES`, 945, 112, 18, .85, true);
+  text(`${pad2(state.zones.length)} ZONES`, 945, 112, 18, .85, true);
   const readings = isMap ? state.zones.map(item => environmentReadingStatus(item.zone.temperature, item.zone.temperatureRange))
     : state.zones.map(item => item.status);
   const normal = readings.filter(status => status === 'normal').length;

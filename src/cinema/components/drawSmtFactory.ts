@@ -31,13 +31,14 @@ export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
     for(let x=40;x<SMT_LINE_WIDTH;x+=180)path([{x,y:1,z:z+40},{x:x+45,y:1,z:z+40},{x:x+34,y:1,z:z+30}],signalColor(0,.3));
   }
   const cameraDepth=(station:FactoryState['station'])=>inspectionCameraPoint(camera,factoryWorld({x:station.x,y:station.height/2,z:station.z-SMT_FACTORY_DEPTH/2})).z;
-  const ordered=[...SMT_FACTORY_STATIONS].sort((a,b)=>cameraDepth(b)-cameraDepth(a));
-  for(const station of ordered) {
+  // Depth is a matrix product per station; compute it once instead of twice per sort comparison.
+  const ordered=SMT_FACTORY_STATIONS.map(station=>({station,depth:cameraDepth(station)})).sort((a,b)=>b.depth-a.depth);
+  for(const {station,depth} of ordered) {
     const {x,z,width:w,height:h}=station;
     const front=project({x,y:h/2,z});
     const halfDepth=Math.cos(camera.pitch)*(Math.abs(Math.cos(camera.yaw))*w+Math.abs(Math.sin(camera.yaw))*SMT_FACTORY_DEPTH)/2
       +Math.abs(Math.sin(camera.pitch))*h/2;
-    if(cameraDepth(station)+halfDepth<camera.near) continue;
+    if(depth+halfDepth<camera.near) continue;
     const selected=station.key===(state.manualSelection===undefined?state.station.key:state.manualSelection);
     ctx.globalAlpha=state.presence*(selected?1:(1-state.focus*.70)*(state.manualSelection===undefined?smooth(100,230,front.depth):1));
     const heat=selected&&state.manualSelection===undefined&&state.stop.kind==='thermal'?1:0;

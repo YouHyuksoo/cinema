@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import styles from './jarvisConversationTrail.module.css';
+import { pad2 } from './filmMath';
 
-interface TrailMessage { role: 'user' | 'assistant'; content: string }
+interface TrailMessage { id?: string; role: 'user' | 'assistant'; content: string }
 
 /** Decorative echo of earlier messages; the live reply stays in the foreground dialogue. */
 export function JarvisConversationTrail({ messages }: { messages: readonly TrailMessage[] }) {
@@ -13,8 +14,8 @@ export function JarvisConversationTrail({ messages }: { messages: readonly Trail
       <div className={styles.viewport}>
         <div className={styles.track} style={{ '--trail-duration': `${duration}s` } as CSSProperties}>
           {[0, 1].map(copy => <div className={styles.sequence} key={copy}>
-            {history.map((message, index) => <div className={styles.entry} data-role={message.role} key={index}>
-              <span className={styles.marker}>{String(index + 1).padStart(2, '0')}</span>
+            {history.map((message, index) => <div className={styles.entry} data-role={message.role} key={message.id ?? index}>
+              <span className={styles.marker}>{pad2(index + 1)}</span>
               <div><small>{message.role === 'user' ? 'OPERATOR / INPUT' : 'HATCHERY / RESPONSE'}</small>
                 <p>{message.content}</p></div>
             </div>)}

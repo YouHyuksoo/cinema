@@ -1,6 +1,7 @@
 import { ENERGY_LAYERS, energyRatio, type EnergyCoreData, type EnergyCoreState } from './energyCore';
 import { energyPowerReading } from './energyPower';
 import { createHoloProjection, type HoloPoint } from './holoSpace';
+import { clamp01 as clamp } from './filmMath';
 
 /**
  * Arc reactor geometry for the energy scene: a plasma core, three concentric metric rings
@@ -13,7 +14,6 @@ export const REACTOR_COILS = 24;
 export const REACTOR_SEGMENTS = 48;
 export const REACTOR_ARC_MAX = 6;
 const TAU = Math.PI * 2;
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const hash = (a: number, b: number, c: number) => { const h = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453; return h - Math.floor(h); };
 
 /** Ring centers: stacked in depth, the focused ring lifts gently toward the viewer (milder than the old shell pose). */

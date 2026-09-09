@@ -6,6 +6,7 @@ import { SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from './hatcheryTargets
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { SceneDataResult } from './sceneDataDocument';
 import { isMachineSubject, MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
+import { cinemaApiUrl } from './cinemaApi';
 
 export interface RealtimeCallbacks {
   phase(value: JarvisPhase): void;
@@ -122,7 +123,7 @@ export class JarvisRealtimeSession {
       channel.onclose = () => { if (!this.closed) this.fail('OpenAI 대화 연결이 종료되었습니다.'); };
       const offer = await peer.createOffer(); if (this.closed) return;
       await peer.setLocalDescription(offer); if (this.closed) return;
-      const response = await fetch(`/api/cinema/realtime?voice=${encodeURIComponent(voice)}`, {
+      const response = await fetch(cinemaApiUrl(`realtime?voice=${encodeURIComponent(voice)}`), {
         method: 'POST', headers: { 'Content-Type': 'application/sdp' }, body: offer.sdp, signal: this.abort!.signal,
       });
       if (this.closed) return;

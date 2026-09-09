@@ -1,16 +1,27 @@
 import { environmentTemperatureAt, environmentTemperatureColor, type environmentHeatmap } from '../environmentHeatmap';
 
 type Heatmap = ReturnType<typeof environmentHeatmap>;
-interface FieldBuffer { key: string; field: HTMLCanvasElement; mask: HTMLCanvasElement }
+interface FieldBuffer { key: number[]; field: HTMLCanvasElement; mask: HTMLCanvasElement }
 const fields = new WeakMap<CanvasRenderingContext2D, FieldBuffer>();
 const SAMPLE_SIZE = 4;
 
+/** Flat numeric signature of everything the sampled field depends on; compared without allocating per frame. */
+function fieldKey(model: Heatmap): number[] {
+  const key = [model.bounds.x, model.bounds.y, model.bounds.width, model.bounds.height, model.domain.min, model.domain.max];
+  for (const room of model.rooms) key.push(room.pin.x, room.pin.y, room.temperature ?? Number.NEGATIVE_INFINITY);
+  return key;
+}
+function sameKey(a: number[], b: number[]) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 /** Cache the sampled field; playback animates its visibility without changing sensor readings. */
 function fieldBuffer(ctx: CanvasRenderingContext2D, model: Heatmap) {
-  const key = JSON.stringify([model.bounds, model.domain,
-    model.rooms.map(room => [room.pin.x, room.pin.y, room.temperature])]);
+  const key = fieldKey(model);
   const previous = fields.get(ctx);
-  if (previous?.key === key) return previous;
+  if (previous && sameKey(previous.key, key)) return previous;
   const field = previous?.field ?? document.createElement('canvas');
   const mask = previous?.mask ?? document.createElement('canvas');
   field.width = mask.width = Math.ceil(model.bounds.width / SAMPLE_SIZE);

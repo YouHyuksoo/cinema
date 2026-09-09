@@ -1,4 +1,5 @@
 import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
+import { clamp01 as clamp, pad2 } from '../filmMath';
 import { drawRotor } from './drawRotor';
 
 export interface VisorOverlayOptions {
@@ -16,7 +17,6 @@ export interface VisorOverlayOptions {
 }
 
 const TAU = Math.PI * 2;
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
 
 /** Visor-mounted instruments: slow eye movement stays independent of the world target. */
 export function drawVisorOverlay(ctx: CanvasRenderingContext2D, fonts: FilmFonts, options: VisorOverlayOptions) {
@@ -90,7 +90,7 @@ export function drawVisorOverlay(ctx: CanvasRenderingContext2D, fonts: FilmFonts
       ctx.beginPath(); ctx.arc(x, y, 8 + focus * 3, 0, TAU); stroke(.25, heat);
     }
   }
-  text(String(contactCount).padStart(2, '0'), 80, 431, 21, .8, 'center');
+  text(pad2(contactCount), 80, 431, 21, .8, 'center');
   text('CONTACTS', 80, 450, 9, .4, 'center');
   for (let index = 0; index < 6; index++) {
     const angle = -1.3 + index * .47;
@@ -101,7 +101,7 @@ export function drawVisorOverlay(ctx: CanvasRenderingContext2D, fonts: FilmFonts
 
   ctx.save(); ctx.globalAlpha *= 1 - clamp(options.annotationOpacity ?? 0) * .9;
   text('SENSOR ARRAY', 1205, 179, 10, .43, 'right');
-  text(focus > .8 ? `LOCK / ${String(targetId).padStart(2, '0')}` : 'ACQUIRING', 1205, 201, 17, .78, 'right');
+  text(focus > .8 ? `LOCK / ${pad2(targetId)}` : 'ACQUIRING', 1205, 201, 17, .78, 'right');
   text(options.sensor?.label ?? 'THERMAL', 1081, 231, 9, .45);
   text(options.sensor?.value ?? `${options.temperature.toFixed(1)}°`, 1205, 252, 25, .85, 'right');
   for (let index = 0; index < 23; index++) {

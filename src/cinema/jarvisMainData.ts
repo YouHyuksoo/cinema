@@ -3,6 +3,7 @@ import { processCapacity } from './processNetwork';
 import { analyzeSpc } from './spcStatistics';
 import { productInspectionResult } from './productInspection';
 import { environmentReadingStatus } from './zoneEnvironment';
+import { pad2 } from './filmMath';
 
 export const HATCHERY_METRIC_KINDS = ['production', 'process', 'quality', 'power', 'efficiency', 'inspection', 'temperature', 'humidity'] as const;
 export type HatcheryMetricKind = typeof HATCHERY_METRIC_KINDS[number];
@@ -37,9 +38,9 @@ export function hatcheryMetrics(data: FilmSceneData): HatcheryMetric[] {
   return [
     { kind: 'production', note: `목표 ${energy.production.capacity.toLocaleString('en-US')} EA`, label: '생산 진행 / OUTPUT', value: energy.production.value.toLocaleString('en-US'), unit: 'EA',
       fill: energy.production.value / energy.production.capacity, warning: false },
-    { kind: 'process', note: bottlenecks.map(node => node.label).join(' · ') || '병목 없음', label: '공정 병목 / PROCESS', value: String(bottlenecks.length).padStart(2, '0'), unit: `/ ${process.nodes.length}`,
+    { kind: 'process', note: bottlenecks.map(node => node.label).join(' · ') || '병목 없음', label: '공정 병목 / PROCESS', value: pad2(bottlenecks.length), unit: `/ ${process.nodes.length}`,
       fill: process.nodes.length ? bottlenecks.length / process.nodes.length : 0, warning: bottlenecks.length > 0 },
-    { kind: 'quality', note: quality.valid ? `X̄ · ${qualitySource.subgroups.length}개 부분군` : '데이터 확인 필요', label: '품질 이탈 / SPC', value: quality.valid ? String(quality.violationCount).padStart(2, '0') : '—', unit: '부분군',
+    { kind: 'quality', note: quality.valid ? `X̄ · ${qualitySource.subgroups.length}개 부분군` : '데이터 확인 필요', label: '품질 이탈 / SPC', value: quality.valid ? pad2(quality.violationCount) : '—', unit: '부분군',
       fill: quality.valid && qualitySource.subgroups.length ? quality.violationCount / qualitySource.subgroups.length : 0,
       warning: quality.valid && quality.outOfControl },
     { kind: 'power', note: `용량 ${energy.power.capacity} ${energy.power.unit}`, label: '사용 전력 / POWER', value: energy.power.value.toFixed(1), unit: energy.power.unit,

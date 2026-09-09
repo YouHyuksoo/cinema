@@ -4,11 +4,11 @@ import type { CSSProperties } from 'react';
 import { jarvisMainMetrics } from './jarvisMainData';
 import { JarvisMetricFrame } from './JarvisMetricFrame';
 import { JarvisMetricInstrument } from './JarvisMetricInstruments';
-import { useMetricStripScroll } from './useMetricStripScroll';
+import { useDriftScroll } from './useDriftScroll';
 import styles from './jarvisMetricCards.module.css';
 
 export function JarvisMetricCards() {
-  const { stripRef, viewportRef, paused, toggle } = useMetricStripScroll();
+  const { hostRef: stripRef, viewportRef, paused, toggle } = useDriftScroll({ axis: 'x', speed: 20, resumeMs: 1000, initialHoldMs: 1500 });
   return <div ref={stripRef} className={styles.strip} role="region" aria-label="상단 주요 지표">
     <div className={styles.stripBar}>
       <span>LIVE METRICS / {jarvisMainMetrics.length} · DEMO</span>

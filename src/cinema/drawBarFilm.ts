@@ -5,6 +5,7 @@ import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint
 import { DEFAULT_CHART_PRESENTATION, type ChartPresentation } from './chartPresentation';
 import type { FilmViewportInsets } from './filmViewport';
 import { DEFAULT_PRODUCTION_SNAPSHOT, productionSnapshotState, type ProductionSnapshot } from './productionSnapshot';
+import { pad2 } from './filmMath';
 
 const FOCUS_WINDOW = { enter: [9, 11.5] as [number, number], exit: [21.5, 24.5] as [number, number] };
 const READ_WINDOW = { enter: [11, 13.2] as [number, number], exit: [21.5, 24.5] as [number, number] };
@@ -25,7 +26,7 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
   const readProjection = focusProjection({ x: 955, y: 385, focus: readFocus, depth: 85, lift: 10 });
   const text = (value: string, x: number, y: number, size: number, opacity: number, mono = false, heat = 0) =>
     filmText(ctx, fonts, value, x, y, size, opacity * release, mono, 'left', signalColor(heat, 1));
-  const count = String(lines.length).padStart(2, '0');
+  const count = pad2(lines.length);
 
   const gauge = (x: number, y: number, width: number, ratio: number, opacity: number, heat = 0) => {
     const segments = 32, slot = width / segments, charge = Math.max(0, Math.min(1, ratio));
@@ -100,7 +101,7 @@ export function drawBarFilm(ctx: CanvasRenderingContext2D, width: number, height
   const totals = [
     { x: 150, label: 'TARGET / LINE', value: `${target.toLocaleString('en-US')} ${unit}` },
     { x: 399, label: 'AGGREGATE ACHIEVEMENT', value: `${(aggregateRatio * 100).toFixed(1)}%` },
-    { x: 685, label: 'LINES ON TARGET', value: `${String(reached).padStart(2, '0')} / ${count}` },
+    { x: 685, label: 'LINES ON TARGET', value: `${pad2(reached)} / ${count}` },
   ];
   for (const item of totals) {
     text(item.label, item.x, 616, 9, summary * .43, true);

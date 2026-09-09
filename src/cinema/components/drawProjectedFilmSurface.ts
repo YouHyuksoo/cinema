@@ -109,7 +109,9 @@ export function drawProjectedFilmSurface(context: CanvasRenderingContext2D,
   theme.setTheme(getFilmContextTheme(context));
   const surfaceContext = theme.ctx;
   surfaceContext.setTransform(1, 0, 0, 1, 0, 0);
-  surfaceContext.clearRect(0, 0, source.width, source.height);
+  // Only the sampled region (plus a bilinear margin) needs clearing; the reserved backing store
+  // grows to 2048² and clearing all of it 40× per frame dominated the SMT scenes.
+  surfaceContext.clearRect(0, 0, Math.min(source.width, sourceWidth + 2), Math.min(source.height, sourceHeight + 2));
   surfaceContext.save();
   surfaceContext.setTransform(sourceWidth / width, 0, 0, sourceHeight / height, sourceWidth / 2, sourceHeight / 2);
   try { draw(surfaceContext); } finally { surfaceContext.restore(); }
@@ -119,7 +121,7 @@ export function drawProjectedFilmSurface(context: CanvasRenderingContext2D,
   const compositeHeight = Math.max(1, Math.ceil(outputHeight * compositeScale));
   reserve(composite, compositeWidth, compositeHeight, MAX_COMPOSITE_SIZE);
   compositeContext.setTransform(1, 0, 0, 1, 0, 0);
-  compositeContext.clearRect(0, 0, composite.width, composite.height);
+  compositeContext.clearRect(0, 0, Math.min(composite.width, compositeWidth + 2), Math.min(composite.height, compositeHeight + 2));
   compositeContext.imageSmoothingEnabled = true;
   compositeContext.imageSmoothingQuality = 'high';
   // Add complementary antialias coverage on an isolated transparent layer. Expanding

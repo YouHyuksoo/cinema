@@ -1,5 +1,21 @@
 import { filmText, smooth, type FilmFonts } from '../filmDrawing';
+import { getFilmContextTheme } from '../filmThemeCanvas';
 import { applyFocusProjection, focusProjection, projectFocusPoint } from '../filmFocus';
+
+const wallShades = new WeakMap<CanvasRenderingContext2D, { theme: string; gradient: CanvasGradient }>();
+/** Unit-height glass wall shading, built once per context and palette (stops are theme-mapped at creation). */
+function wallShade(ctx: CanvasRenderingContext2D) {
+  const theme = getFilmContextTheme(ctx);
+  const cached = wallShades.get(ctx);
+  if (cached?.theme === theme) return cached.gradient;
+  const gradient = ctx.createLinearGradient(0, 0, 0, 1);
+  gradient.addColorStop(0, 'rgba(226,253,255,.26)');
+  gradient.addColorStop(.16, 'rgba(169,230,241,.045)');
+  gradient.addColorStop(.67, 'rgba(0,13,23,.23)');
+  gradient.addColorStop(1, 'rgba(170,239,250,.14)');
+  wallShades.set(ctx, { theme, gradient });
+  return gradient;
+}
 import { normalizeChartPresentation, type ChartPresentation } from '../chartPresentation';
 import {
   buildGlassPieSliceGeometry, projectGlassPiePoint,
@@ -143,22 +159,24 @@ function drawGlassSlice(ctx: CanvasRenderingContext2D, slice: GlassSlice, radius
   ctx.fillStyle = color; ctx.globalAlpha = opacity * .075; ctx.fill();
   ctx.strokeStyle = color; ctx.lineWidth = .8; ctx.globalAlpha = opacity * .3; ctx.stroke();
 
-  const walls = [...geometry.walls].sort((a, b) => averageDepth(b) - averageDepth(a));
-  for (const wall of walls) {
+  // Depth once per wall, then paint back to front.
+  const walls = geometry.walls.map(wall => ({ wall, depth: averageDepth(wall) })).sort((a, b) => b.depth - a.depth);
+  const shade = wallShade(ctx);
+  for (const { wall, depth } of walls) {
     path(ctx, wall);
     ctx.fillStyle = color;
-    const facing = averageDepth(wall) < geometry.depth;
+    const facing = depth < geometry.depth;
     ctx.globalAlpha = opacity * (facing ? .19 : .065);
     ctx.fill();
-    const topY = Math.min(...wall.map(point => point.y));
-    const bottomY = Math.max(...wall.map(point => point.y));
-    const shade = ctx.createLinearGradient(0, topY, 0, bottomY + .1);
-    shade.addColorStop(0, 'rgba(226,253,255,.26)');
-    shade.addColorStop(.16, 'rgba(169,230,241,.045)');
-    shade.addColorStop(.67, 'rgba(0,13,23,.23)');
-    shade.addColorStop(1, 'rgba(170,239,250,.14)');
+    let topY = Infinity, bottomY = -Infinity;
+    for (const point of wall) { if (point.y < topY) topY = point.y; if (point.y > bottomY) bottomY = point.y; }
+    // The path is already in device space, so stretching the transform only maps the unit
+    // gradient onto this wall's vertical span; one shared gradient replaces one per wall per frame.
+    ctx.save();
+    ctx.translate(0, topY); ctx.scale(1, bottomY + .1 - topY);
     ctx.fillStyle = shade;
     ctx.globalAlpha = opacity * (facing ? .56 : .2); ctx.fill();
+    ctx.restore();
   }
 
   // Two faint traces follow the curved wall between the upper and lower rims.

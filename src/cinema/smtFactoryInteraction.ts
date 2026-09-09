@@ -1,5 +1,6 @@
 import type { InspectionCamera, Point3D } from './inspectionSpace';
 import { SMT_LINE_WIDTH } from './smtLine';
+import { clamp } from './filmMath';
 import {
   factoryCamera, factoryWorld, smtFactoryState, SMT_FACTORY_DEPTH,
   SMT_FACTORY_LINES, SMT_FACTORY_PITCH, SMT_FACTORY_STATIONS, type FactoryStation,
@@ -14,7 +15,6 @@ const NEAR = 35;
 const MIN_DISTANCE = 180;
 const MAX_DISTANCE = 3500;
 const finite = (value: number, fallback = 0) => Number.isFinite(value) ? value : fallback;
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const wrapYaw = (yaw: number) => ((yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
 
 function validOrbit(orbit: FactoryOrbit): FactoryOrbit {

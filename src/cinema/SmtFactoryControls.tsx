@@ -1,6 +1,7 @@
 import { SMT_FACTORY_LINES, SMT_FACTORY_STATIONS } from './smtFactory';
 import { SMT_LINE } from './smtLine';
 import styles from './smtInteraction.module.css';
+import { pad2 } from './filmMath';
 
 export interface SmtFactoryControlsProps {
   manual: boolean;
@@ -14,7 +15,7 @@ export interface SmtFactoryControlsProps {
 }
 
 const lines = Array.from({ length: SMT_FACTORY_LINES }, (_, index) => ({
-  label: `라인 ${String(index + 1).padStart(2, '0')}`,
+  label: `라인 ${pad2(index + 1)}`,
   stations: SMT_FACTORY_STATIONS.filter(station => station.line === index + 1),
 }));
 
@@ -48,7 +49,7 @@ export function SmtFactoryControls({
               <optgroup key={line.label} label={line.label}>
                 {line.stations.map(station => (
                   <option key={station.key} value={station.key}>
-                    {String(station.order).padStart(2, '0')} · {station.label}
+                    {pad2(station.order)} · {station.label}
                   </option>
                 ))}
               </optgroup>
@@ -58,7 +59,7 @@ export function SmtFactoryControls({
             {selected ? (
               <>
                 <span className={styles.selectionName}>
-                  라인 {String(selected.line).padStart(2, '0')} · {selected.label}
+                  라인 {pad2(selected.line)} · {selected.label}
                 </span>
                 <span className={styles.selectionDetail}>
                   {selected.order}/{SMT_LINE.length} · {selected.english}

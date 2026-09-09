@@ -113,8 +113,15 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         textureRenderers.set(current.theme, drawTexture);
       }
       drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture);
-      if (now - lastPublished > 180) {
-        setPosition(chapterAt(current.time)); lastPublished = now;
+      // Publish the position to React only when the readout would change; the preview freezes film
+      // time, and the dock's time display has 0.1s resolution, so identical frames must not re-render.
+      if (now - lastPublished > 180 && !cameraView.current) {
+        lastPublished = now;
+        setPosition(previous => {
+          const next = chapterAt(current.time);
+          const same = previous.index === next.index && Math.round(previous.localTime * 10) === Math.round(next.localTime * 10);
+          return same ? previous : next;
+        });
       }
       frame = requestAnimationFrame(render);
     };

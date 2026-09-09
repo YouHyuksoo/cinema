@@ -1,4 +1,5 @@
 import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
+import { finiteUnit as clamp, pad2 } from '../filmMath';
 import { spcTraceHead } from '../spcScene';
 import type { SpcControlSeries, SpcData, ValidSpcAnalysis } from '../spcTypes';
 import { drawSpcControlTrace } from './drawSpcControlTrace';
@@ -6,7 +7,6 @@ import { drawSpcControlTrace } from './drawSpcControlTrace';
 export const SPC_CONTROL_SIZE = { width: 680, height: 410 } as const;
 
 export interface SpcControlChartOptions { time: number; reveal: number; focus: number }
-const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 
 /** Transparent, quantitative X-bar and R surfaces in a shared local coordinate system. */
 export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmFonts, data: SpcData,
@@ -104,7 +104,7 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
       const x = xFor(index);
       ctx.beginPath(); ctx.moveTo(x, bottom + 5); ctx.lineTo(x, bottom + (major ? 10 : 7));
       ctx.strokeStyle = signalColor(0, major ? .43 : .16); ctx.lineWidth = 1; ctx.stroke();
-      if (major) text(String(index + 1).padStart(2, '0'), x, bottom + 26, 12, .62, 0, 'center');
+      if (major) text(pad2(index + 1), x, bottom + 26, 12, .62, 0, 'center');
     }
 
     if (!visible) return;
@@ -124,7 +124,7 @@ export function drawSpcControlCharts(ctx: CanvasRenderingContext2D, fonts: FilmF
 
   drawSeries('xbar', analysis.xbar, 49, 160, 25, 'X̄  /  군 평균 관리도');
   drawSeries('r', analysis.r, 250, 357, 226, 'R  /  군 범위 관리도');
-  text(`부분군 ${String(data.subgroups.length).padStart(2, '0')}개  ·  군 크기 ${analysis.subgroupSize}`, left, 407, 12, .54, 0, 'left', false);
+  text(`부분군 ${pad2(data.subgroups.length)}개  ·  군 크기 ${analysis.subgroupSize}`, left, 407, 12, .54, 0, 'left', false);
   text('SUBGROUP ORDER →', right, 407, 12, .44, 0, 'right');
   ctx.restore();
   return selectedPoint;

@@ -1,6 +1,7 @@
 import { DEFAULT_PCB_INSPECTION_DATA, type PcbInspectionData, type PcbComponent } from './pcbInspectionData';
 import { PCB_COMPONENT_FIELDS } from './pcbInspectionFields';
 import { validateSceneObjectFields } from './sceneField';
+import { clamp01 as clamp, smoothstep as smooth } from './filmMath';
 
 export const PCB_INSPECTION_SECONDS = 36;
 export const PCB_INSPECTION_TIMING = { scanEnd: 4, inspectEnd: 28, summaryEnd: 34.5, end: PCB_INSPECTION_SECONDS, approachFraction: 0.25, retreatFraction: 0.25 } as const;
@@ -32,8 +33,6 @@ export function validatePcbInspectionData(data: unknown): PcbInspectionValidatio
   return { valid: true };
 }
 
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
-const smooth = (value: number) => { const t = clamp(value); return t * t * (3 - 2 * t); };
 export function pcbInspectionState(time: number, data: PcbInspectionData = DEFAULT_PCB_INSPECTION_DATA) {
   const t = Number.isFinite(time) ? Math.max(0, Math.min(PCB_INSPECTION_SECONDS, time)) : 0;
   const validation = validatePcbInspectionData(data);

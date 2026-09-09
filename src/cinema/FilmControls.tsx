@@ -8,9 +8,14 @@ import { FilmThemeControls } from './FilmThemeControls';
 import { FilmCameraControls, type FilmCameraMode } from './FilmCameraControls';
 import { FilmMachineControls } from './FilmMachineControls';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
+import { SelectField } from './FilmFields';
 import styles from './film.module.css';
 
-const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4].map(rate => ({ value: String(rate), label: `${rate}×${rate === 1 ? ' (기본)' : ''}` }));
+const PLAYBACK_MODES = [
+  { value: 'sequence', label: '전체 연속' },
+  { value: 'chapter', label: '현재 장면 반복' },
+] as const satisfies readonly { value: PlaybackMode; label: string }[];
 
 export function FilmControls({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
   const { chapter, localTime } = player.position;
@@ -37,19 +42,8 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
       <div className={styles.controlRow}>
         <span className={styles.simulation}>연출 비교 · 시뮬레이션 데이터</span>
         <div className={styles.controls}>
-          {!camera.preview && <label className={styles.speedControl}>
-            <span>재생 방식</span>
-            <select value={player.mode} onChange={(event) => player.changeMode(event.target.value as PlaybackMode)}>
-              <option value="sequence">전체 연속</option>
-              <option value="chapter">현재 장면 반복</option>
-            </select>
-          </label>}
-          <label className={styles.speedControl}>
-            <span>재생 속도</span>
-            <select value={player.speed} onChange={(event) => player.changeSpeed(Number(event.target.value))}>
-              {PLAYBACK_RATES.map((rate) => <option key={rate} value={rate}>{rate}×{rate === 1 ? ' (기본)' : ''}</option>)}
-            </select>
-          </label>
+          {!camera.preview && <SelectField label="재생 방식" value={player.mode} options={PLAYBACK_MODES} onChange={player.changeMode} />}
+          <SelectField label="재생 속도" value={String(player.speed)} options={PLAYBACK_RATES} onChange={value => player.changeSpeed(Number(value))} />
           <button disabled={!player.ready} onClick={player.togglePlay}>{player.playing ? '일시정지' : '재생'}</button>
           {!camera.preview && <button disabled={!player.ready} onClick={player.restart}>처음부터</button>}
         </div>

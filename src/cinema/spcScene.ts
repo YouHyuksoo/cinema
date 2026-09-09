@@ -1,9 +1,9 @@
 import { smooth } from './filmDrawing';
+import { mix } from './filmMath';
 import { createHoloProjection } from './holoSpace';
 
 export const SPC_FILM_SECONDS = 40;
 export interface SpcPanelPose { x: number; y: number; depth: number; yaw: number; pitch: number }
-const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** The sample matrix and plotted trace share the same last visible subgroup. */
 export function spcTraceHead(time: number, count: number, series: 'xbar' | 'r' = 'xbar') {

@@ -2,6 +2,7 @@ import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
 import type { SpcData, ValidSpcAnalysis } from '../spcTypes';
 import { spcTraceHead } from '../spcScene';
 import { infoPanelFrame } from './infoPanelFrame';
+import { pad2 } from '../filmMath';
 
 interface SpcInspectionState {
   time: number;
@@ -92,7 +93,7 @@ export function drawSpcInspection(ctx: CanvasRenderingContext2D, fonts: FilmFont
           Math.max(.5, columnWidth - 4), Math.max(1, rowHeight - 5));
       }
     }
-    text(`${acquired.toString().padStart(2, '0')} / ${data.subgroups.length} SUBGROUPS`, inner, 468, 12,
+    text(`${pad2(acquired)} / ${data.subgroups.length} SUBGROUPS`, inner, 468, 12,
       collecting * .75, 0, 'left', true);
     text(`총 ${analysis.totalSamples}개 측정값으로 관리한계 계산`, inner, 505, 13, collecting * .7);
   }

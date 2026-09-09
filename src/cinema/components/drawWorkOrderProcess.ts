@@ -2,6 +2,7 @@ import { filmText, signalColor, type FilmFonts } from '../filmDrawing';
 import { SMT_LINE, SMT_LINE_WIDTH, SMT_STATIONS } from '../smtLine';
 import type { WorkOrderTraceState } from '../workOrderTrace';
 import { drawSmtEquipment } from './drawSmtEquipment';
+import { pad2 } from '../filmMath';
 
 const PROCESS_LEFT = 88;
 const PROCESS_RIGHT = 1192;
@@ -112,7 +113,7 @@ export function drawWorkOrderProcess(
       ctx.stroke();
     }
 
-    filmText(ctx, fonts, String(index + 1).padStart(2, '0'), point.x, 442, 9,
+    filmText(ctx, fonts, pad2(index + 1), point.x, 442, 9,
       stageOpacity * .7, true, 'center', '#88c1cc');
     filmText(ctx, fonts, equipment.label, point.x, 459, equipment.id === 'printer' ? 12 : 13,
       stageOpacity, false, 'center', active ? '#ddfaff' : '#a9cdd4');

@@ -2,6 +2,7 @@ import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
 import { SMT_LINE } from '../smtLine';
 import { TRACE_TIMING, TRACE_WORK_ORDER, workOrderTraceState, type WorkOrderTraceState } from '../workOrderTrace';
 import { infoPanelFrame, type InfoPanelFrameVariant } from './infoPanelFrame';
+import { pad2 } from '../filmMath';
 
 // Sample the same deterministic production model once; the graph has no independent clock.
 const HISTORY = Array.from({ length: 121 }, (_, index) => {
@@ -47,7 +48,7 @@ function drawCounters(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: Wo
   metrics.forEach((metric, index) => {
     const x = 466 + index * 187;
     filmText(ctx, fonts, metric.label, x, 150, 14, opacity * .8);
-    filmText(ctx, fonts, String(metric.value).padStart(2, '0'), x, 196, 43, opacity, true, 'left', signalColor(metric.heat, 1));
+    filmText(ctx, fonts, pad2(metric.value), x, 196, 43, opacity, true, 'left', signalColor(metric.heat, 1));
     filmText(ctx, fonts, 'EA', x + 127, 195, 12, opacity * .5, true);
     ctx.beginPath(); ctx.moveTo(x, 210); ctx.lineTo(x + 143, 210);
     ctx.strokeStyle = signalColor(metric.heat, opacity * .3); ctx.lineWidth = 1; ctx.stroke();

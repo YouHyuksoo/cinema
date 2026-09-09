@@ -1,4 +1,6 @@
 import { getFilmTheme, type FilmThemeId } from './filmThemes';
+import { smooth } from './filmDrawing';
+import { clamp as clampRange } from './filmMath';
 
 type RGB = readonly [number, number, number];
 interface ParsedColor { rgb: RGB; alpha: number }
@@ -8,11 +10,7 @@ const SOURCE_ACCENT: RGB = [95, 227, 255];
 const SOURCE_WARNING: RGB = [255, 193, 104];
 const COLOR_CACHE_LIMIT = 2048;
 const RGB_CACHE_LIMIT = 512;
-const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, value));
-const smooth = (start: number, end: number, value: number) => {
-  const t = clamp((value - start) / (end - start));
-  return t * t * (3 - 2 * t);
-};
+const clamp = (value: number, min = 0, max = 1) => clampRange(value, min, max);
 const mixRGB = (a: RGB, b: RGB, t: number): RGB => [
   a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t,
 ];
@@ -194,12 +192,19 @@ export function createFilmThemeContext(context: CanvasRenderingContext2D, theme:
   });
   CONTEXT_THEMES.set(context, currentTheme);
   CONTEXT_THEMES.set(ctx, currentTheme);
-  return { ctx, setTheme(id: FilmThemeId) {
-    const next = getFilmTheme(id).id;
-    if (next === currentTheme) return;
-    currentTheme = next;
-    mapColor = createFilmColorMapper(next);
-    CONTEXT_THEMES.set(context, next);
-    CONTEXT_THEMES.set(ctx, next);
-  } };
+  return {
+    /**
+     * The default palette maps every color to itself, so hand the renderer the native context and
+     * skip the Proxy traps that would otherwise wrap every draw call and style write of every frame.
+     */
+    get ctx() { return currentTheme === 'cyan' ? context : ctx; },
+    setTheme(id: FilmThemeId) {
+      const next = getFilmTheme(id).id;
+      if (next === currentTheme) return;
+      currentTheme = next;
+      mapColor = createFilmColorMapper(next);
+      CONTEXT_THEMES.set(context, next);
+      CONTEXT_THEMES.set(ctx, next);
+    },
+  };
 }

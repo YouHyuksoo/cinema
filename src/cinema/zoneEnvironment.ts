@@ -1,6 +1,7 @@
 import { smooth } from './filmDrawing';
 import { createHoloProjection } from './holoSpace';
 import { TEMPERATURE_HOUR_MS, temperatureHistoryDomain, temperatureHistoryPoints, type TemperatureSample } from './temperatureHistory';
+import { pad2 } from './filmMath';
 
 export const ENVIRONMENT_FILM_SECONDS = 52;
 export const ENVIRONMENT_TIMING = {
@@ -23,7 +24,7 @@ export const DEFAULT_ENVIRONMENT_DATA: ZoneEnvironmentData = {
   historyEnd: Date.UTC(2026, 8, 7),
   zones: ['자재 입고', '자재 보관', '인쇄 공정', '실장 공정', '리플로우',
     '검사 공정', '조립 공정', '검사 대기', '포장 공정', '완제품 보관'].map((name, index) => ({
-    id: `ZONE ${String(index + 1).padStart(2, '0')}`, name,
+    id: `ZONE ${pad2(index + 1)}`, name,
     temperature: [23.2, 22.8, 24.1, 25.3, 26.7, 29.4, 24.8, 23.9, 23.1, 22.6][index],
     humidity: [46, 44, 48, 51, 43, 47, 52, 64, 49, 45][index],
     temperatureRange: { min: 20, max: 28 }, humidityRange: { min: 40, max: 60 },

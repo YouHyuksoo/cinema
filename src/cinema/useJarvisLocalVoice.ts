@@ -10,6 +10,7 @@ import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupS
 import { describeSceneDataResult, resolveHatcheryValueCommand, type HatcheryActions } from './hatcheryTargets';
 import { isSceneId, parseSceneObjectPatch } from './sceneDataDocument';
 import { isMachineSubject, type MachineSubject } from './machinePresentation';
+import { cinemaApi } from './cinemaApi';
 
 interface Message { role: 'user' | 'assistant'; content: string }
 export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
@@ -181,8 +182,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
     try {
       let data = resolveReply(message);
       if (!data) {
-        const response = await fetch('/api/cinema/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, history: previous }), signal: abort.signal });
+        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, history: previous }), signal: abort.signal });
         const answer = await response.json() as JarvisReply & { error?: string };
         if (token !== current.generation) return;
         if (!response.ok || !answer.reply) throw new Error(answer.error || '응답을 받지 못했습니다.');

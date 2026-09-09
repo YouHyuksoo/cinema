@@ -1,5 +1,6 @@
 import { CORNER_PRODUCTION } from './cornerSequence';
 import { smooth } from './filmDrawing';
+import { mix } from './filmMath';
 import { FILM_DURATIONS } from './filmProgram';
 
 export const UNFOLD_HUB = { x: 640, y: 345 } as const;
@@ -70,7 +71,6 @@ export interface UnfoldMetricsState {
   items: UnfoldMetricState[];
 }
 
-const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
 /** A number becomes its chart before following a shallow curve into the summary. */
 function chartPosition(target: UnfoldMetric['target'], settled: number) {

@@ -2,6 +2,7 @@ import type { FilmViewportInsets } from './filmViewport';
 import { createHoloProjection, type HoloPoint, type HoloProjectedPoint } from './holoSpace';
 import { PCB_INSPECTION_TIMING, type PcbInspectionState } from './pcbInspection';
 import type { PcbComponent, PcbInspectionData } from './pcbInspectionData';
+import { smoothstep as smooth } from './filmMath';
 
 export interface PcbLayoutRect { x: number; y: number; width: number; height: number }
 export interface PcbInspectionLayout {
@@ -78,7 +79,6 @@ export function createPcbInspectionProjection(layout: PcbInspectionLayout,
   return { project, target: project(anchor), zoom: 1, boardTop };
 }
 
-const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
 const componentPoint = (project: PcbInspectionProjection['project'], component: PcbComponent, boardTop: number) =>
   project({ x: component.x, y: component.y, z: boardTop - component.depth });
 

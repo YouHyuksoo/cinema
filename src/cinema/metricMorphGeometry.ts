@@ -1,6 +1,7 @@
 import { CORNER_PRODUCTION } from './cornerSequence';
 import { RIBBON_NUMBER_GLYPHS, type RibbonGlyphPoint } from './ribbonNumberGeometry';
 import { UNFOLD_METRICS } from './unfoldMetrics';
+import { finiteUnit as clamp, mix } from './filmMath';
 
 export type MetricMorphId = typeof UNFOLD_METRICS[number]['id'];
 export interface MorphPoint { x: number; y: number; heat: number }
@@ -13,8 +14,6 @@ export interface MetricMorphCloud {
 export const METRIC_MORPH_POINT_COUNT = 720;
 const STROKE_LANES = 3;
 const SOURCE_SAMPLES = METRIC_MORPH_POINT_COUNT / STROKE_LANES;
-const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
-const mix = (a: number, b: number, progress: number) => a + (b - a) * progress;
 
 function numberContours(value: string, layoutValue = value): RibbonGlyphPoint[][] {
   const advances = [...value].map(character => character === '.' ? 31 : 108);

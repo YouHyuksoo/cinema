@@ -1,4 +1,5 @@
 import type { SpcData } from './spcTypes';
+import { pad2 } from './filmMath';
 
 // Fixed illustrative diameter measurements, in acquisition order. Subgroup 18 has a mean shift;
 // its internal range remains ordinary. These are simulation inputs, not production records.
@@ -32,5 +33,5 @@ const DIAMETER_SAMPLES = [
 
 export const DEFAULT_SPC_DATA: SpcData = {
   name: '정밀 샤프트 외경', unit: 'mm', nominal: 10, lsl: 9.95, usl: 10.05, cpkTarget: 1.33,
-  subgroups: DIAMETER_SAMPLES.map((values, index) => ({ id: `SG-${String(index + 1).padStart(2, '0')}`, values })),
+  subgroups: DIAMETER_SAMPLES.map((values, index) => ({ id: `SG-${pad2(index + 1)}`, values })),
 };

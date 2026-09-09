@@ -1,10 +1,6 @@
+import { smooth } from './filmDrawing';
 export const PCB_ENTRANCE_SECONDS = 4;
 
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
-const smooth = (from: number, to: number, time: number) => {
-  const value = clamp((time - from) / (to - from));
-  return value * value * (3 - 2 * value);
-};
 
 /** Pure, seek-safe choreography values for the PCB's four-second arrival. */
 export function pcbEntranceState(time: number) {

@@ -2,7 +2,7 @@ import { drawPcbAssembly } from './components/drawPcbAssembly';
 import { drawPcbEntrance } from './components/drawPcbEntrance';
 import { drawPcbInspectionReadout } from './components/drawPcbInspectionReadout';
 import { drawTargetReticle } from './components/drawTargetReticle';
-import { DEFAULT_FONTS, filmText, signalColor, type FilmFonts } from './filmDrawing';
+import { DEFAULT_FONTS, filmText, fitText, signalColor, type FilmFonts } from './filmDrawing';
 import { beginFilmViewport, type FilmViewportInsets } from './filmViewport';
 import { pcbInspectionState } from './pcbInspection';
 import { pcbEntranceState } from './pcbEntrance';
@@ -10,12 +10,7 @@ import { DEFAULT_PCB_INSPECTION_DATA, type PcbInspectionData } from './pcbInspec
 import { applyPcbInspectionLayout, createPcbInspectionProjection, pcbInspectionFocus, pcbInspectionLayout } from './pcbInspectionLayout';
 import type { SceneDataProvenance } from './sceneDataStore';
 
-function oneLine(ctx: CanvasRenderingContext2D, value: string, maxWidth: number) {
-  if (ctx.measureText(value).width <= maxWidth) return value;
-  let output = value;
-  while (output && ctx.measureText(`${output}…`).width > maxWidth) output = output.slice(0, -1);
-  return `${output}…`;
-}
+const oneLine = fitText;
 
 /** Data-driven SMT board inspection. All geometry and readout state come from the PCB document. */
 export function drawPcbInspectionFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,

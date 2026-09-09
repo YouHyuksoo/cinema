@@ -1,10 +1,10 @@
 import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
+import { finiteUnit as clamp } from '../filmMath';
 import type { SpcData, ValidSpcAnalysis } from '../spcTypes';
 
 export const SPC_HISTOGRAM_SIZE = { width: 560, height: 370 } as const;
 export interface SpcHistogramOptions { time: number; reveal: number; focus: number }
 
-const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 
 /** Actual bin frequencies only; specification limits are independent of the control chart limits. */
 export function drawSpcHistogram(ctx: CanvasRenderingContext2D, fonts: FilmFonts,

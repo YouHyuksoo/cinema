@@ -1,4 +1,5 @@
 import { filmText, signalColor, smooth, type FilmFonts } from '../filmDrawing';
+import { clamp01 as clamp } from '../filmMath';
 
 export interface TargetReticleOptions {
   /** Center of the target in the caller's canvas coordinate space. */
@@ -14,7 +15,6 @@ export interface TargetReticleOptions {
   label?: string;
 }
 
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
 
 /** Trace a corner from its vertical tip, through the corner, to its horizontal tip. */
 function bracket(ctx: CanvasRenderingContext2D, x: number, y: number, sx: number, sy: number,

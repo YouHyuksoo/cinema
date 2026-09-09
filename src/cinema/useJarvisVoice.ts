@@ -8,6 +8,7 @@ import { DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
 import type { HatcheryActions } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA } from './filmSceneData';
 import type { MachineSubject } from './machinePresentation';
+import { cinemaApiUrl } from './cinemaApi';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
@@ -33,7 +34,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   useEffect(() => { session.current?.setRobotVoice(robotVoice); }, [robotVoice]);
   useEffect(() => {
     const abort = new AbortController();
-    void fetch('/api/cinema/assistant', { signal: abort.signal, cache: 'no-store' })
+    void fetch(cinemaApiUrl('assistant'), { signal: abort.signal, cache: 'no-store' })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
       .then(data => {
         if (abort.signal.aborted) return;

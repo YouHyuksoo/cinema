@@ -3,6 +3,7 @@ import { applyFocusProjection, focusEnvelope, focusProjection, projectFocusPoint
 import { beginFilmViewport, fillFilmViewport, type FilmViewportInsets } from './filmViewport';
 
 import { FILM_DURATIONS } from './filmProgram';
+import { mix } from './filmMath';
 export const SCAN_FILM_SECONDS = FILM_DURATIONS.scan;
 
 type Point = readonly [number, number];
@@ -14,7 +15,6 @@ const EQUIPMENT = [
   ['TEST 01', 816], ['TEST 02', 902], ['PACK 01', 996], ['OUT 01', 1132],
 ] as const;
 
-const mix = (a: number, b: number, blend: number) => a + (b - a) * blend;
 const contour = (x: number) => 376 + Math.sin((x - 110) / 150) * 61 + Math.sin(x / 64) * 16;
 const FOCUS_Y = contour(FOCUS_X);
 
