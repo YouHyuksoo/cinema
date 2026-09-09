@@ -355,40 +355,77 @@ function soccerSphereTexture() {
   return sphereTexture;
 }
 
-const sphereBuffers = new Map<number, ImageData>();
+interface SphereTable {
+  out: ImageData;
+  /** Byte index of every pixel inside the disc. */
+  index: Int32Array;
+  /** Longitude of each disc pixel as a texture fraction at spin 0, plus the 1.5 wrap offset. */
+  lonFrac: Float32Array;
+  /** Byte offset of the texture row for each disc pixel. */
+  row: Int32Array;
+  light: Float32Array;
+  spec: Float32Array;
+  /** Rim fade multiplied into the texture alpha, which carries the seam lattice. */
+  alpha: Float32Array;
+}
+const SPHERE_TABLE_LIMIT = 3;
+const sphereTables = new Map<number, SphereTable>();
 
-/** Paint a lit sphere with the soccer-ball texture mapped onto it. */
+/**
+ * Everything but the spin is fixed for a given size: the disc mask, each pixel's latitude row,
+ * lighting and alpha. Precompute them once per size so a frame only shifts longitude and samples.
+ */
+function sphereTable(ctx: CanvasRenderingContext2D, size: number): SphereTable {
+  const cached = sphereTables.get(size);
+  if (cached) return cached;
+  const tex = soccerSphereTexture(), tw = tex.width, th = tex.height;
+  const radius = size / 2, count = size * size;
+  const index = new Int32Array(count), lonFrac = new Float32Array(count), row = new Int32Array(count);
+  const light = new Float32Array(count), spec = new Float32Array(count), alpha = new Float32Array(count);
+  let n = 0;
+  for (let y = 0; y < size; y++) {
+    const ny = (y + .5 - radius) / radius;
+    const v = Math.asin(clampUnit(ny)) / Math.PI + .5;
+    const ty = Math.min(th - 1, Math.max(0, v) * th) | 0;
+    for (let x = 0; x < size; x++) {
+      const nx = (x + .5 - radius) / radius, d2 = nx * nx + ny * ny;
+      if (d2 > 1) continue;
+      const nz = Math.sqrt(1 - d2);
+      index[n] = (y * size + x) * 4;
+      lonFrac[n] = Math.atan2(nx, nz) / TAU + 1.5;
+      row[n] = ty * tw * 4;
+      light[n] = Math.max(.28, nx * -.32 + ny * -.52 + nz * .79);
+      spec[n] = Math.pow(Math.max(0, nz * .5 + light[n] * .5), 22) * 28;
+      alpha[n] = .75 + nz * .25;
+      n++;
+    }
+  }
+  const table = { out: ctx.createImageData(size, size), index: index.subarray(0, n), lonFrac: lonFrac.subarray(0, n),
+    row: row.subarray(0, n), light: light.subarray(0, n), spec: spec.subarray(0, n), alpha: alpha.subarray(0, n) };
+  if (sphereTables.size >= SPHERE_TABLE_LIMIT) sphereTables.delete(sphereTables.keys().next().value!);
+  sphereTables.set(size, table);
+  return table;
+}
+
+/** Paint a lit sphere with the soccer-ball texture mapped onto it. Spinning only shifts longitude. */
 export function drawSoccerSphere(canvas: HTMLCanvasElement, cssSize: number, angleRadians: number) {
   const size = Math.max(1, Math.round(finiteSize(cssSize)));
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   if (canvas.width !== size || canvas.height !== size) { canvas.width = size; canvas.height = size; }
-  let out = sphereBuffers.get(size);
-  if (!out || out.width !== size) { out = ctx.createImageData(size, size); sphereBuffers.set(size, out); }
-  const pixels = out.data, tex = soccerSphereTexture(), tw = tex.width, th = tex.height, src = tex.data;
-  const cos = Math.cos(Number.isFinite(angleRadians) ? angleRadians : 0);
-  const sin = Math.sin(Number.isFinite(angleRadians) ? angleRadians : 0);
-  const radius = size / 2;
+  const { out, index, lonFrac, row, light, spec, alpha } = sphereTable(ctx, size);
+  const tex = soccerSphereTexture(), tw = tex.width, src = tex.data, pixels = out.data;
+  const spin = (Number.isFinite(angleRadians) ? angleRadians : 0) / TAU;
   pixels.fill(0);
-  for (let y = 0; y < size; y++) {
-    const ny = (y + .5 - radius) / radius;
-    for (let x = 0; x < size; x++) {
-      const nx = (x + .5 - radius) / radius, d2 = nx * nx + ny * ny;
-      if (d2 > 1) continue;
-      const nz = Math.sqrt(1 - d2);
-      const rx = nx * cos + nz * sin, rz = -nx * sin + nz * cos;
-      const u = (Math.atan2(rx, rz) / TAU + 1.5) % 1;
-      const v = Math.asin(clampUnit(ny)) / Math.PI + .5;
-      const tx = Math.min(tw - 1, u * tw) | 0, ty = Math.min(th - 1, Math.max(0, v) * th) | 0;
-      const ti = (ty * tw + tx) * 4;
-      const light = Math.max(.28, nx * -.32 + ny * -.52 + nz * .79);
-      const spec = Math.pow(Math.max(0, nz * .5 + light * .5), 22) * 28;
-      const i = (y * size + x) * 4;
-      pixels[i] = Math.min(255, src[ti] * light + spec);
-      pixels[i + 1] = Math.min(255, src[ti + 1] * light + spec);
-      pixels[i + 2] = Math.min(255, src[ti + 2] * light + spec);
-      pixels[i + 3] = Math.min(255, src[ti + 3] * (.75 + nz * .25));
-    }
+  for (let n = 0; n < index.length; n++) {
+    // atan2 of the spun normal equals the pixel's own longitude plus the spin angle.
+    const u = (lonFrac[n] + spin) % 1;
+    const tx = Math.min(tw - 1, (u < 0 ? u + 1 : u) * tw) | 0;
+    const ti = row[n] + tx * 4, i = index[n], l = light[n], s = spec[n];
+    pixels[i] = Math.min(255, src[ti] * l + s);
+    pixels[i + 1] = Math.min(255, src[ti + 1] * l + s);
+    pixels[i + 2] = Math.min(255, src[ti + 2] * l + s);
+    pixels[i + 3] = Math.min(255, src[ti + 3] * alpha[n]);
   }
   ctx.putImageData(out, 0, 0);
 }

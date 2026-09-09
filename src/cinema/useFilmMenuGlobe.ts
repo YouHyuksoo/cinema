@@ -45,7 +45,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     let perspective = { ...globeCenter }, fromPerspective = { ...globeCenter };
     let momentum = { x: 0, y: 0 };
     // Resting size: after the globe has been idle a while it eases to half; hover, focus or drag wakes it.
-    let rest = 0, idleMs = 0, awake = false;
+    let rest = 0, idleMs = 0, awake = false, dragDirty = false;
     const restScale = () => globeRestScale(rest);
     let pointer: null | { id: number; origin: Point; center: Point; lastCenter: Point;
       lastTime: number; dragged: boolean; velocity: Point } = null;
@@ -64,8 +64,9 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       faceHeight = short.matches ? 43 : 50;
       radius = diameter / (2 + unitFace);
       faceScale = faceHeight > 0 ? unitFace * radius / faceHeight : 0;
-      globeCenter = globeRestingCenter(viewport, diameter, rememberedCenter.current);
+      globeCenter = globeRestingCenter(viewport, diameter * restScale(), rememberedCenter.current);
       button.style.width = `${diameter}px`; button.style.height = `${diameter}px`;
+      if (ball.current) { ball.current.style.width = `${diameter}px`; ball.current.style.height = `${diameter}px`; }
     };
     const globe = () => {
       const sized = restScale();
@@ -123,11 +124,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         face.style.opacity = String(pose.opacity);
       });
       if (currentPhase === 'closed' && ball.current) {
-        const visual = Math.max(1, diameter * restScale());
-        ball.current.style.width = `${visual}px`; ball.current.style.height = `${visual}px`;
-        ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%)`;
-        drawSoccerSphere(ball.current, visual, angle);
+        // Raster the sphere at its full size and scale it with the same factor as the tiles, so both
+        // shrink in lockstep and the per-frame raster cost does not change with the rest size.
+        ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${restScale()})`;
+        drawSoccerSphere(ball.current, diameter, angle);
       }
+      dragDirty = false;
       floating.style.transform = `translateY(${floatingY}px)`;
       const visualY = currentPhase === 'closed' ? floatingY : 0;
       overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y + visualY}px`;
@@ -140,7 +142,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       if (pointerId !== undefined && button.hasPointerCapture(pointerId)) button.releasePointerCapture(pointerId);
     };
     const schedule = () => {
-      if (!raf && !document.hidden && !reduced.matches && !pointer && currentPhase !== 'open') {
+      if (!raf && !document.hidden && !reduced.matches && currentPhase !== 'open') {
         raf = requestAnimationFrame(frame);
       }
     };
@@ -152,9 +154,15 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     };
     const frame = (time: number) => {
       raf = 0;
-      const delta = previousTime === null ? 0 : Math.min(64, time - previousTime); previousTime = time;
+      const raw = previousTime === null ? 0 : time - previousTime, delta = Math.min(64, raw); previousTime = time;
       rect = element.getBoundingClientRect();
-      if (currentPhase === 'morphing') {
+      if (pointer) {
+        // Held or dragging: no spin, float or momentum. Grow back to full size while pressed and
+        // redraw once per frame instead of once per pointermove event.
+        const before = rest;
+        rest = globeRestStep(rest, 0, delta, true);
+        if (dragDirty || rest !== before) { perspective = { ...globeCenter }; current = globe(); draw(); }
+      } else if (currentPhase === 'morphing') {
         elapsed += delta;
         const progress = Math.min(1, elapsed / DURATION), eased = progress * progress * (3 - 2 * progress);
         const target = input.menuOpen ? targetRing() : globe();
@@ -166,11 +174,18 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       } else {
         angle = (angle + delta * Math.PI * 2 / 30000) % (Math.PI * 2);
         if (momentum.x || momentum.y) {
-          const next = globeMomentumStep({ center: globeCenter, velocity: momentum }, delta, viewport, diameter, false);
+          const next = globeMomentumStep({ center: globeCenter, velocity: momentum }, delta, viewport, diameter * restScale(), false);
           globeCenter = next.center; momentum = next.velocity; rememberedCenter.current = globeCenter;
         }
         floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / 4800);
-        idleMs += delta; rest = globeRestStep(rest, idleMs, delta, awake);
+        // Idle time is wall-clock: a slow frame must not postpone the rest.
+        idleMs += raw;
+        const before = restScale();
+        rest = globeRestStep(rest, idleMs, delta, awake);
+        // Rest about the globe's bottom-right corner: shift the center by the radius change so that
+        // tangent point stays put while the globe shrinks toward, or grows out of, the corner.
+        const shift = diameter / 2 * (before - restScale());
+        if (shift) { globeCenter = { x: globeCenter.x + shift, y: globeCenter.y + shift }; rememberedCenter.current = globeCenter; }
         perspective = { ...globeCenter }; current = globe(); draw();
       }
       schedule();
@@ -180,16 +195,16 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       start(pointerId, point, time) {
         if (currentPhase !== 'closed' || pointer) return false;
         stopFrame(); momentum = { x: 0, y: 0 }; suppressClick = false; awake = true; idleMs = 0;
-        globeCenter = clampGlobeCenter({ x: globeCenter.x, y: globeCenter.y + floatingY }, viewport, diameter);
+        globeCenter = clampGlobeCenter({ x: globeCenter.x, y: globeCenter.y + floatingY }, viewport, diameter * restScale());
         rememberedCenter.current = globeCenter; floatingY = 0; perspective = { ...globeCenter };
         pointer = { id: pointerId, origin: point, center: globeCenter, lastCenter: globeCenter,
           lastTime: time, dragged: false, velocity: { x: 0, y: 0 } };
-        setDragging(true); current = globe(); draw(); return true;
+        setDragging(true); current = globe(); draw(); schedule(); return true;
       },
       move(pointerId, point, time) {
         if (!pointer || pointer.id !== pointerId) return;
         globeCenter = clampGlobeCenter({ x: pointer.center.x + point.x - pointer.origin.x,
-          y: pointer.center.y + point.y - pointer.origin.y }, viewport, diameter);
+          y: pointer.center.y + point.y - pointer.origin.y }, viewport, diameter * restScale());
         const delta = Math.max(1, time - pointer.lastTime);
         const instant = { x: (globeCenter.x - pointer.lastCenter.x) / delta,
           y: (globeCenter.y - pointer.lastCenter.y) / delta };
@@ -197,7 +212,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
           y: pointer.velocity.y * .55 + instant.y * .45 };
         pointer.dragged ||= isGlobeDrag(pointer.origin, point);
         pointer.lastCenter = globeCenter; pointer.lastTime = time;
-        rememberedCenter.current = globeCenter; perspective = { ...globeCenter }; current = globe(); draw();
+        rememberedCenter.current = globeCenter; dragDirty = true; schedule();
       },
       end(pointerId, time) {
         if (!pointer || pointer.id !== pointerId) return;
