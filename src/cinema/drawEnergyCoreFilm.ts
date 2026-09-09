@@ -22,18 +22,20 @@ export function drawEnergyCoreFilm(ctx: CanvasRenderingContext2D, width: number,
   ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.lineCap = 'butt'; ctx.textBaseline = 'alphabetic';
   // Every scene starts from the film's opaque base so nothing from the previous chapter bleeds through.
   ctx.globalAlpha = 1; ctx.fillStyle = '#040b10'; fillFilmViewport(ctx, view);
-  // Backdrop: navy for the HUD, violet for the infographic, with a faint perspective grid.
+  // Backdrop: the film's dark base tinted by the HUD accent (which the theme mapper recolors), so the
+  // scene keeps whatever theme is active. The infographic act only deepens the tint and adds the dot
+  // matrix; its violet lives in the panels and ring, never in the page background.
   const backdrop = ctx.createLinearGradient(0, view.top, 0, view.bottom);
-  backdrop.addColorStop(0, mixHex('#04102a', '#1a0a4a', state.blend));
-  backdrop.addColorStop(1, mixHex(hud.background, info.background, state.blend));
+  backdrop.addColorStop(0, mixHex('#040b10', hud.line, .04 + state.blend * .03));
+  backdrop.addColorStop(1, mixHex('#040b10', hud.line, .11 + state.blend * .05));
   ctx.globalAlpha = state.opacity; ctx.fillStyle = backdrop;
   ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
-  ctx.globalAlpha = state.opacity * .12; ctx.strokeStyle = mixHex(hud.line, info.line, state.blend); ctx.lineWidth = 1;
+  ctx.globalAlpha = state.opacity * .12; ctx.strokeStyle = hud.line; ctx.lineWidth = 1;
   for (let x = 72; x <= 1208; x += 56) { ctx.beginPath(); ctx.moveTo(x, 60); ctx.lineTo(x, 650); ctx.stroke(); }
   for (let y = 60; y <= 650; y += 56) { ctx.beginPath(); ctx.moveTo(72, y); ctx.lineTo(1208, y); ctx.stroke(); }
   if (state.blend > 0) {
-    // Dotted texture of the infographic act.
-    ctx.globalAlpha = state.opacity * state.blend * .35; ctx.fillStyle = info.channels[1];
+    // Dotted texture of the infographic act, in the accent so it follows the theme too.
+    ctx.globalAlpha = state.opacity * state.blend * .35; ctx.fillStyle = hud.line;
     for (let x = 80; x < 1200; x += 24) for (let y = 70; y < 640; y += 24) ctx.fillRect(x, y, 1.5, 1.5);
   }
 
