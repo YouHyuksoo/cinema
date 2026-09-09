@@ -13,6 +13,9 @@ import { cinemaApiUrl } from './cinemaApi';
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
   const [configured, setConfigured] = useState<boolean | null>(null);
+  // Realtime voice only when the server has an OpenAI key and the AI settings ask for it; else browser speech + text model.
+  const [realtime, setRealtime] = useState(false);
+  const [providerLabel, setProviderLabel] = useState<string | null>(null);
   const [statusError, setStatusError] = useState('');
   const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
   const [connected, setConnected] = useState(false);
@@ -28,7 +31,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const session = useRef<JarvisRealtimeSession | null>(null);
   const chapter = useRef(onChapter);
   const actionsRef = useRef(actions);
-  const local = useJarvisLocalVoice(onChapter, { speakReplies: configured === false, actions });
+  const local = useJarvisLocalVoice(onChapter, { speakReplies: !realtime, actions });
   useEffect(() => { chapter.current = onChapter; }, [onChapter]);
   useEffect(() => { actionsRef.current = actions; }, [actions]);
   useEffect(() => { session.current?.setRobotVoice(robotVoice); }, [robotVoice]);
@@ -39,6 +42,8 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
       .then(data => {
         if (abort.signal.aborted) return;
         setConfigured(data.aiConfigured === true);
+        setRealtime(data.useRealtime === true);
+        setProviderLabel(typeof data.providerLabel === 'string' ? data.providerLabel : null);
         setModels({ text: typeof data.textModel === 'string' && data.textModel.trim() ? data.textModel : null,
           realtime: typeof data.realtimeModel === 'string' && data.realtimeModel.trim() ? data.realtimeModel : null });
       })
@@ -50,7 +55,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   }, []);
   async function start() {
     if (configured === null) return;
-    if (!configured) { setRealtimeView(false); await local.start(); return; }
+    if (!configured || !realtime) { setRealtimeView(false); await local.start(); return; }
     if (active) return;
     local.stop(); session.current?.stop(); setRealtimeView(true); setError(''); setActive(true); setMessages([]); setTranscript('');
     const current = new JarvisRealtimeSession({
@@ -78,7 +83,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   }
   const selected = realtimeView ? { phase, transcript, messages, error, source: 'OpenAI Realtime · AI 생성 음성',
     supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
-  return { ...selected, configured, statusError, realtimeVoice, setRealtimeVoice, robotVoice, setRobotVoice, speechProfile: local.speechProfile,
+  return { ...selected, configured, realtime, providerLabel, statusError, realtimeVoice, setRealtimeVoice, robotVoice, setRobotVoice, speechProfile: local.speechProfile,
     aiConnection: { configured, statusError, models, connected, realtimeActive: active, error: realtimeView ? error : local.error },
     start, stop, ask, stopReply: realtimeView ? () => session.current?.interrupt() : local.stopReply };
 }

@@ -6,12 +6,27 @@ import { JARVIS_REALTIME_VOICES } from '@/cinema/jarvisAudio';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import { describeHatcheryPatch, hatcheryObjectCatalog, SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from '@/cinema/hatcheryTargets';
 import type { JarvisReply } from '@/cinema/jarvisCommands';
+import { AiProviderFailure, chatWithProvider, resolveAiRuntime } from './aiProviders';
 
-export const openAiConfigured = () => Boolean(process.env.OPENAI_API_KEY?.trim());
-export const textModel = () => process.env.OPENAI_TEXT_MODEL || 'gpt-4.1-mini';
-export const realtimeModel = () => process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini';
+/** True when any provider can answer: a saved key on /cinema/ai, or OPENAI_API_KEY in the environment. */
+export const openAiConfigured = () => resolveAiRuntime() !== null;
+export const textModel = () => resolveAiRuntime()?.model ?? (process.env.OPENAI_TEXT_MODEL || 'gpt-4.1-mini');
+export const aiProviderId = () => resolveAiRuntime()?.provider ?? 'openai';
+/** The realtime voice session is OpenAI-only: it needs an OpenAI key from the saved config or the environment. */
+export function realtimeRuntime(): { apiKey: string; model: string } | null {
+  const runtime = resolveAiRuntime();
+  if (runtime?.provider === 'openai') return { apiKey: runtime.apiKey, model: runtime.realtimeModel };
+  const key = process.env.OPENAI_API_KEY?.trim();
+  return key ? { apiKey: key, model: process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini' } : null;
+}
+export const realtimeModel = () => realtimeRuntime()?.model ?? (process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini');
 export const REALTIME_VOICES = JARVIS_REALTIME_VOICES;
+/** Built-in instructions plus the operator's directives saved on the AI settings screen. */
 export function jarvisInstructions() {
+  const extra = resolveAiRuntime()?.instructions.trim();
+  return extra ? `${baseInstructions()}\n\n운영자 추가 지시:\n${extra}` : baseInstructions();
+}
+function baseInstructions() {
   return `당신은 제조 모니터링 HUD의 AI 보조자 HATCHERY입니다. 한국어로 간결하게 답하세요.
 차분하고 낮은 남성적인 음색과 절제된 로봇 같은 말투를 사용하되 발음은 명료하게 하세요. 영화 배우와 동일한 목소리라고 주장하지 마세요.
 현재 현장 데이터는 실제 MES가 아닌 시연 데이터입니다. 수치를 말할 때 시연 기준임을 밝히고, 없는 측정값이나 원인을 지어내지 마세요.
@@ -42,20 +57,29 @@ export class OpenAiFailure extends Error {
   }
 }
 export function apiFailure(error: unknown) {
-  return Response.json({ error: error instanceof OpenAiFailure ? error.message : 'OpenAI 응답을 받지 못했습니다. 연결 상태를 확인해 주세요.' },
-    { status: error instanceof OpenAiFailure && error.status === 429 ? 429 : 502 });
+  const known = error instanceof OpenAiFailure || error instanceof AiProviderFailure;
+  return Response.json({ error: known ? error.message : 'AI 응답을 받지 못했습니다. 연결 상태를 확인해 주세요.' },
+    { status: known && error.status === 429 ? 429 : 502 });
 }
-export async function openAiRequest(path: string, body: BodyInit, signal: AbortSignal, multipart = false) {
+export async function openAiRequest(path: string, body: BodyInit, signal: AbortSignal, multipart = false, apiKey = resolveAiRuntime()?.apiKey ?? process.env.OPENAI_API_KEY) {
   const response = await fetch(`https://api.openai.com/v1/${path}`, { method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...(multipart ? {} : { 'Content-Type': 'application/json' }) },
+    headers: { Authorization: `Bearer ${apiKey}`, ...(multipart ? {} : { 'Content-Type': 'application/json' }) },
     body, signal: AbortSignal.any([signal, AbortSignal.timeout(25000)]), cache: 'no-store' });
   if (!response.ok) throw new OpenAiFailure(response.status);
   return response;
 }
 export async function answerWithOpenAi(body: z.infer<typeof ChatBody>, signal: AbortSignal): Promise<JarvisReply> {
-  const response = await openAiRequest('responses', JSON.stringify({ model: textModel(), store: false,
-    max_output_tokens: 800, instructions: jarvisInstructions(), tools: [SET_SCENE_OBJECT_VALUES_TOOL], tool_choice: 'auto',
-    input: [...body.history, { role: 'user', content: body.message }] }), signal);
+  const runtime = resolveAiRuntime();
+  if (!runtime) throw new OpenAiFailure(503);
+  if (runtime.provider !== 'openai') {
+    // Other providers answer in plain text; the scene-value tool stays OpenAI-only for now.
+    const reply = await chatWithProvider(runtime, jarvisInstructions(), [...body.history, { role: 'user', content: body.message }], signal);
+    if (!reply) throw new AiProviderFailure(runtime.provider, 502);
+    return { source: 'ai', reply };
+  }
+  const response = await openAiRequest('responses', JSON.stringify({ model: runtime.model, store: false,
+    max_output_tokens: runtime.maxOutputTokens, temperature: runtime.temperature, instructions: jarvisInstructions(), tools: [SET_SCENE_OBJECT_VALUES_TOOL], tool_choice: 'auto',
+    input: [...body.history, { role: 'user', content: body.message }] }), signal, false, runtime.apiKey);
   const data = await response.json() as { output?: { type: string; name?: string; arguments?: string; content?: { type: string; text?: string; refusal?: string }[] }[] };
   const reply = data.output?.filter(item => item.type === 'message').flatMap(item => item.content ?? [])
     .map(item => item.type === 'output_text' ? item.text ?? '' : item.type === 'refusal' ? item.refusal ?? '' : '').join('\n').trim();

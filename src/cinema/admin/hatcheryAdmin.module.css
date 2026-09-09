@@ -27,6 +27,7 @@
 .page textarea { resize:vertical; min-height:96px; line-height:1.45; }
 .page input:focus, .page select:focus, .page textarea:focus { outline:none; border-color:var(--hud-cyan); }
 .page input[type=checkbox] { width:auto; }
+.page input[type=range] { padding:0; border:0; background:transparent; accent-color:var(--hud-cyan); }
 .mappings { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin:12px 0; align-items:start; }
 .table { width:100%; border-collapse:collapse; font-size:12px; }
 .table caption { text-align:left; padding:0 0 6px; font:600 11px var(--font-mono), monospace; letter-spacing:.08em; color:var(--hud-text-dim); }

@@ -1,10 +1,13 @@
-.toolbar { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:6px 12px; min-width:0; }
+.toolbar { grid-area:stage; align-self:start; z-index:3; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:6px 12px; min-width:0; pointer-events:none; }
+.toolbar button, .toolbar a, .startPanel, .cameraDock, .aiPanel { pointer-events:auto; }
 .aiPanel { grid-column:1/-1; grid-row:1; min-width:0; padding-top:4px; }
 .startPanel { grid-column:1; grid-row:2; min-width:0; }
 .startPanel>[data-compact=true] { width:150px; max-width:100%; justify-content:flex-start; }
-.centerHeading { position:absolute; inset:0; z-index:3; pointer-events:none; }
-.centerHeading>div { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:block; width:max-content; max-width:calc(100% - 24px); padding:0; text-align:center; text-shadow:0 2px 8px var(--film-bg),0 0 14px var(--film-bg); }
-.centerHeading span { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); white-space:nowrap; }
+.visual { grid-area:stage; display:grid; grid-template-rows:minmax(0,1fr) auto; min-height:0; gap:4px; }
+.centerHeading { min-width:0; padding:0 4px 6px; pointer-events:none; }
+.centerHeading>div { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:4px 10px; padding:0; text-align:center; }
+.centerHeading>div>h1 { font-size:12px; line-height:1.4; }
+.centerHeading span { font-size:7px; letter-spacing:.08em; white-space:nowrap; }
 .cameraDock { grid-column:2; grid-row:2; justify-self:end; width:128px; max-width:100%; min-width:0; background:linear-gradient(120deg,color-mix(in srgb,var(--film-accent) 5%,transparent),transparent); }
 .cameraTitle { display:flex; justify-content:space-between; align-items:center; gap:4px; font:6px var(--font-mono),monospace; color:var(--film-muted); padding:5px 2px; }
 .cameraTitle i { width:4px; height:4px; flex:none; background:var(--film-muted); }
@@ -13,7 +16,7 @@
 .cameraImage>span { position:absolute; top:4px; left:4px; font:6px var(--font-mono),monospace; color:var(--film-accent); text-shadow:0 1px 3px black; pointer-events:none; }
 .cameraImage .cameraToggle { position:absolute; right:3px; bottom:3px; margin:0; padding:4px 6px; font-size:9px; line-height:1.3; background:color-mix(in srgb,var(--film-bg) 85%,transparent); border-color:var(--film-line); }
 .cameraImage .cameraToggle:focus-visible { outline-offset:-2px; }
-.bottomRow { min-width:0; }
+.bottomRow { grid-area:input; min-width:0; }
 .bottomRow>form { min-width:0; }
 @media(max-width:680px) {
   .toolbar { gap:4px 8px; }

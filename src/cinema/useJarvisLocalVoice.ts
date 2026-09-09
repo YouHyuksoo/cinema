@@ -189,7 +189,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
         data = applyReplyPatch(answer);
       }
       history.current = [...history.current, { role: 'assistant' as const, content: data.reply }].slice(-8);
-      setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'OpenAI · AI 생성 답변' : 'AI 연결 안내');
+      setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'AI 생성 답변 · 텍스트 모델' : 'AI 연결 안내');
       const chapter = isSceneId(data.chapter) ? data.chapter : undefined;
       machineSubject = chapter === 'machine' && isMachineSubject(data.machineSubject) ? data.machineSubject : undefined;
       if (options.speakReplies === false) { finish(chapter); }

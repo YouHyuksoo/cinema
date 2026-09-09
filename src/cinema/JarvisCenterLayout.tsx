@@ -5,8 +5,8 @@ import styles from './jarvis.module.css';
 import layout from './jarvisCenterLayout.module.css';
 
 /** Central controls stay outside the scrolling information streams. */
-export function JarvisCenterLayout({ camera, ignition, heading, children, form, aiStatus }: {
-  camera: FilmCamera; ignition: ReactNode; heading: ReactNode; children: ReactNode; form: ReactNode; aiStatus: ReactNode;
+export function JarvisCenterLayout({ camera, ignition, heading, visual, children, form, aiStatus }: {
+  camera: FilmCamera; ignition: ReactNode; heading: ReactNode; visual: ReactNode; children: ReactNode; form: ReactNode; aiStatus: ReactNode;
 }) {
   return <div className={styles.center} role="region" aria-label="중앙 음성 대화">
     <div className={layout.toolbar}>
@@ -26,7 +26,10 @@ export function JarvisCenterLayout({ camera, ignition, heading, children, form, 
         </div>
       </section>
     </div>
-    <div className={layout.centerHeading} role="status" aria-label="중앙 상태 메시지">{heading}</div>
+    <div className={layout.visual}>
+      {visual}
+      <div className={layout.centerHeading} role="status" aria-label="중앙 상태 메시지">{heading}</div>
+    </div>
     {children}
     <div className={layout.bottomRow}>
       {form}

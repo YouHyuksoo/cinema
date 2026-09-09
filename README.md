@@ -12,6 +12,8 @@ npm run dev
 
 - 메인: http://localhost:3010
 - 기존 주소: http://localhost:3010/cinema
+- AI 설정: http://localhost:3010/cinema/ai (프로바이더·모델·API 키·음성 방식·프롬프트 지시어·접속 테스트, 큐브 메뉴의 AI 타일). ChatGPT 구독은 `codex login`으로 로그인한 Codex CLI 토큰(~/.codex/auth.json)을 재사용하며, 브라우저 음성 + 텍스트 모델 방식으로 음성 대화를 할 수 있습니다.
+- 데이터 소스 관리: http://localhost:3010/cinema/admin
 - 개발·프로덕션 모두 기본 포트 3010입니다(원본 HUD의 3000번과 분리). 이 분리 작업은 기존 서버를 종료하지 않습니다.
 - 최초 설치 후 빌드 시 next/font/google이 폰트를 받아야 하므로 인터넷 연결이 필요합니다.
 

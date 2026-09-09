@@ -1,4 +1,5 @@
 import { DOMAIN_FEEDS, type DomainFeed } from './domainFeeds';
+import { parseAiConfig, type AiConfig } from './aiConfig';
 
 /**
  * Data source and feed mapping configuration. Stored server-side as JSON (never committed);
@@ -31,7 +32,7 @@ export interface FeedMappingConfig {
   header: Record<string, string>;
   collections: Record<string, CollectionMapping>;
 }
-export interface HatcheryConfig { sources: DataSourceConfig[]; feeds: FeedMappingConfig[] }
+export interface HatcheryConfig { sources: DataSourceConfig[]; feeds: FeedMappingConfig[]; /** AI assistant settings (see aiConfig.ts); absent until saved from /cinema/ai. */ ai?: AiConfig }
 
 export const EMPTY_HATCHERY_CONFIG: HatcheryConfig = { sources: [], feeds: [] };
 export const MIN_FEED_INTERVAL_SECONDS = 5;
@@ -104,7 +105,10 @@ export function parseHatcheryConfig(input: unknown): { ok: true; config: Hatcher
     if (parsed.mapping.enabled && !sources.some(source => source.id === parsed.mapping.sourceId)) return { ok: false, reason: `${parsed.mapping.feed}: 활성 피드에는 존재하는 데이터 소스가 필요합니다.` };
     feeds.push(parsed.mapping);
   }
-  return { ok: true, config: { sources, feeds } };
+  if (input.ai === undefined || input.ai === null) return { ok: true, config: { sources, feeds } };
+  const ai = parseAiConfig(input.ai);
+  if (!ai.ok) return ai;
+  return { ok: true, config: { sources, feeds, ai: ai.config } };
 }
 
 /** Admin-screen starting point: every contract field mapped to an upper-case column of the same name. */

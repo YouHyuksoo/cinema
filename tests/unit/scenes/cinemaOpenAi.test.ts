@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { GET, POST } from '@/app/api/cinema/assistant/route';
 
 const request = (body: unknown, origin = 'http://localhost:3000') => new Request('http://localhost:3000/api/cinema/assistant', {
   method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 });
-beforeEach(() => { vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGlobal('fetch', vi.fn()); });
+// No saved AI settings: point the config file at a path that does not exist so only the environment applies.
+beforeEach(() => { vi.stubEnv('HATCHERY_CONFIG_PATH', join(tmpdir(), `hatchery-none-${process.pid}.json`)); vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGlobal('fetch', vi.fn()); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe('Jarvis OpenAI server boundary', () => {
   it('reports configured status without disclosing credentials', async () => {

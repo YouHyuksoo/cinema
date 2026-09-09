@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { POST } from '@/app/api/cinema/realtime/route';
 const request = (sdp = 'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n', voice = 'cedar') => new Request(`http://localhost:3000/api/cinema/realtime?voice=${voice}`, {
   method: 'POST', headers: { origin: 'http://localhost:3000', 'Content-Type': 'application/sdp' }, body: sdp,
 });
-beforeEach(() => { vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGlobal('fetch', vi.fn()); });
+// No saved AI settings: point the config file at a path that does not exist so only the environment applies.
+beforeEach(() => { vi.stubEnv('HATCHERY_CONFIG_PATH', join(tmpdir(), `hatchery-none-${process.pid}.json`)); vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGlobal('fetch', vi.fn()); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe('Realtime session proxy', () => {
   it('sends server-authenticated multipart SDP and returns only the answer', async () => {

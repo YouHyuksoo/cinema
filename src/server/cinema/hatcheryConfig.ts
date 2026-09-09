@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { EMPTY_HATCHERY_CONFIG, parseHatcheryConfig, type DataSourceConfig, type HatcheryConfig } from '@/cinema/feedConfig';
+import { mergeAiKey } from '@/cinema/aiConfig';
 
 /** Server-only file with data source credentials and feed mappings. Never committed. */
 export const configPath = () => resolve(/*turbopackIgnore: true*/ process.env.HATCHERY_CONFIG_PATH || 'config/hatchery.sources.json');
@@ -28,8 +29,13 @@ export function maskConfig(config: HatcheryConfig): MaskedConfig {
   return { sources: config.sources.map(({ password, ...source }) => ({ ...source, hasPassword: password.length > 0 })), feeds: config.feeds };
 }
 
-/** Incoming sources with an empty password keep the password already on file. */
+/**
+ * Incoming sources with an empty password keep the password already on file. The AI block works
+ * the same way for its key, and a payload without an AI block leaves the saved one untouched
+ * (the data-source screen never sends it).
+ */
 export function mergePasswords(incoming: HatcheryConfig, current: HatcheryConfig): HatcheryConfig {
+  const ai = incoming.ai ? mergeAiKey(incoming.ai, current.ai) : current.ai;
   return { ...incoming, sources: incoming.sources.map(source => source.password ? source
-    : { ...source, password: current.sources.find(item => item.id === source.id)?.password ?? '' }) };
+    : { ...source, password: current.sources.find(item => item.id === source.id)?.password ?? '' }), ...(ai ? { ai } : {}) };
 }

@@ -81,6 +81,7 @@ export function HatcheryAdmin() {
         <p className={styles.muted}>DB 접속 · 피드 매핑 · 실행 상태. 화면은 장면 데이터 계약(<code>docs/database/domain-feeds.md</code>)대로만 데이터를 받습니다.</p></div>
       <div className={styles.actions}>
         <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema`}>화면으로</a>
+        <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema/ai`}>AI 설정</a>
         <button type="button" className={styles.button} data-primary onClick={() => void save()} disabled={saving}>{saving ? '저장 중…' : '저장'}</button>
       </div>
     </header>
