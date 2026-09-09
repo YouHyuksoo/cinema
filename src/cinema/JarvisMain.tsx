@@ -14,6 +14,7 @@ import { JarvisOperations, JarvisQualityEnergy } from './JarvisOperations';
 import { JarvisChannelDials } from './JarvisChannelDials';
 import { JarvisVoiceSettings } from './JarvisVoiceSettings';
 import { JarvisAiVoiceSettings } from './JarvisAiVoiceSettings';
+import { JarvisVoiceModeToggle } from './JarvisVoiceModeToggle';
 import { JarvisDialogue } from './JarvisDialogue';
 import { jarvisOverview } from './jarvisCommands';
 import { JARVIS_PHASE_LABELS } from './jarvisAudio';
@@ -44,6 +45,8 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
     <JarvisOperations onChapter={onChapter} />
     <section className={styles.left}>
       <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
+      {voice.configured && <JarvisVoiceModeToggle mode={voice.voiceMode} realtimeAvailable={voice.realtimeAvailable} busy={voice.active || voice.switching}
+        onChange={mode => void voice.setVoiceMode(mode)} />}
       {voice.realtime ? <JarvisAiVoiceSettings voice={voice.realtimeVoice} active={voice.active} effect={voice.robotVoice}
         onVoice={voice.setRealtimeVoice} onEffect={voice.setRobotVoice} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
       <p className={styles.notice}>{voice.realtime ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : voice.configured ? '대화 시작을 누르면 브라우저 음성으로 듣고, 텍스트 모델의 답을 브라우저 목소리로 읽어 줍니다.' : '대화 시작을 누르고 HATCHERY에게 말을 걸어보세요.'}</p>
@@ -61,7 +64,7 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
           else { void voice.start(); void camera.start(); }
         }} />
     } heading={
-      <div className={styles.voiceHeading}><h1>{JARVIS_PHASE_LABELS[voice.phase]}</h1><span data-active={voice.active}>{voice.active ? '● SESSION ON' : '○ STANDBY'}</span></div>
+      <div className={styles.voiceHeading}><h1>{JARVIS_PHASE_LABELS[voice.phase]}</h1><span data-active={voice.active}>{voice.active ? '● SESSION ON' : '○ STANDBY'}{voice.configured ? ` · ${voice.realtime ? 'REALTIME' : 'BROWSER VOICE'}` : ''}</span></div>
     } visual={
       <div className={styles.wave}>
         <JarvisConversationTrail messages={voice.messages} />

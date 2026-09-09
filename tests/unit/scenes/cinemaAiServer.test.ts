@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GET as getAi, PUT as putAi } from '@/app/api/cinema/admin/ai/route';
+import { GET as getAi, PATCH as patchAi, PUT as putAi } from '@/app/api/cinema/admin/ai/route';
 import { POST as testAi } from '@/app/api/cinema/admin/ai/test/route';
 import { GET as assistantStatus, POST as assistant } from '@/app/api/cinema/assistant/route';
 import { POST as realtime } from '@/app/api/cinema/realtime/route';
@@ -40,6 +40,18 @@ describe('AI settings API', () => {
     await putAi(request('PUT', { ...anthropic, apiKey: '', temperature: 0.9 }));
     expect(readConfig().config.ai).toMatchObject({ apiKey: 'sk-ant-secret', temperature: 0.9 });
     expect(await (await putAi(request('PUT', { provider: 'nope' }))).status).toBe(400);
+  });
+  it('switches the voice mode alone from the main screen, keeping provider, key and prompt', async () => {
+    expect(await (await patchAi(request('PATCH', { voiceMode: 'phone' }))).status).toBe(400);
+    // Nothing saved yet: the mode is recorded and the environment key keeps answering.
+    vi.stubEnv('OPENAI_API_KEY', 'env-key');
+    expect(await (await patchAi(request('PATCH', { voiceMode: 'browser' }))).json()).toMatchObject({ ai: { provider: 'openai', voiceMode: 'browser', keySource: 'env' } });
+    expect(await (await assistantStatus()).json()).toMatchObject({ aiConfigured: true, realtimeAvailable: true, useRealtime: false, voiceMode: 'browser' });
+    await putAi(request('PUT', anthropic));
+    await patchAi(request('PATCH', { voiceMode: 'browser' }));
+    expect(readConfig().config.ai).toMatchObject({ provider: 'anthropic', apiKey: 'sk-ant-secret', instructions: '세 문장 이내로.', voiceMode: 'browser' });
+    await patchAi(request('PATCH', { voiceMode: 'realtime' }));
+    expect(readConfig().config.ai?.voiceMode).toBe('realtime');
   });
   it('leaves the saved AI block alone when the data-source screen writes sources and feeds', () => {
     writeConfig({ sources: [], feeds: [], ai: { ...anthropic, provider: 'anthropic', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' } });

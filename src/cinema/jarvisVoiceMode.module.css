@@ -1,0 +1,6 @@
+.row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:0 0 8px; }
+.label { font:9px var(--font-mono),monospace; letter-spacing:.06em; color:var(--film-muted); margin-right:4px; }
+.option { padding:5px 9px; font-size:10px; }
+.option[aria-pressed=true] { color:var(--film-accent); border-color:var(--film-accent); background:color-mix(in srgb,var(--film-accent) 16%,transparent); }
+.option[aria-pressed=true]::before { content:'● '; }
+.option:disabled[aria-pressed=false] { opacity:.4; }
