@@ -10,6 +10,7 @@ import { JarvisCenterLayout } from './JarvisCenterLayout';
 import { JarvisAiStatus } from './JarvisAiStatus';
 import { JarvisTemperatureAlerts } from './JarvisTemperatureAlerts';
 import { JarvisStream } from './JarvisStream';
+import { JarvisHelp } from './JarvisHelp';
 import { JarvisOperations, JarvisQualityEnergy } from './JarvisOperations';
 import { JarvisChannelDials } from './JarvisChannelDials';
 import { JarvisVoiceSettings } from './JarvisVoiceSettings';
@@ -35,14 +36,13 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
   return <section className={styles.main} aria-label="HATCHERY 메인 메뉴">
     <JarvisMainHeader />
     <div className={styles.body}>
-    <JarvisStream title="OPERATIONS / STREAM" label="좌측 운영 정보" speed={15}>
+    <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15}>
     <section className={styles.left}>
       <div className={styles.sectionTitle}>SESSION / CONNECTIONS</div>
       <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
         <dt>음성 인식</dt><dd>{voice.realtime ? 'OpenAI Realtime' : voice.supported === null ? '확인 중' : voice.supported ? '브라우저' : '미지원'}</dd>
         <dt>현장 명령</dt><dd>사용 가능</dd><dt>자유 대화 AI</dt><dd>{voice.configured === null ? '확인 중' : voice.configured ? `${voice.providerLabel ?? 'AI'} 설정됨` : '미연결'}</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
     </section>
-    <JarvisOperations onChapter={onChapter} />
     <section className={styles.left}>
       <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
       {voice.configured && <JarvisVoiceModeToggle mode={voice.voiceMode} realtimeAvailable={voice.realtimeAvailable} busy={voice.active || voice.switching}
@@ -56,6 +56,7 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
         <button key={q} disabled={busy} onClick={() => void voice.ask(q)}>{q}</button>)}</div>
       <p className={styles.notice}>{voice.realtime ? 'AI 생성 음성입니다. 대화 중 마이크 음성·질문·시연 정보가 OpenAI로 전송되며 사용량에 따라 과금됩니다. 세션은 최대 10분이며 종료·화면 이탈 시 연결을 닫습니다. 카메라는 화면에만 표시합니다.' : voice.configured ? `카메라는 화면에만 표시합니다. 음성 인식·합성은 브라우저 서비스를 이용하고, 질문 텍스트와 시연 정보만 ${voice.providerLabel ?? 'AI'}로 전송됩니다.` : '카메라는 화면에만 표시합니다. 음성 인식은 브라우저 서비스를 이용합니다. 자유 대화 AI는 미연결 상태입니다.'}</p>
     </section>
+    <JarvisHelp />
     </JarvisStream>
     <JarvisCenterLayout camera={camera} aiStatus={<JarvisAiStatus connection={voice.aiConnection} />} ignition={
       <JarvisIgnition compact active={voice.active} phase={voice.phase} disabled={voice.configured === null}
@@ -79,8 +80,9 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
     }>
       <JarvisDialogue key={reply} text={reply} source={voice.source} />
     </JarvisCenterLayout>
-    <JarvisStream title="INTELLIGENCE / STREAM" label="우측 분석 정보" speed={19} side="right">
+    <JarvisStream title="DATA / ANALYSIS" label="우측 분석 정보" speed={19} side="right">
       <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials /></section>
+      <JarvisOperations onChapter={onChapter} />
       <JarvisQualityEnergy onChapter={onChapter} />
       <JarvisTemperatureAlerts zones={overview.zones} onDetails={() => onChapter('wave')} />
     </JarvisStream>

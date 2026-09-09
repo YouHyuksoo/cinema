@@ -1,4 +1,6 @@
 import { VOICE_CORE_VIEW as view, type VoiceCoreState } from '../jarvisVoiceCore';
+import { drawReactorEyeHeat } from './drawReactorEyeHeat';
+import { drawReactorRear } from './drawReactorRear';
 import { projectReactor, reactorDiscPoint, reactorRimGlyphs, rotateReactorPoint, REACTOR_HALF,
   type ReactorGlyph, type ReactorPoint, type VoiceTeslaSpark } from '../voiceReactorGeometry';
 
@@ -43,6 +45,9 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
   const fill = (points: ReactorPoint[], color: string | CanvasGradient) => polygon(ctx, points, color, pitch);
   const backZ = REACTOR_HALF, frontZ = -REACTOR_HALF;
   const back = Array.from({ length: 65 }, (_, i) => disc(i / 64 * TAU, 106, backZ));
+  const rearFacing = Math.cos(yaw) * Math.cos(pitch) < 0;
+  // Raised rear hardware remains visible beyond the body silhouette before a full rear turn.
+  if (!rearFacing) drawReactorRear(ctx, state);
   ctx.globalAlpha = 1; fill(back, '#09131e');
   // Opaque, shaded side wall: this is the visible thickness of the reactor.
   const sides = Array.from({ length: 48 }, (_, i) => {
@@ -60,17 +65,9 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
   const metal = ctx.createLinearGradient(view.x - 100, view.y - 115, view.x + 95, view.y + 115);
   metal.addColorStop(0, '#c3dde4'); metal.addColorStop(.18, '#536d7b');
   metal.addColorStop(.48, '#182933'); metal.addColorStop(.8, '#809ba4'); metal.addColorStop(1, '#243b48');
-  // When the eye turns away, the solid rear cap hides the front face and emitter.
-  if (Math.cos(yaw) * Math.cos(pitch) < 0) {
-    fill(back, '#11222e');
-    fill(ring(107, 92, backZ + 1), metal);
-    fill(ring(74, 62, backZ + 2), '#3c5360');
-    fill(ring(33, 0, backZ + 3), '#203c4d');
-    for (let i = 0; i < 3; i++) {
-      const a = i * TAU / 3 + .52;
-      fill([disc(a - .09, 90, backZ + 2), disc(a + .09, 90, backZ + 2),
-        disc(a + .2, 35, backZ + 3), disc(a - .2, 35, backZ + 3)], metal);
-    }
+  // The manufactured rear is attached to the same body rotation as the front assembly.
+  if (rearFacing) {
+    drawReactorRear(ctx, state);
     return;
   }
   fill(ring(107, 97, backZ - 1), metal);
@@ -107,6 +104,10 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
   plasma.addColorStop(.68, eyeColor); plasma.addColorStop(1, state.irisColor ? '#561727' : '#186280');
   ctx.globalAlpha = state.phase === 'error' ? .4 : 1;
   fill(emitter, plasma);
+  if (state.irisHeat) {
+    ctx.save(); path(ctx, emitter, true, pitch); ctx.clip();
+    drawReactorEyeHeat(ctx, state); ctx.restore();
+  }
   ctx.globalAlpha = 1;
   if (state.blink > .02) {
     const lid = (sign: number) => {

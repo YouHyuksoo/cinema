@@ -66,4 +66,4 @@ export function voiceCoreState(time: number, phase: JarvisPhase, level: number, 
     collar: reduced ? .2 : -t * .58,
   };
 }
-export type VoiceCoreState = ReturnType<typeof voiceCoreState> & { irisColor?: string };
+export type VoiceCoreState = ReturnType<typeof voiceCoreState> & { irisColor?: string; irisHeat?: number };

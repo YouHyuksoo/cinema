@@ -1,0 +1,36 @@
+import { describe, expect, it } from 'vitest';
+import { createCenterBackgroundPreference, CENTER_BACKGROUND_KEY } from '@/cinema/jarvisCenterBackground';
+
+describe('main center background preference', () => {
+  it('keeps the current style by default and ignores unknown saved options', () => {
+    expect(createCenterBackgroundPreference().getSnapshot()).toBe('classic');
+    expect(createCenterBackgroundPreference(() => ({ getItem: () => 'invalid', setItem() {} })).getSnapshot()).toBe('classic');
+  });
+  it('persists a choice and restores it without enabling any devices', () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+    const preference = createCenterBackgroundPreference(() => storage);
+    let changes = 0;
+    const unsubscribe = preference.subscribe(() => changes++);
+    preference.set('neon-hud');
+    expect(values.get(CENTER_BACKGROUND_KEY)).toBe('neon-hud');
+    expect(preference.getSnapshot()).toBe('neon-hud');
+    expect(createCenterBackgroundPreference(() => storage).getSnapshot()).toBe('neon-hud');
+    expect(changes).toBe(1);
+    preference.set('neon-hud');
+    expect(changes).toBe(1);
+    unsubscribe(); preference.set('classic');
+    expect(changes).toBe(1);
+  });
+  it('remains usable if browser storage is unavailable', () => {
+    const preference = createCenterBackgroundPreference(() => { throw new Error('storage blocked'); });
+    expect(preference.getSnapshot()).toBe('classic');
+    preference.set('neon-hud');
+    expect(preference.getSnapshot()).toBe('neon-hud');
+    expect(preference.getServerSnapshot()).toBe('classic');
+  });
+  it('migrates the initial red preview selection to neon without adding a third option', () => {
+    const preference = createCenterBackgroundPreference(() => ({ getItem: () => 'red-hud', setItem() {} }));
+    expect(preference.getSnapshot()).toBe('neon-hud');
+  });
+});

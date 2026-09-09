@@ -19,14 +19,21 @@ export function drawReactorShip(ctx: CanvasRenderingContext2D, egg: ReactorEaste
     return { x: egg.position.x + x * c - bankY * s, y: egg.position.y + x * s + bankY * c, z: egg.position.z + bankZ };
   };
   ctx.save();
-  const plume = egg.reduced ? 7 : 11 + Math.sin(egg.time * 28) * 3 + (egg.behind ? 11 : 0);
+  const plume = egg.perched ? 0 : egg.reduced ? 7 : 11 + Math.sin(egg.time * 28) * 3 + (egg.behind ? 11 : 0);
   for (const y of [-5, 5]) {
+    if (egg.perched) continue;
     outline(ctx, [point(-11, y - 2), point(-13 - plume, y), point(-11, y + 2)]);
     ctx.closePath(); ctx.globalAlpha = .7; ctx.fillStyle = '#ffad5a'; ctx.fill();
     outline(ctx, [point(-10, y - 1), point(-18, y), point(-10, y + 1)]);
     ctx.closePath(); ctx.fillStyle = '#fff3c4'; ctx.fill();
   }
   ctx.globalAlpha = 1;
+  if (egg.perched) {
+    for (const x of [-7, 7]) {
+      outline(ctx, [point(x - 1, 6, 2), point(x + 2, 6, 2), point(x + 3, 15, 2), point(x - 2, 15, 2)]);
+      ctx.closePath(); ctx.fillStyle = '#a2acb5'; ctx.fill();
+    }
+  }
   const facets = [
     { vertices: [point(5, 0), point(-13, -15, 1), point(-10, -3, -2)], color: '#5d788d' },
     { vertices: [point(5, 0), point(-13, 15, 1), point(-10, 3, -2)], color: '#e4edf5' },

@@ -18,4 +18,10 @@ describe('center reply stage', () => {
     expect(css).toMatch(/\.center\s*{[^}]*grid-template-areas:\s*"stage" "reply" "input"/);
     expect(css).toMatch(/\.center\s*{[^}]*grid-template-rows:\s*minmax\([^,]+,\s*1fr\) minmax\([^,]+,\s*[\d.]+fr\) auto/);
   });
+  it('frames the center while keeping side streams readable without hovering', () => {
+    expect(css).toMatch(/\.center\s*{[^}]*clip-path:\s*polygon\(/);
+    expect(css).toMatch(/\.body\s*>\s*:not\(\.center\)\s*{[^}]*opacity:\s*1;/);
+    expect(css).toMatch(/\.body\s*>\s*:not\(\.center\)\s*{[^}]*filter:\s*none;/);
+    expect(css).toMatch(/\.wave::before\s*{[^}]*border-radius:\s*50%/);
+  });
 });

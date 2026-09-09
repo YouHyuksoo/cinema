@@ -1,6 +1,28 @@
 # CINEMA 시각 시스템
 
-- 리액터 클릭 이스터에그(2026-09-09): 작은 우주선 진입 → 앞에서 장난(중앙 눈만 붉게 달아오르며 가늘어짐) → 리액터 뒤로 가려지며 도주 → 몸체 급선회 → 먼 우주선에 레이저·작은 폭발 → 약 7.4초 뒤 원래 시안 눈과 회전으로 복귀한다. 금속·코일 색은 유지하며 앞뒤 가림과 발사 방향은 같은 3D 좌표를 쓴다. 클릭 영역은 리액터 크기에만 맞춘 투명 버튼이고 재생 중 중복 클릭은 무시한다. 버튼에서 Escape, 페이지 숨김, 언마운트 시 취소한다. 동작 줄이기는 1.2초 정적인 우주선 인사만 표시한다. 영향: reactorEasterEgg.ts(순수 타임라인·표정·재생 수명) → components/drawReactorEasterEgg.ts / drawVoiceReactor.ts(그리기) → drawJarvisVoiceField.ts(앞뒤 합성) → JarvisWave.tsx / jarvisWave.module.css(클릭·접근성). 검증: cinemaReactorEasterEgg.test.ts.
+- 좌우 스트림 가독성: 부모·카드·설명·게이지 글자에 중첩 투명도를 적용하지 않는다. 본문 #e6f3f6, 보조 문구 #c3d6dc를 스트림 내부에만 사용하고 테마 액센트는 유지한다. 카드 위치·회전·깊이 연출은 유지하되 호버하지 않아도 글자가 밝게 보인다. 끝부분의 스크롤 진입/이탈 마스크만 유지한다. 영향: jarvis.module.css / jarvisStream.module.css.
+
+- 메인 좌우 스트림의 역할을 고정한다. 왼쪽 HELP / SETTINGS는 연결 상태·음성 설정·명령 예시·화면 안내·조작 도움말을 담당한다. 오른쪽 DATA / ANALYSIS는 현장 게이지 → 생산 → 공정 → 병목 → 품질 → 전력/효율 → 제품 검사 → 온도 알림 순서로 데이터 카드를 모은다. 동일한 분석 카드를 양쪽에 복제하지 않으며 기존 연출 연결·스크롤·호버 정지는 유지한다. 영향: JarvisMain.tsx → JarvisHelp.tsx / JarvisOperations.tsx / JarvisStream.tsx. 검증: cinemaStreamRoles.test.ts.
+
+- 네온 HUD 카메라는 우상단 프레임 내부 안전영역(x 75~95%, y 14~33%)에 제한하고 영상을 내부에서 클리핑한다. 경계선을 가리던 OPERATOR / VISUAL LINK 및 영상 상태 장식 문구는 숨기며 연결/끄기 버튼과 접근성 이름은 유지한다. 기존 스타일에는 적용하지 않는다. 영향: jarvisCenterLayout.module.css.
+
+- 네온 HUD 전체는 800×400 단일 기준판(sceneSurface)에 배경·리액터·모델정보·카메라·START·배경 선택기를 함께 배치한다. 바깥 scene의 가용 너비/높이 중 작은 배율로 등비 확대·축소하며 남는 공간은 중앙 정렬한다. 모바일에서 자식 글자·버튼만 별도 크기로 바꾸거나 숨기지 않는다. HTML 버튼/선택기의 의미·포커스·이벤트와 자식 마운트는 유지한다. 기존 스타일은 display:contents로 기존 레이아웃을 유지한다. 이전 START 단독 44px 축소 규칙을 대체한다. 영향: JarvisCenterLayout.tsx / jarvisCenterLayout.module.css.
+
+- 네온 HUD 배경 선택기는 불투명 입력 박스 대신 투명한 바탕, 네온 글자, 얇은 밑선과 CSS 화살표로 프레임에 통합한다. 우하단 안전영역(x 75~95%, y 73~91%) 안에 두고 native select의 키보드·선택·저장 동작은 유지한다. 기존 스타일의 선택기는 변경하지 않는다. 영향: jarvisCenterLayout.module.css의 .hud .backgroundPicker.
+
+- 네온 HUD 모델정보는 좌상단 프레임의 사선과 장식선을 피한 내부 안전영역(x 5~25%, y 14~33%)에 둔다. 긴 모델명은 줄바꿈하며 넘치는 세로 내용만 박스 안에서 스크롤한다. 제목은 한 줄 말줄임, 가로 넘침은 차단한다. 영향: jarvisCenterLayout.module.css의 .hud .aiPanel.
+
+- 중앙 보호 너비(2026-09-09): 데스크톱 중앙 열은 최소 480px를 확보하고 남는 너비를 우선 사용한다. 양측 스트림은 각 140~200px, 화면 1100px 이하에서는 120~170px로 먼저 축소한다. 900px 이하의 중앙 우선 세로 배치는 유지한다. 영향: jarvis.module.css의 .body 및 1100px 반응형 규칙.
+
+- 중앙 배경 선택기 위치 최종 교정(2026-09-09): 네온 HUD에서는 오른쪽 하단 프레임을 `OPTIONS / DISPLAY` 배경 선택 박스로 사용한다. 기존 스타일에서는 상단 선택기를 유지한다. 동일한 select 한 개를 CSS로 재배치하여 전환 중 포커스·리액터·카메라를 유지한다. 네온 모드의 상단 선택 행은 없애고 그 공간을 스테이지에 돌려준다. 아래의 상단 선택 고정/우측 하단 빈 슬롯 규칙은 이 기준으로 대체한다.
+
+- 중앙 배경 선택(2026-09-09): 중앙 상단의 `중앙 배경` 선택으로 `기존 스타일` / `네온 HUD`를 전환한다. 기존 스타일이 기본이고 선택은 브라우저 로컬 저장소 `cinema.center.background.v1`에 보관한다(저장 불가 환경에서도 현재 세션 전환은 가능). 참조 이미지의 네 모서리 절단 프레임·중앙 분절 링 구조만 SVG/CSS로 재구성하며 이미지·워터마크는 사용하지 않는다. 사용자 색상 교정에 따라 붉은색 대신 시안/블루 네온과 어두운 남색을 쓴다. 네온 HUD 상단 왼쪽은 AI 상태/음성·텍스트 모델명, 상단 오른쪽은 카메라, 하단 왼쪽은 START/STOP, 하단 오른쪽은 빈 장식 슬롯이다. 모델명은 좁은 박스에서 줄바꿈하고 모바일 START는 최소 44px를 유지한다. 선택부·상태 문구·답변·입력은 스테이지 밖 독립 행이며 HUD 테마 변수는 scene에만 제한한다. 배경 전환은 기하·CSS만 바꾸고 카메라/리액터 컴포넌트를 재마운트하거나 장치를 시작하지 않는다. 영향: jarvisCenterBackground.ts(선택·저장) → JarvisCenterLayout.tsx / jarvisCenterLayout.module.css(배치) → JarvisCenterBackdrop.tsx / jarvisCenterBackdrop.module.css(장식). 검증: cinemaCenterBackground.test.ts, cinemaCenterLayout.test.ts 및 실제 브라우저 전환 중 이스터에그 단계 유지.
+
+- 중앙 시선 우물(2026-09-09): 메인 중앙 음성 영역은 좌우 스트림·상단 지표·하단 도크와 같은 평면이 아니다. 절단 모서리 시안 프레임·안쪽 코너 브래킷·리액터를 감싸는 타원 링으로 우물을 만들고, 좌우 스트림은 기본 불투명도 0.62·채도 0.68로 한 단계 낮춘다. 스트림에 호버·초점이 오면 읽기 위해 되돌린다. 중앙만 액센트 방사 그라데이션을 받는다. 전면 글래스나 보라 그라데이션은 쓰지 않는다. 영향: jarvis.module.css(.body > :not(.center) · .center clip-path · .wave::before). 검증: cinemaDialogue.test.ts.
+
+- 리액터 클릭 이스터에그(2026-09-09 확장): 20초 장난극. 첫 접근/장난 → 좌우로 고개를 흔들어 쫓음(2.2~3.25초) → 도망/재등장 → 머리 위 착륙·까딱거림(6~7.8초) → 더 세게 털어냄(7.8~8.8초) → 세 번째 방문/도발 → 12.2초부터 중앙 눈만 붉고 가늘어지며 내부 불꽃 5개가 이글거림 → 14.1초 도주/뒤쪽 가림 → 15.2초 급선회 → 16.6초 발사/16.84초 명중 → 18.3~20초 원래 시안 눈과 회전으로 복귀. 착륙 시 엔진을 끄고 착륙 다리를 내리며 우주선은 본체의 끄덕임·흔들림을 따라간다. 금속·코일 색은 유지하고 불꽃은 눈 윤곽 안에만 제한한다. 클릭 영역은 리액터 크기의 투명 버튼, 재생 중 중복 클릭 무시, 버튼 Escape/페이지 숨김/언마운트에서 취소한다. 동작 줄이기는 1.2초 정적인 우주선 인사만 표시한다. 영향: reactorShipFlight.ts(경로·시간) → reactorEasterEgg.ts(표정·조준·착륙·재생 수명) → components/drawReactorEasterEgg.ts / drawReactorEyeHeat.ts / drawVoiceReactor.ts → drawJarvisVoiceField.ts(앞뒤 합성) → JarvisWave.tsx / jarvisWave.module.css. 검증: cinemaReactorEasterEgg.test.ts, cinemaReactorEyeHeat.test.ts.
+
+- 리액터 후면: 평면 캡 대신 본체와 함께 회전하는 메카닉 조립체. 높낮이가 다른 장갑 6개·실제 깊이가 있는 냉각 홈 18개·굵은 구리 배관 3개·육각 볼트 6개·깊은 베어링·돌출 육각 구동축을 불투명 면으로 표현한다. 건메탈/은색이 주조이고 시안 표시는 작게 제한한다. 앞면 방향에서도 후면 부품을 먼저 그린 뒤 본체로 가려, 옆으로 도는 동안 돌출축이 갑자기 나타나지 않게 한다. 후면 면은 깊이순 정렬하며 와이어 선을 추가하지 않는다. 영향: reactorRearGeometry.ts(정적 mesh·공유 회전/투영) → components/drawReactorRear.ts → drawVoiceReactor.ts. 검증: cinemaReactorRear.test.ts의 구조·깊이·회전 경계 실루엣·그리기 순서.
 
 - 음성 리액터 최종 기준(2026-09-09 사용자 교정): 유리 케이스 없이 두께와 명암이 있는 금속 아크 리액터 자체를 기울어진 축으로 회전시킨다. 논리 중심은 440×320 안에서 y 134로 조금 위에 둔다. 8개 넓은 발광 코일·3개 굵은 지지대·밝은 플라즈마 코어가 같은 시선 좌표를 사용한다. 원통 두께는 앞뒤 80(±40)이며, Prometheus 엔지니어 문양은 원통 옆면에만 새기고 앞면 안쪽 링에는 넣지 않는다. 톱니·터빈 날개는 쓰지 않으며, 문양은 칼라 각으로 천천히 돈다. 시선 피치는 고정하지 않고 천천히 위를 보다가 아래를 보는 듯 끄덕이며, 코어는 코일과 같이 돌지 않고 몇 초마다 눈꺼풀처럼 세로로 감았다 뜬다(가끔 두 번). 실제 마이크/AI 출력 음량에 따라 코어 밝기·크기와 최대 5갈래 테슬라 스파크가 반응하며, 방전은 코어와 바깥 코일 사이에서 발생한다. 무음·대기·답변 준비·오류·동작 줄이기에서는 스파크를 끄고, 동작 줄이기에서는 피치를 원래 기울기(.27)에 고정하고 깜박임을 끈다. 얇은 격자·궤도·외부 입자·전체 화면 점멸은 사용하지 않는다. 상태 문구는 리액터 아래 독립 행에 두고 440×320 논리 공간을 캔버스 CSS 크기에 균일 contain(최대 0.82배)으로 투영한다. 화면·하단 메뉴로 스테이지가 줄면 같이 줄고, 큰 화면에서 START–카메라를 가득 채우지 않는다. START·카메라 툴바는 스테이지 위에 겹친다. 모바일 중앙 높이는 480px다. 영향: jarvisVoiceCore.ts(상태) → voiceReactorGeometry.ts(공유 회전·투영·방전) → components/drawVoiceReactor.ts(금속 두께·코일·빛) → drawJarvisVoiceField.ts → JarvisWave.tsx; JarvisMain.tsx → JarvisCenterLayout.tsx / jarvisCenterLayout.module.css(효과·상태 행). 아래의 구형 음성 코어·육각 유리 케이스·중앙 50% 상태 제목 규칙은 이 기준으로 대체한다.
 

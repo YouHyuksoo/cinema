@@ -91,5 +91,6 @@
 .control[data-compact=true] .power { width:11px; height:11px; }
 .control[data-compact=true] .bridge,.control[data-compact=true] .gauge,.control[data-compact=true] .status>small { display:none; }
 .control[data-compact=true] .status { flex:0 1 auto; }
+.control[data-compact=true][data-phase=idle] .status { display:none; }
 .control[data-compact=true] .status>span { font-size:7px; letter-spacing:0; gap:4px; overflow-wrap:anywhere; }
 .control[data-compact=true] .interrupt { min-height:28px; }

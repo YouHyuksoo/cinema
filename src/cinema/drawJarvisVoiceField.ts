@@ -2,7 +2,7 @@ import type { JarvisAudioFrame } from './jarvisAudio';
 import { voiceCoreState } from './jarvisVoiceCore';
 import { voiceTeslaSparks } from './voiceReactorGeometry';
 import { drawArcReactor, drawReactorShadow, drawTeslaDischarge } from './components/drawVoiceReactor';
-import { reactorEasterEggPose, type ReactorEasterEggFrame } from './reactorEasterEgg';
+import { reactorEasterEggPose, reactorPerchedShip, type ReactorEasterEggFrame } from './reactorEasterEgg';
 import { drawReactorImpact, drawReactorLaser, drawReactorShip } from './components/drawReactorEasterEgg';
 
 interface VoiceFieldInput {
@@ -11,8 +11,9 @@ interface VoiceFieldInput {
 
 /** A rotating solid arc reactor with audio-driven discharges between core and coils. */
 export function drawJarvisVoiceField(ctx: CanvasRenderingContext2D, input: VoiceFieldInput) {
-  const egg = input.egg ?? null;
+  let egg = input.egg ?? null;
   const state = reactorEasterEggPose(voiceCoreState(input.time, input.phase, input.level, input.reduced), egg);
+  if (egg) egg = reactorPerchedShip(state, egg);
   ctx.save();
   drawReactorShadow(ctx);
   if (egg) {
