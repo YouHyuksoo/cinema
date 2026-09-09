@@ -89,7 +89,83 @@
   -webkit-user-select:none;
 }
 .control:focus-visible { outline:2px solid var(--film-accent,#ff79c6); outline-offset:5px; }
-@media(prefers-reduced-motion:reduce) { .faceIcon,.tile { transition:none; } }
+/* While the menu is unfolded the cube itself fades so its faces read as having peeled off. */
+.float { transition:opacity .3s ease; }
+.layer[data-menu-open=true] .float { opacity:0; }
+
+/* Unfolded 3 × 2 menu. Positions come from custom properties the view measures each frame. */
+.menu {
+  --film-accent:#ff79c6;
+  --film-accent-soft:#ffc2e5;
+  --film-panel:#282a36;
+  --film-muted:#d7b5d8;
+  --film-bg:#191a21;
+  --cube-plastic:#111;
+  position:fixed;
+  inset:0;
+  z-index:6;
+  pointer-events:none;
+  perspective:900px;
+  perspective-origin:var(--cube-cx,0px) var(--cube-cy,0px);
+  transform-style:preserve-3d;
+}
+.panel {
+  position:absolute;
+  left:calc(var(--menu-x,0px) + var(--col,0) * (var(--tile,90px) + var(--gap,10px)));
+  top:calc(var(--menu-y,0px) + var(--row,0) * (var(--tile,90px) + var(--gap,10px)));
+  width:var(--tile,90px);
+  height:var(--tile,90px);
+  box-sizing:border-box;
+  display:grid;
+  grid-template-rows:1fr auto;
+  gap:4px;
+  padding:6px;
+  border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent);
+  border-radius:8%;
+  background:color-mix(in srgb,var(--cube-plastic) 88%,var(--film-accent) 12%);
+  color:var(--film-ink,#ffe6f4);
+  box-shadow:0 10px 30px -14px color-mix(in srgb,black 80%,transparent),0 0 14px color-mix(in srgb,var(--film-accent) 18%,transparent);
+  cursor:pointer;
+  font:inherit;
+  text-decoration:none;
+  pointer-events:none;
+  opacity:0;
+  transform-origin:center;
+  /* Closed: sit at the cube's centre in the face's own orientation, small; open: lie flat in the slot. */
+  transform:translate(calc(var(--cube-cx,0px) - var(--menu-x,0px) - var(--col,0) * (var(--tile,90px) + var(--gap,10px)) - var(--tile,90px) / 2),
+    calc(var(--cube-cy,0px) - var(--menu-y,0px) - var(--row,0) * (var(--tile,90px) + var(--gap,10px)) - var(--tile,90px) / 2)) var(--peel,none) scale(.35);
+  transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .3s ease,border-color .2s ease;
+  transition-delay:calc((5 - var(--order,0)) * 55ms);
+}
+.menu[data-open=true] .panel {
+  pointer-events:auto;
+  opacity:1;
+  transform:none;
+  transition-delay:calc(var(--order,0) * 70ms);
+}
+.panel:hover,.panel:focus-visible { border-color:var(--film-accent); box-shadow:0 10px 30px -14px color-mix(in srgb,black 80%,transparent),0 0 18px color-mix(in srgb,var(--film-accent) 40%,transparent); }
+.panel:focus-visible { outline:2px solid var(--film-accent); outline-offset:3px; }
+.mosaic {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:3px;
+  min-height:0;
+}
+.mosaic i {
+  display:grid;
+  place-items:center;
+  border-radius:14%;
+  background:var(--cube-sticker);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,white 34%,transparent),inset 0 -2px 2px color-mix(in srgb,black 28%,transparent);
+}
+.panelIcon { width:82%; height:82%; color:#fff; filter:drop-shadow(0 1px 1px color-mix(in srgb,black 40%,transparent)); }
+.panel[data-cube-axis=top] .panelIcon,.panel[data-cube-axis=bottom] .panelIcon { color:#1c1c1c; filter:none; }
+.panelLabel { font:10px var(--font-label),var(--font-korean),sans-serif; letter-spacing:.06em; text-align:center; color:var(--film-accent-soft); }
+/* Fold tile: sits in the cube's own slot and only pops up in place. */
+.fold { place-items:center; background:color-mix(in srgb,var(--cube-plastic) 70%,var(--film-accent) 30%); border-style:dashed; }
+.foldIcon { width:56%; height:56%; color:var(--film-accent-soft); filter:drop-shadow(0 0 6px color-mix(in srgb,var(--film-accent) 55%,transparent)); }
+@media(prefers-reduced-motion:reduce) { .faceIcon,.tile,.panel,.float { transition:none; } }
 @media(max-height:500px) {
   .layer { --cube-size:58px; }
   .control { width:58px; height:58px; }

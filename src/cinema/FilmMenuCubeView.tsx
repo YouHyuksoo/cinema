@@ -1,10 +1,15 @@
 'use client';
 
-import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { CUBE_CUBIES, CUBE_FACES, CUBE_HUD_HOLD_MS, CUBE_IDENTITY, CUBE_MOVE_MS, CUBE_SHOWCASE_EVERY_MS,
-  CUBE_SHOWCASE_TURN_MS, CUBE_TWIST_DELAY_MS, cubeApplyMove, cubeBayWidth, cubeComposeTurn, cubeCubieStickers,
-  cubeCubieTransform, cubeDockCenter, cubeInLayer, cubeInvertSequence, cubeScramble, cubeShowcaseFace, cubeSize,
-  cubeStickerDelay, cubeStripSpace, type CubeMove } from './filmMenuCube';
+  CUBE_MENU_GAP, CUBE_SHOWCASE_TURN_MS, CUBE_TWIST_DELAY_MS, cubeApplyMove, cubeBayWidth,
+  cubeComposeTurn, cubeCubieStickers, cubeCubieTransform, cubeDockCenter, cubeInLayer, cubeInvertSequence, cubeMenuOrigin,
+  cubeMenuSlots, cubeMenuTileSize, cubeScramble, cubeShowcaseFace, cubeSize, cubeStickerDelay, cubeStripSpace,
+  type CubeMove } from './filmMenuCube';
+
+export type CubeMenuId = (typeof CUBE_FACES)[number]['id'];
+const MENU_SLOTS = cubeMenuSlots();
 import styles from './filmMenuCube.module.css';
 
 const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
@@ -42,8 +47,15 @@ const STRIP_SPACE_PROPERTY = '--hatchery-cube-space';
 const BAY_WIDTH_PROPERTY = '--hatchery-cube-bay';
 const FACE_BY_AXIS = Object.fromEntries(CUBE_FACES.map(face => [face.axis, face])) as Record<(typeof CUBE_FACES)[number]['axis'], (typeof CUBE_FACES)[number]>;
 
-export function FilmMenuCube() {
+/** Management cube: click to unfold its six faces into a 3 × 2 menu; Escape, outside click or a tile folds it back. */
+export function FilmMenuCube({ onSelect, links = {} }: {
+  onSelect?: (id: CubeMenuId) => void;
+  /** Tiles with a route render as links (basePath applied by Next); the rest call onSelect. */
+  links?: Partial<Record<CubeMenuId, string>>;
+} = {}) {
   const layer = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const float = useRef<HTMLDivElement>(null);
   const cube = useRef<HTMLDivElement>(null);
   const control = useRef<HTMLButtonElement>(null);
@@ -85,6 +97,13 @@ export function FilmMenuCube() {
       center = cubeDockCenter(strip && strip.width > 0 ? { left: strip.left, top: strip.top, height: strip.height } : null, viewport, size);
       document.documentElement.style.setProperty(STRIP_SPACE_PROPERTY, `${cubeStripSpace(size)}px`);
       document.documentElement.style.setProperty(BAY_WIDTH_PROPERTY, `${cubeBayWidth(size)}px`);
+      const panel = menu.current;
+      if (panel) {
+        const origin = cubeMenuOrigin(center, size, viewport);
+        panel.style.setProperty('--menu-x', `${origin.x}px`); panel.style.setProperty('--menu-y', `${origin.y}px`);
+        panel.style.setProperty('--tile', `${cubeMenuTileSize(size)}px`);
+        panel.style.setProperty('--cube-cx', `${center.x}px`); panel.style.setProperty('--cube-cy', `${center.y}px`);
+      }
       document.documentElement.dataset.cubeDocked = 'true';
       overlay.style.setProperty('--cube-size', `${size}px`);
       button.style.width = `${size}px`; button.style.height = `${size}px`;
@@ -130,7 +149,7 @@ export function FilmMenuCube() {
         if (spin.t >= 1) { quarterTurns++; showcaseYaw = spin.to; spin = null; }
         return;
       }
-      if (hovering || turning || queue.length || phase !== 'idle' || reduced.matches) { sinceSpin = 0; return; }
+      if (hovering || turning || queue.length || phase !== 'idle' || reduced.matches || overlay.dataset.menuOpen === 'true') { sinceSpin = 0; return; }
       sinceSpin += delta;
       if (sinceSpin < CUBE_SHOWCASE_EVERY_MS) return;
       sinceSpin = 0;
@@ -189,8 +208,35 @@ export function FilmMenuCube() {
     };
   }, []);
 
+  // Menu open/close: mirror the state onto the overlay for CSS and the frame loop, move focus, and close on Escape or an outside press.
+  useEffect(() => {
+    if (layer.current) layer.current.dataset.menuOpen = String(open);
+    if (!open) return;
+    const first = requestAnimationFrame(() => menu.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus({ preventScroll: true }));
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (menu.current?.contains(target) || control.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', outside, true);
+    return () => { cancelAnimationFrame(first); document.removeEventListener('pointerdown', outside, true); };
+  }, [open]);
+  const closeMenu = () => { setOpen(false); control.current?.focus({ preventScroll: true }); };
+  const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(); return; }
+    const step: Record<string, [number, number]> = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
+    const move = step[event.key];
+    if (!move) return;
+    event.preventDefault();
+    // Items are ordered fold -> right arm -> down arm; Right/Down walk forward, Left/Up walk back, wrapping.
+    const items = [...(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
+    const index = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
+    const forward = move[0] > 0 || move[1] > 0;
+    items[(index + (forward ? 1 : -1) + items.length) % items.length]?.focus({ preventScroll: true });
+  };
+
   return <div className={styles.shell}>
-    <div ref={layer} className={styles.layer} aria-hidden="true" data-cube-layer="true" data-hud="true">
+    <div ref={layer} className={styles.layer} aria-hidden="true" data-cube-layer="true" data-hud="true" data-menu-open="false">
       <div ref={float} className={styles.float}>
         <div ref={cube} className={styles.cube}>
           {CUBE_CUBIES.map(home => <span key={`${home.x},${home.y},${home.z}`} data-cube-cubie={`${home.x},${home.y},${home.z}`}
@@ -211,8 +257,41 @@ export function FilmMenuCube() {
         </div>
       </div>
     </div>
+    <div ref={menu} id="hatchery-cube-menu" className={styles.menu} role="menu" aria-label="관리 메뉴" data-cube-menu-layer="true" data-open={open}
+      inert={!open} onKeyDown={onMenuKeyDown} onPointerDown={event => event.stopPropagation()}
+      style={{ '--gap': `${CUBE_MENU_GAP}px` } as CSSProperties}>
+      <button type="button" role="menuitem" className={`${styles.panel} ${styles.fold}`} data-cube-menu="fold" tabIndex={open ? 0 : -1}
+        style={{ '--col': 0, '--row': 0, '--order': 0, '--peel': 'none' } as CSSProperties}
+        onClick={event => { event.stopPropagation(); closeMenu(); }}>
+        <svg className={styles.foldIcon} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+          <path d="M16 4 27 10v12l-11 6-11-6V10Z" /><path d="M5 10l11 6 11-6M16 16v12" /><path d="M20 20h5v5" />
+        </svg>
+        <span className={styles.panelLabel}>접기</span>
+      </button>
+      {MENU_SLOTS.map(slot => {
+        const shared = {
+          role: 'menuitem', className: styles.panel, 'data-cube-menu': slot.id, 'data-cube-axis': slot.axis, tabIndex: open ? 0 : -1,
+          style: { '--col': slot.column, '--row': slot.row, '--order': slot.order, '--peel': slot.peel, '--cube-sticker': slot.sticker } as CSSProperties,
+        } as const;
+        const face = <>
+          <span className={styles.mosaic} aria-hidden="true">
+            {Array.from({ length: 9 }, (_, index) => <i key={index}>{index === 4
+              ? <svg className={styles.panelIcon} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7"
+                strokeLinecap="round" strokeLinejoin="round" focusable="false">{CUBE_ICONS[slot.id]}</svg> : null}</i>)}
+          </span>
+          <span className={styles.panelLabel}>{slot.label}</span>
+        </>;
+        const href = links[slot.id];
+        return href
+          ? <Link key={slot.id} href={href} prefetch={false} {...shared}
+            onClick={event => { event.stopPropagation(); setOpen(false); onSelect?.(slot.id); }}>{face}</Link>
+          : <button key={slot.id} type="button" {...shared}
+            onClick={event => { event.stopPropagation(); setOpen(false); onSelect?.(slot.id); }}>{face}</button>;
+      })}
+    </div>
     <button ref={control} type="button" className={styles.control} data-cube-control="true"
-      aria-label="메뉴 관리" onPointerDown={event => event.stopPropagation()}
-      onClick={event => event.stopPropagation()} />
+      aria-label="메뉴 관리" aria-haspopup="menu" aria-expanded={open} aria-controls="hatchery-cube-menu"
+      onPointerDown={event => event.stopPropagation()}
+      onClick={event => { event.stopPropagation(); setOpen(value => !value); }} />
   </div>;
 }

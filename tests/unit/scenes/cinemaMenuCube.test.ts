@@ -8,6 +8,9 @@ import {
   cubeApply,
   cubeBayWidth,
   cubeDockCenter,
+  cubeMenuOrigin,
+  cubeMenuSlots,
+  cubeMenuTileSize,
   cubeShowcaseFace,
   cubeStickerDelay,
   cubeStripSpace,
@@ -41,6 +44,19 @@ describe('floating management cube geometry', () => {
     expect(cubeDockCenter({ left: -30, top: -50, height: 20 }, { width: 1280, height: 800 }, 86)).toEqual({ x: 43, y: 43 });
     expect(cubeDockCenter({ left: NaN, top: 0, height: 0 }, { width: 1280, height: 800 }, 86).y).toBe(59);
     expect(cubeStripSpace(86)).toBe(179);
+  });
+
+  it('unfolds three faces to the right and three downward around the cube slot', () => {
+    const slots = cubeMenuSlots();
+    expect(slots.map(slot => `${slot.id}:${slot.column},${slot.row}`)).toEqual(
+      ['admin:1,0', 'ai:2,0', 'voice:3,0', 'feeds:0,1', 'display:0,2', 'system:0,3']);
+    expect(slots.map(slot => slot.order)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(slots.find(slot => slot.axis === 'right')?.peel).toBe('rotateY(90deg)');
+    expect(slots.find(slot => slot.axis === 'top')?.peel).toBe('rotateX(90deg)');
+    expect(cubeMenuTileSize(86)).toBe(99);
+    const origin = cubeMenuOrigin({ x: 122, y: 80 }, 86, { width: 1280, height: 800 });
+    expect(origin).toEqual({ x: 122 - 49.5, y: 80 - 49.5 });
+    expect(cubeMenuOrigin({ x: 1270, y: 790 }, 86, { width: 1280, height: 800 })).toEqual({ x: 1280 - 426 - 16, y: 800 - 426 - 16 });
   });
 
   it('showcases side faces in turn and staggers the HUD fill across stickers', () => {

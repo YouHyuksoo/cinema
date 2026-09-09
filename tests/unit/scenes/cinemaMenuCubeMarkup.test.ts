@@ -45,6 +45,15 @@ describe('management cube markup', () => {
     expect(html).toContain('data-cube-layer="true"');
   });
 
+  it('renders a closed six-item menu the cube control expands', () => {
+    const html = renderDock(false);
+    expect(html).toMatch(/<button[^>]*aria-label="메뉴 관리"[^>]*aria-haspopup="menu"[^>]*aria-expanded="false"/);
+    expect(html).toMatch(/role="menu"[^>]*aria-label="관리 메뉴"[^>]*data-open="false"/);
+    expect(html.match(/role="menuitem"/g)).toHaveLength(7);
+    expect(html).toContain('data-cube-menu="fold"');
+    for (const face of CUBE_FACES) expect(html).toContain(`data-cube-menu="${face.id}"`);
+  });
+
   it('stays available while the scene ring is open or collapsed', () => {
     for (const menuOpen of [false, true]) {
       const html = renderDock(menuOpen);

@@ -270,3 +270,55 @@ export function cubeShowcaseFace(quarterTurns: number): CubeAxis {
 export function cubeStickerDelay(home: { x: number; y: number; z: number }) {
   return ((home.x + 1) + (home.y + 1) * 3 + (home.z + 1) * 9) * 25;
 }
+
+/**
+ * Unfolded menu, laid out like a cube net around the cube's own slot (0,0): the first three faces
+ * run to the right along row 0, the next three run down column 0, and the cube slot shows the
+ * fold-back tile. Columns/rows describe the 4 x 4 bounding box of that L shape.
+ */
+export const CUBE_MENU_COLUMNS = 4;
+export const CUBE_MENU_ROWS = 4;
+export const CUBE_MENU_GAP = 10;
+export const CUBE_MENU_ARM = 3;
+export interface CubeMenuSlot {
+  id: (typeof CUBE_FACES)[number]['id'];
+  axis: CubeAxis;
+  label: string;
+  sticker: string;
+  column: number;
+  row: number;
+  /** Fly-out order; the reverse order folds the menu back. */
+  order: number;
+  /** Rotation the face has on the cube, so the panel peels off from that orientation. */
+  peel: string;
+}
+
+const PEEL: Record<CubeAxis, string> = {
+  front: 'rotateY(0deg)', right: 'rotateY(90deg)', left: 'rotateY(-90deg)',
+  back: 'rotateY(180deg)', top: 'rotateX(90deg)', bottom: 'rotateX(-90deg)',
+};
+
+export function cubeMenuSlots(): CubeMenuSlot[] {
+  return CUBE_FACES.map((face, index) => {
+    const right = index < CUBE_MENU_ARM;
+    return {
+      id: face.id, axis: face.axis, label: face.label, sticker: face.sticker,
+      column: right ? index + 1 : 0, row: right ? 0 : index - CUBE_MENU_ARM + 1,
+      // The fold tile takes order 0 in the cube's slot; faces follow it outward.
+      order: index + 1, peel: PEEL[face.axis],
+    };
+  });
+}
+
+/** Menu tile edge for a cube edge: a touch larger than the cube so the icon and label read. */
+export const cubeMenuTileSize = (cubeSize: number) => Math.round(finiteSize(cubeSize) * 1.15);
+
+/** Top-left of the net: slot (0,0) is centred on the cube, pulled inside the viewport if the arms would leave it. */
+export function cubeMenuOrigin(center: Point, cubeSize: number, viewport: Viewport): Point {
+  const tile = cubeMenuTileSize(cubeSize);
+  const width = tile * CUBE_MENU_COLUMNS + CUBE_MENU_GAP * (CUBE_MENU_COLUMNS - 1);
+  const height = tile * CUBE_MENU_ROWS + CUBE_MENU_GAP * (CUBE_MENU_ROWS - 1);
+  const x = Math.max(CUBE_EDGE_PADDING, Math.min(finiteSize(viewport.width) - width - CUBE_EDGE_PADDING, center.x - tile / 2));
+  const y = Math.max(CUBE_EDGE_PADDING, Math.min(finiteSize(viewport.height) - height - CUBE_EDGE_PADDING, center.y - tile / 2));
+  return { x, y };
+}
