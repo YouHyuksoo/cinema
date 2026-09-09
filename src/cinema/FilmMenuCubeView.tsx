@@ -1,10 +1,10 @@
 'use client';
 
-import { useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { CUBE_CUBIES, CUBE_FACES, CUBE_IDENTITY, CUBE_MOVE_MS, CUBE_TWIST_DELAY_MS, clampCubeCenter,
-  cubeApplyMove, cubeComposeTurn, cubeCubieStickers, cubeCubieTransform, cubeInLayer,
-  cubeInvertSequence, cubeRestingCenter, cubeScramble, cubeSize, isCubeDrag,
-  type CubeMove, type Point } from './filmMenuCube';
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { CUBE_CUBIES, CUBE_FACES, CUBE_HUD_HOLD_MS, CUBE_IDENTITY, CUBE_MOVE_MS, CUBE_SHOWCASE_EVERY_MS,
+  CUBE_SHOWCASE_TURN_MS, CUBE_TWIST_DELAY_MS, cubeApplyMove, cubeBayWidth, cubeComposeTurn, cubeCubieStickers,
+  cubeCubieTransform, cubeDockCenter, cubeInLayer, cubeInvertSequence, cubeScramble, cubeShowcaseFace, cubeSize,
+  cubeStickerDelay, cubeStripSpace, type CubeMove } from './filmMenuCube';
 import styles from './filmMenuCube.module.css';
 
 const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
@@ -35,6 +35,11 @@ const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
 const TILT = -24;
 const YAW = 32;
 const FLOAT_MS = 4800;
+/** How often the dock re-reads the metric strip's position; it moves only on layout changes. */
+const MEASURE_MS = 250;
+/** Read by jarvisMetricCards.module.css to leave the cube's column free at the strip's left end. */
+const STRIP_SPACE_PROPERTY = '--hatchery-cube-space';
+const BAY_WIDTH_PROPERTY = '--hatchery-cube-bay';
 const FACE_BY_AXIS = Object.fromEntries(CUBE_FACES.map(face => [face.axis, face])) as Record<(typeof CUBE_FACES)[number]['axis'], (typeof CUBE_FACES)[number]>;
 
 export function FilmMenuCube() {
@@ -42,23 +47,18 @@ export function FilmMenuCube() {
   const float = useRef<HTMLDivElement>(null);
   const cube = useRef<HTMLDivElement>(null);
   const control = useRef<HTMLButtonElement>(null);
-  const actions = useRef<{
-    start(pointerId: number, point: Point): boolean;
-    move(pointerId: number, point: Point): void;
-    end(pointerId: number): void;
-    cancel(pointerId: number): void;
-    blockClick(): boolean;
-  } | null>(null);
 
   useLayoutEffect(() => {
     const overlay = layer.current, floating = float.current, body = cube.current, button = control.current;
     if (!overlay || !floating || !body || !button) return;
-    let raf = 0, previousTime: number | null = null, floatTime = 0, floatingY = 0, size = 108;
+    let raf = 0, previousTime: number | null = null, floatTime = 0, floatingY = 0, size = 86, measuredAt = -Infinity;
     let viewport = { width: window.innerWidth, height: window.innerHeight };
-    let center = cubeRestingCenter(viewport, size);
-    let remembered: Point | null = null;
-    let pointer: null | { id: number; origin: Point; center: Point; dragged: boolean } = null;
-    let suppressClick = false, hovering = false, hoverMs = 0;
+    let center = cubeDockCenter(null, viewport, size);
+    let hovering = false, hoverMs = 0;
+    // Holographic entrance: wireframe stickers fill with colour after a short hold.
+    const hudUntil = performance.now() + CUBE_HUD_HOLD_MS;
+    // Idle showcase: quarter turns about Y reveal the other faces; the incoming face fills in as HUD.
+    let showcaseYaw = 0, spin: { from: number; to: number; t: number; revealed: boolean } | null = null, sinceSpin = 0, quarterTurns = 0;
     let orients = CUBE_CUBIES.map(() => CUBE_IDENTITY);
     let queue: CubeMove[] = [], applied: CubeMove[] = [];
     let turning: { move: CubeMove; t: number; reverse: boolean } | null = null;
@@ -80,7 +80,12 @@ export function FilmMenuCube() {
     const measure = () => {
       viewport = { width: window.innerWidth, height: window.innerHeight };
       size = cubeSize(viewport.width, viewport.height);
-      center = cubeRestingCenter(viewport, size, remembered);
+      // Dock to the top metric strip when the main screen shows one; the strip leaves the space free.
+      const strip = document.querySelector<HTMLElement>('[data-metric-strip]')?.getBoundingClientRect();
+      center = cubeDockCenter(strip && strip.width > 0 ? { left: strip.left, top: strip.top, height: strip.height } : null, viewport, size);
+      document.documentElement.style.setProperty(STRIP_SPACE_PROPERTY, `${cubeStripSpace(size)}px`);
+      document.documentElement.style.setProperty(BAY_WIDTH_PROPERTY, `${cubeBayWidth(size)}px`);
+      document.documentElement.dataset.cubeDocked = 'true';
       overlay.style.setProperty('--cube-size', `${size}px`);
       button.style.width = `${size}px`; button.style.height = `${size}px`;
     };
@@ -90,7 +95,7 @@ export function FilmMenuCube() {
       floating.style.transform = `translateY(${visualY}px)`;
       overlay.style.perspectiveOrigin = `${center.x}px ${center.y + visualY}px`;
       overlay.dataset.twisting = String(!!turning || queue.length > 0);
-      body.style.transform = `translate3d(${center.x}px,${center.y}px,0) translate(-50%,-50%) rotateX(${TILT}deg) rotateY(${YAW}deg)`;
+      body.style.transform = `translate3d(${center.x}px,${center.y}px,0) translate(-50%,-50%) rotateX(${TILT}deg) rotateY(${YAW + showcaseYaw}deg)`;
       button.style.transform = `translate3d(${center.x}px,${center.y + visualY}px,0) translate(-50%,-50%)`;
       cubieNodes.forEach((node, index) => {
         let matrix = orients[index];
@@ -101,16 +106,8 @@ export function FilmMenuCube() {
       });
     };
     const stopFrame = () => { if (raf) cancelAnimationFrame(raf); raf = 0; previousTime = null; };
-    const setDragging = (value: boolean) => {
-      overlay.dataset.dragging = String(value); button.dataset.dragging = String(value);
-    };
-    const releaseActivePointer = () => {
-      const pointerId = pointer?.id;
-      pointer = null; setDragging(false);
-      if (pointerId !== undefined && button.hasPointerCapture(pointerId)) button.releasePointerCapture(pointerId);
-    };
     const schedule = () => {
-      if (!raf && !document.hidden && !reduced.matches && !pointer) raf = requestAnimationFrame(frame);
+      if (!raf && !document.hidden && !reduced.matches) raf = requestAnimationFrame(frame);
     };
     const finishTurn = () => {
       if (!turning) return;
@@ -120,19 +117,42 @@ export function FilmMenuCube() {
       }
       turning = null;
     };
+    const hudFace = (axis: string, on: boolean) => {
+      for (const tile of body.querySelectorAll<HTMLElement>(`[data-cube-axis="${axis}"]`)) tile.dataset.hud = String(on);
+    };
+    const showcase = (delta: number) => {
+      if (spin) {
+        spin.t = Math.min(1, spin.t + delta / CUBE_SHOWCASE_TURN_MS);
+        const eased = spin.t < .5 ? 4 * spin.t ** 3 : 1 - (-2 * spin.t + 2) ** 3 / 2;
+        showcaseYaw = spin.from + (spin.to - spin.from) * eased;
+        // Half-way through the turn the new face is coming into view: let its colours pour in.
+        if (!spin.revealed && spin.t >= .35) { spin.revealed = true; hudFace(cubeShowcaseFace(quarterTurns + 1), false); }
+        if (spin.t >= 1) { quarterTurns++; showcaseYaw = spin.to; spin = null; }
+        return;
+      }
+      if (hovering || turning || queue.length || phase !== 'idle' || reduced.matches) { sinceSpin = 0; return; }
+      sinceSpin += delta;
+      if (sinceSpin < CUBE_SHOWCASE_EVERY_MS) return;
+      sinceSpin = 0;
+      hudFace(cubeShowcaseFace(quarterTurns + 1), true);
+      spin = { from: showcaseYaw, to: showcaseYaw + 90, t: 0, revealed: false };
+    };
     const frame = (time: number) => {
       raf = 0;
       const delta = previousTime === null ? 0 : Math.min(64, time - previousTime); previousTime = time;
+      if (time - measuredAt >= MEASURE_MS) { measuredAt = time; measure(); }
       floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / FLOAT_MS);
-      if (hovering && !pointer) hoverMs += delta; else if (!hovering) hoverMs = 0;
-      if (hovering && !pointer && hoverMs >= CUBE_TWIST_DELAY_MS && phase === 'idle' && !turning && !cycled) startMix();
+      if (overlay.dataset.hud === 'true' && time >= hudUntil) overlay.dataset.hud = 'false';
+      showcase(delta);
+      if (hovering) hoverMs += delta; else hoverMs = 0;
+      if (hovering && hoverMs >= CUBE_TWIST_DELAY_MS && phase === 'idle' && !turning && !cycled) startMix();
       if (turning) {
         if (!hovering && phase === 'mix' && !turning.reverse) {
           turning.reverse = true; turning.t = 1 - Math.min(1, turning.t);
         }
         turning.t += delta / CUBE_MOVE_MS;
         if (turning.t >= 1) finishTurn();
-      } else if (queue.length && !pointer) {
+      } else if (queue.length) {
         const move = queue.shift();
         if (move) turning = { move, t: 0, reverse: false };
       } else if (phase === 'mix' && applied.length) {
@@ -145,56 +165,24 @@ export function FilmMenuCube() {
       draw(); schedule();
     };
 
-    actions.current = {
-      start(pointerId, point) {
-        if (pointer) return false;
-        stopFrame(); suppressClick = false;
-        center = clampCubeCenter({ x: center.x, y: center.y + floatingY }, viewport, size);
-        remembered = center; floatingY = 0; floatTime = 0; hoverMs = 0;
-        resetCube();
-        pointer = { id: pointerId, origin: point, center, dragged: false };
-        setDragging(true); draw(); return true;
-      },
-      move(pointerId, point) {
-        if (!pointer || pointer.id !== pointerId) return;
-        center = clampCubeCenter({ x: pointer.center.x + point.x - pointer.origin.x,
-          y: pointer.center.y + point.y - pointer.origin.y }, viewport, size);
-        pointer.dragged ||= isCubeDrag(pointer.origin, point);
-        remembered = center; draw();
-      },
-      end(pointerId) {
-        if (!pointer || pointer.id !== pointerId) return;
-        suppressClick = pointer.dragged; pointer = null; setDragging(false); schedule();
-      },
-      cancel(pointerId) {
-        if (!pointer || pointer.id !== pointerId) return;
-        pointer = null; suppressClick = false; setDragging(false); schedule();
-      },
-      blockClick() { const blocked = suppressClick; suppressClick = false; return blocked; },
-    };
-
     const resize = () => { measure(); draw(); };
-    const visibility = () => {
-      stopFrame();
-      if (document.hidden) releaseActivePointer();
-      else schedule();
-    };
+    const visibility = () => { stopFrame(); if (!document.hidden) schedule(); };
     const preference = () => {
       stopFrame(); floatingY = 0; floatTime = 0; hoverMs = 0; resetCube();
       draw(); if (!reduced.matches) schedule();
     };
-    const enter = () => { hovering = true; schedule(); };
+    const enter = () => { hovering = true; sinceSpin = 0; schedule(); };
     const leave = () => {
       hovering = false; hoverMs = 0; cycled = false;
       if (phase === 'mix') queue = [];
       schedule();
     };
-    measure(); draw(); setDragging(false);
+    measure(); draw();
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); schedule();
     button.addEventListener('pointerenter', enter); button.addEventListener('pointerleave', leave);
     return () => {
-      stopFrame(); releaseActivePointer(); actions.current = null;
+      stopFrame(); document.documentElement.style.removeProperty(STRIP_SPACE_PROPERTY); document.documentElement.style.removeProperty(BAY_WIDTH_PROPERTY); delete document.documentElement.dataset.cubeDocked;
       button.removeEventListener('pointerenter', enter); button.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);
       reduced.removeEventListener('change', preference);
@@ -202,7 +190,7 @@ export function FilmMenuCube() {
   }, []);
 
   return <div className={styles.shell}>
-    <div ref={layer} className={styles.layer} aria-hidden="true" data-cube-layer="true">
+    <div ref={layer} className={styles.layer} aria-hidden="true" data-cube-layer="true" data-hud="true">
       <div ref={float} className={styles.float}>
         <div ref={cube} className={styles.cube}>
           {CUBE_CUBIES.map(home => <span key={`${home.x},${home.y},${home.z}`} data-cube-cubie={`${home.x},${home.y},${home.z}`}
@@ -211,7 +199,7 @@ export function FilmMenuCube() {
               const face = FACE_BY_AXIS[axis];
               const center = Math.abs(home.x) + Math.abs(home.y) + Math.abs(home.z) === 1;
               return <span key={axis} data-cube-face={face.id} data-cube-axis={axis} data-cube-sticker={axis}
-                className={styles.tile}>
+                className={styles.tile} style={{ '--sticker-delay': `${cubeStickerDelay(home)}ms` } as CSSProperties}>
                 {center ? <svg className={styles.faceIcon} data-cube-icon={face.id}
                   viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7"
                   strokeLinecap="round" strokeLinejoin="round" aria-label={face.label} focusable="false">
@@ -224,30 +212,7 @@ export function FilmMenuCube() {
       </div>
     </div>
     <button ref={control} type="button" className={styles.control} data-cube-control="true"
-      aria-label="메뉴 관리"
-      onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => {
-        event.stopPropagation();
-        if (!event.isPrimary || event.button !== 0) return;
-        if (actions.current?.start(event.pointerId, { x: event.clientX, y: event.clientY })) {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }
-      }}
-      onPointerMove={event => {
-        event.stopPropagation();
-        actions.current?.move(event.pointerId, { x: event.clientX, y: event.clientY });
-      }}
-      onPointerUp={event => {
-        event.stopPropagation(); actions.current?.end(event.pointerId);
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-      }}
-      onPointerCancel={event => {
-        event.stopPropagation(); actions.current?.cancel(event.pointerId);
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-      }}
-      onLostPointerCapture={event => { event.stopPropagation(); actions.current?.cancel(event.pointerId); }}
-      onClick={event => {
-        event.stopPropagation();
-        if (event.detail > 0 && actions.current?.blockClick()) event.preventDefault();
-      }} />
+      aria-label="메뉴 관리" onPointerDown={event => event.stopPropagation()}
+      onClick={event => event.stopPropagation()} />
   </div>;
 }

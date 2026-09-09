@@ -6,6 +6,11 @@ import {
   CUBE_TWIST_DELAY_MS,
   clampCubeCenter,
   cubeApply,
+  cubeBayWidth,
+  cubeDockCenter,
+  cubeShowcaseFace,
+  cubeStickerDelay,
+  cubeStripSpace,
   cubeApplyMove,
   cubeCubieStickers,
   cubeFaceTransform,
@@ -19,11 +24,30 @@ import {
 
 describe('floating management cube geometry', () => {
   it.each([
-    { width: 1200, height: 805, expected: { x: 106, y: 703 } },
-    { width: 390, height: 845, expected: { x: 106, y: 753 } },
-    { width: 843, height: 390, expected: { x: 106, y: 306 } },
+    { width: 1200, height: 805, expected: { x: 106, y: 714 } },
+    { width: 390, height: 845, expected: { x: 106, y: 762 } },
+    { width: 843, height: 390, expected: { x: 106, y: 313 } },
   ])('docks at bottom left with caption clearance in $width x $height', ({ width, height, expected }) => {
     expect(cubeRestingCenter({ width, height }, cubeSize(width, height))).toEqual(expected);
+  });
+
+  it('docks at the left end of the metric strip, vertically centred, or the top-left corner without one', () => {
+    // The cube sits in the middle of its bay (projected width + 24px air) and mid-height of the strip.
+    const docked = cubeDockCenter({ left: 40, top: 12, height: 130 }, { width: 1280, height: 800 }, 86);
+    expect(docked.x).toBeCloseTo(40 + cubeBayWidth(86) / 2); expect(docked.y).toBe(77);
+    const corner = cubeDockCenter(null, { width: 1280, height: 800 }, 86);
+    expect(corner.x).toBeCloseTo(16 + cubeBayWidth(86) / 2); expect(corner.y).toBe(59);
+    expect(cubeBayWidth(86)).toBe(143);
+    expect(cubeDockCenter({ left: -30, top: -50, height: 20 }, { width: 1280, height: 800 }, 86)).toEqual({ x: 43, y: 43 });
+    expect(cubeDockCenter({ left: NaN, top: 0, height: 0 }, { width: 1280, height: 800 }, 86).y).toBe(59);
+    expect(cubeStripSpace(86)).toBe(179);
+  });
+
+  it('showcases side faces in turn and staggers the HUD fill across stickers', () => {
+    expect([0, 1, 2, 3, 4, -1].map(cubeShowcaseFace)).toEqual(['front', 'left', 'back', 'right', 'front', 'right']);
+    expect(cubeStickerDelay({ x: -1, y: -1, z: -1 })).toBe(0);
+    expect(cubeStickerDelay({ x: 1, y: 1, z: 1 })).toBe(650);
+    expect(cubeStickerDelay({ x: 0, y: 0, z: 0 })).toBe(325);
   });
 
   it('preserves a dragged center and otherwise uses the current left corner', () => {
@@ -34,14 +58,14 @@ describe('floating management cube geometry', () => {
   });
 
   it('uses the requested desktop, mobile, and short-screen sizes', () => {
-    expect(cubeSize(1440, 900)).toBe(108);
-    expect(cubeSize(680, 900)).toBe(88);
-    expect(cubeSize(1440, 500)).toBe(72);
-    expect(cubeSize(680, 500)).toBe(72);
+    expect(cubeSize(1440, 900)).toBe(86);
+    expect(cubeSize(680, 900)).toBe(70);
+    expect(cubeSize(1440, 500)).toBe(58);
+    expect(cubeSize(680, 500)).toBe(58);
   });
 
   it('shrinks only as needed to keep the cube, float, and caption on screen', () => {
-    expect(cubeSize(100, 160)).toBe(68);
+    expect(cubeSize(80, 160)).toBe(48);
     expect(cubeSize(30, 30)).toBe(0);
   });
 

@@ -30,7 +30,8 @@ function finiteSize(value: number) {
 
 export function cubeSize(viewportWidth: number, viewportHeight: number) {
   const width = finiteSize(viewportWidth), height = finiteSize(viewportHeight);
-  const preferred = height <= 500 ? 72 : width <= 680 ? 88 : 108;
+  // 80% of the original 72 / 88 / 108 so the cube reads as a secondary control beside the globe.
+  const preferred = height <= 500 ? 58 : width <= 680 ? 70 : 86;
   const horizontalFit = width - CUBE_EDGE_PADDING * 2;
   const verticalFit = height - CUBE_EDGE_PADDING * 2 - CUBE_FLOAT_AMPLITUDE * 2 - CUBE_CAPTION_CLEARANCE;
   return Math.max(0, Math.min(preferred, horizontalFit, verticalFit));
@@ -221,4 +222,51 @@ export function cubeCubieTransform(orient: Mat3, home: CubeVec, step: number) {
   const ty = orient[3] * px + orient[4] * py + orient[5] * pz;
   const tz = orient[6] * px + orient[7] * py + orient[8] * pz;
   return `matrix3d(${orient[0]},${orient[3]},${orient[6]},0,${orient[1]},${orient[4]},${orient[7]},0,${orient[2]},${orient[5]},${orient[8]},0,${tx},${ty},${tz},1)`;
+}
+
+/**
+ * The isometric pose (rotateX -24°, rotateY 32°) projects wider than the cube's box: about 1.38× its
+ * edge. Dock math uses the projected half-width so the visible cube, not the box, lines up.
+ */
+export const CUBE_PROJECTED_HALF = .69;
+/** Air between the cube's projected right edge and the first metric card. */
+export const CUBE_STRIP_GAP = 60;
+/** Width of the framed menu bay drawn around the docked cube (projected width plus air). */
+export const cubeBayWidth = (size: number) => Math.round(finiteSize(size) * CUBE_PROJECTED_HALF * 2 + 24);
+/** Width the top metric strip leaves free at its left end for the cube. */
+export const cubeStripSpace = (size: number) => Math.round(finiteSize(size) * CUBE_PROJECTED_HALF * 2 + CUBE_STRIP_GAP);
+export interface CubeAnchor { left: number; top: number; height: number }
+
+/**
+ * Fixed dock: the cube floats at the left end of the top metric strip, vertically centred on it.
+ * Without a strip (scene screens) it sits in the top-left corner with the edge padding.
+ */
+export function cubeDockCenter(anchor: CubeAnchor | null, viewport: Viewport, size: number): Point {
+  const half = finiteSize(size) / 2;
+  const width = finiteSize(viewport.width), height = finiteSize(viewport.height);
+  // Centre the cube in its framed bay so the air on both sides matches.
+  const bayHalf = cubeBayWidth(size) / 2;
+  const target = anchor && Number.isFinite(anchor.left + anchor.top + anchor.height)
+    ? { x: anchor.left + bayHalf, y: anchor.top + finiteSize(anchor.height) / 2 }
+    : { x: CUBE_EDGE_PADDING + bayHalf, y: CUBE_EDGE_PADDING + half };
+  return { x: Math.max(half, Math.min(Math.max(half, width - half), target.x)),
+    y: Math.max(half, Math.min(Math.max(half, height - half), target.y)) };
+}
+
+/** Idle showcase: every quarter turn about Y brings the next side face to the front. */
+export const CUBE_SHOWCASE_EVERY_MS = 6000;
+export const CUBE_SHOWCASE_TURN_MS = 1100;
+/** Hold the holographic wireframe this long after mount before the sticker colours fill in. */
+export const CUBE_HUD_HOLD_MS = 450;
+const SHOWCASE_ORDER: readonly CubeAxis[] = ['front', 'left', 'back', 'right'];
+
+/** Face that faces the viewer after `quarterTurns` positive rotateY quarter turns (0 = front). */
+export function cubeShowcaseFace(quarterTurns: number): CubeAxis {
+  const turns = Number.isFinite(quarterTurns) ? Math.round(quarterTurns) : 0;
+  return SHOWCASE_ORDER[((turns % 4) + 4) % 4];
+}
+
+/** Stagger (ms) for the HUD fill so stickers light up as a wave across the cube. */
+export function cubeStickerDelay(home: { x: number; y: number; z: number }) {
+  return ((home.x + 1) + (home.y + 1) * 3 + (home.z + 1) * 9) * 25;
 }
