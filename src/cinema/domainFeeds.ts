@@ -215,3 +215,28 @@ export function feedsMarkdown(verifiedCommit: string) {
   }
   return lines.join('\n');
 }
+
+export interface FeedMappingRow { field: string; label: string; optional: boolean }
+/** Every collection maps a domain code and a display name before its own descriptors. */
+const BASE_MAPPING_ROWS: readonly FeedMappingRow[] = [
+  { field: 'id', label: '도메인 코드', optional: false },
+  { field: 'label', label: '표시 이름', optional: true },
+];
+
+/**
+ * Column-mapping rows for one collection: base rows, the object's descriptors, then JSON extras,
+ * one row per field. An object that declares `id`/`label` itself (e.g. defect labels) keeps its own
+ * wording in the base slot instead of appearing twice.
+ */
+export function feedMappingRows(object: DomainObjectType): FeedMappingRow[] {
+  const rows: FeedMappingRow[] = [];
+  const push = (row: FeedMappingRow) => { if (!rows.some(existing => existing.field === row.field)) rows.push(row); };
+  const own = new Map(object.fields.map(field => [field.field, field]));
+  for (const base of BASE_MAPPING_ROWS) {
+    const declared = own.get(base.field);
+    push(declared ? { field: declared.field, label: declared.label, optional: declared.optional === true } : base);
+  }
+  for (const field of object.fields) push({ field: field.field, label: field.label, optional: field.optional === true });
+  for (const [key, extra] of Object.entries(object.extra ?? {})) push({ field: key, label: `${extra.label} (JSON)`, optional: extra.optional === true });
+  return rows;
+}

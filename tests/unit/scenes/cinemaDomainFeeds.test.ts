@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
-import { DOMAIN_FEEDS, domainFeed, feedExample, feedJsonSchema, feedsMarkdown } from '@/cinema/domainFeeds';
+import { DOMAIN_FEEDS, domainFeed, feedExample, feedJsonSchema, feedMappingRows, feedsMarkdown } from '@/cinema/domainFeeds';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import { FILM_CHAPTERS } from '@/cinema/filmProgram';
 import { validateSceneObjectFields } from '@/cinema/sceneField';
@@ -72,5 +72,21 @@ describe('domain feed declarations', () => {
     }
     const stale = [...generated].filter(([path, content]) => !existsSync(path) || readFileSync(path, 'utf8').replace(/\r\n/g, '\n') !== content);
     expect(stale.map(([path]) => path.replace(root, '')), 'run `npm run docs:feeds` to regenerate').toEqual([]);
+  });
+});
+
+describe('admin column-mapping rows', () => {
+  it('lists every field once per collection, letting an object override the base id/label wording', () => {
+    for (const feed of DOMAIN_FEEDS) {
+      for (const object of feed.objects) {
+        const rows = feedMappingRows(object);
+        expect(new Set(rows.map(row => row.field)).size).toBe(rows.length);
+        expect(rows.slice(0, 2).map(row => row.field)).toEqual(['id', 'label']);
+        for (const field of object.fields) expect(rows.map(row => row.field)).toContain(field.field);
+        for (const key of Object.keys(object.extra ?? {})) expect(rows.map(row => row.field)).toContain(key);
+      }
+    }
+    const defect = DOMAIN_FEEDS.flatMap(feed => feed.objects).find(object => object.type === 'defect')!;
+    expect(feedMappingRows(defect).find(row => row.field === 'label')?.label).toBe('불량 유형');
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DOMAIN_FEEDS, type DomainFeed } from '../domainFeeds';
+import { DOMAIN_FEEDS, feedMappingRows, type DomainFeed } from '../domainFeeds';
 import { mappingTemplate, type FeedMappingConfig } from '../feedConfig';
 import type { MaskedConfig, MaskedSource } from '@/server/cinema/hatcheryConfig';
 import type { FeedRunResult, FeedStatus } from '@/server/cinema/feedRunner';
@@ -135,8 +135,7 @@ export function HatcheryAdmin() {
                 <td><input value={mapping.header[field.field] ?? ''} placeholder="컬럼명" onChange={event => updateFeed(feed, { header: { ...mapping.header, [field.field]: event.target.value } })} /></td></tr>)}
             </tbody></table>}
             {feed.objects.map(object => <table key={object.collection} className={styles.table}><caption>{object.label} <code>{object.collection}[]</code></caption><tbody>
-              {[{ field: 'id', label: '도메인 코드', optional: false }, { field: 'label', label: '표시 이름', optional: true }, ...object.fields,
-                ...Object.entries(object.extra ?? {}).map(([key, extra]) => ({ field: key, label: `${extra.label} (JSON)`, optional: extra.optional }))].map(field =>
+              {feedMappingRows(object).map(field =>
                 <tr key={field.field}><th>{field.label} <code>{field.field}</code>{field.optional ? ' (선택)' : ''}</th>
                   <td><input value={mapping.collections[object.collection]?.fields[field.field] ?? ''} placeholder="컬럼명"
                     onChange={event => updateFeed(feed, { collections: { ...mapping.collections, [object.collection]: { ...mapping.collections[object.collection], fields: { ...(mapping.collections[object.collection]?.fields ?? {}), [field.field]: event.target.value } } } })} /></td></tr>)}
