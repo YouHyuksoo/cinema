@@ -4,6 +4,7 @@ export const FILM_THEMES = [
   { id: 'blue', label: '블루', accent: '#5f9fff', warning: '#ffc168' },
   { id: 'amber', label: '앰버', accent: '#ffd15f', warning: '#ff6978' },
   { id: 'rose', label: '로즈', accent: '#ff7bba', warning: '#ffc168' },
+  { id: 'white', label: '흰색', accent: '#f5f5f5', warning: '#ffc168' },
 ] as const;
 
 export type FilmThemeId = (typeof FILM_THEMES)[number]['id'];

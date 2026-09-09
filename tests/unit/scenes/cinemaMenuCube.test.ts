@@ -28,8 +28,8 @@ import {
 describe('floating management cube geometry', () => {
   it.each([
     { width: 1200, height: 805, expected: { x: 106, y: 714 } },
-    { width: 390, height: 845, expected: { x: 106, y: 762 } },
-    { width: 843, height: 390, expected: { x: 106, y: 313 } },
+    { width: 390, height: 845, expected: { x: 106, y: 773 } },
+    { width: 843, height: 390, expected: { x: 106, y: 318 } },
   ])('docks at bottom left with caption clearance in $width x $height', ({ width, height, expected }) => {
     expect(cubeRestingCenter({ width, height }, cubeSize(width, height))).toEqual(expected);
   });
@@ -75,9 +75,11 @@ describe('floating management cube geometry', () => {
 
   it('uses the requested desktop, mobile, and short-screen sizes', () => {
     expect(cubeSize(1440, 900)).toBe(86);
-    expect(cubeSize(680, 900)).toBe(70);
+    expect(cubeSize(1000, 900)).toBe(86);
+    expect(cubeSize(680, 900)).toBe(61);
     expect(cubeSize(1440, 500)).toBe(58);
     expect(cubeSize(680, 500)).toBe(58);
+    expect(cubeSize(400, 900)).toBe(48);
   });
 
   it('shrinks only as needed to keep the cube, float, and caption on screen', () => {

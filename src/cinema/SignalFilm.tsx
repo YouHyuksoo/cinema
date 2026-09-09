@@ -3,6 +3,11 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useFilmPlayback } from './useFilmPlayback';
 import { FilmDock } from './FilmDock';
+import { FilmControls } from './FilmControls';
+import { FilmTurbineMenu } from './FilmTurbineMenu';
+import { FilmBriefing } from './FilmBriefing';
+import { ReactorMenuPrank } from './ReactorMenuPrank';
+import { useFilmTurbine } from './useFilmTurbine';
 import { getFilmTheme } from './filmThemes';
 import { useFilmCamera } from './useFilmCamera';
 import { JarvisMain } from './JarvisMain';
@@ -22,9 +27,12 @@ export function SignalFilm() {
   const cameraMode = {
     ...camera, preview,
     openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
-    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
+    closePreview() { turbine.voice.stop(); camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
     enable() { player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
   };
+  const turbine = useFilmTurbine(player,
+    () => { cameraMode.openPreview(); setMenuOpen(false); },
+    () => cameraMode.closePreview());
   const themeStyle = useMemo(() => {
     const { accent } = getFilmTheme(player.theme);
     return {
@@ -40,7 +48,7 @@ export function SignalFilm() {
   }, [player.theme]);
 
   return (
-    <main className={styles.page} style={themeStyle} data-film-theme={player.theme} data-preview={preview} data-menu-open={menuOpen}>
+    <main className={styles.page} style={themeStyle} data-film-theme={player.theme} data-preview={preview} data-menu-open={menuOpen} data-menu-layout={player.menuLayout}>
       <div className={styles.screen}>
         <canvas ref={canvas} className={styles.canvas} role="img" aria-label={preview
           ? 'HATCHERY 메인 화면의 연속 공간 배경'
@@ -54,9 +62,13 @@ export function SignalFilm() {
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}
       </div>
-      {preview && <JarvisMain theme={player.theme} camera={camera} onChapter={(id, subject) => { cameraMode.closePreview(); if (subject) player.changeMachineSubject(subject); player.selectChapter(id); }}
+      {preview && <JarvisMain externalBriefing theme={player.theme} camera={camera} voice={turbine.voice} onChapter={turbine.selectScene}
+        sceneSettings={<FilmControls player={player} camera={cameraMode} />}
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
+      <FilmBriefing text={turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''} source={turbine.voice.source}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
+      <FilmTurbineMenu ready={player.ready} playing={player.playing} voiceActive={turbine.voice.active} onCommand={turbine.command}/>
+      {preview && <ReactorMenuPrank/>}
     </main>
   );
 }

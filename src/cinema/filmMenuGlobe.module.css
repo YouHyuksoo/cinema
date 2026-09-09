@@ -23,6 +23,8 @@
   filter:brightness(1.12) saturate(1.1);
 }
 .layer[data-phase=closed] .ball { opacity:1; animation:globeBreathe 3.4s ease-in-out infinite alternate; }
+/* Orbit layout keeps the sphere on screen behind its open ring. */
+[data-menu-layout=orbit] .ball { opacity:1; }
 @keyframes globeBreathe {
   from { box-shadow:0 0 14px color-mix(in srgb,var(--film-accent) 38%,transparent),0 0 36px color-mix(in srgb,var(--film-accent) 16%,transparent),inset 0 0 18px color-mix(in srgb,var(--film-accent-soft) 22%,transparent); }
   to { box-shadow:0 0 26px color-mix(in srgb,var(--film-accent) 62%,transparent),0 0 64px color-mix(in srgb,var(--film-accent) 30%,transparent),inset 0 0 28px color-mix(in srgb,var(--film-accent-soft) 40%,transparent); }

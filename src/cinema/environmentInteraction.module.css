@@ -1,5 +1,5 @@
 .surface { position:absolute; inset:0; z-index:1; background:transparent; touch-action:manipulation; }
 .surface:focus-visible { outline:1px solid var(--film-accent); outline-offset:-6px; }
-.status { position:absolute; bottom:calc(var(--film-dock-space, 156px) + 2px); left:24px; right:24px; z-index:2; display:flex; justify-content:center; flex-wrap:wrap; gap:4px 16px; color:var(--film-muted); font:10px/1.5 var(--font-label),var(--font-korean),sans-serif; pointer-events:none; text-align:center; text-shadow:0 1px 4px var(--film-bg); }
+.status { position:absolute; bottom:calc(var(--film-content-inset, 156px) + 2px); left:24px; right:24px; z-index:2; display:flex; justify-content:center; flex-wrap:wrap; gap:4px 16px; color:var(--film-muted); font:10px/1.5 var(--font-label),var(--font-korean),sans-serif; pointer-events:none; text-align:center; text-shadow:0 1px 4px var(--film-bg); }
 .status [data-selected-zone]:not([data-selected-zone=""]) { color:var(--film-accent-soft); }
 @media(max-width:600px) { .status { left:12px; right:12px; font-size:9px; } }

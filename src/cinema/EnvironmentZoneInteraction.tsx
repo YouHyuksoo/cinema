@@ -17,7 +17,7 @@ export function EnvironmentZoneInteraction({ canvas, controller }: {
         if (!node) return;
         event.currentTarget.focus();
         const rect = node.getBoundingClientRect();
-        const dock = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-dock-space')) || 0;
+        const dock = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-content-inset')) || 0;
         controller.pick(environmentCanvasPoint({ left: rect.left, top: rect.top, width: rect.width, height: rect.height,
           pixelWidth: node.width, pixelHeight: node.height, bottomInset: dock * node.height / Math.max(1, rect.height) },
         { x: event.clientX, y: event.clientY }), isEnvironmentPortrait(node.width, node.height));

@@ -7,6 +7,8 @@ const TEXTURE_DESCRIPTIONS: Record<FilmTextureStyle, string> = {
   glass: '유리 반사 · 미세한 표면 · 빛 번짐',
   film: '필름 입자 · 부드러운 주변부 음영',
   hologram: '촘촘한 주사선 · 빛의 결',
+  underwater: '물결 반사 · 수중 빛줄기 · 떠오르는 기포',
+  space: '별빛의 깊이 · 느린 별 이동 · 옅은 성운',
 };
 
 interface Props {

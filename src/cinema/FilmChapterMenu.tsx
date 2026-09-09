@@ -3,7 +3,7 @@ import { FilmChapterIcon } from './FilmChapterIcon';
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import styles from './film.module.css';
 import ringStyles from './filmMenuRing.module.css';
-import { ringIndex, ringPose } from './filmMenuRing';
+import { orbitPose, ringIndex, ringPose, type MenuLayout } from './filmMenuRing';
 import { useFilmMenuRing } from './useFilmMenuRing';
 import { FilmMenuGlobe } from './FilmMenuGlobeView';
 import { useFilmMenuGlobe } from './useFilmMenuGlobe';
@@ -16,14 +16,16 @@ const SHORT_LABELS: Partial<Record<FilmId, string>> = {
 };
 
 /** Browsing the ring never starts a scene; activate the aligned tile to launch. */
-export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, onExpand, globeButtonRef, onOpened }: {
+export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, onExpand, onCollapse, globeButtonRef, onOpened, layout = 'dock' }: {
   active: FilmId | null; disabled: boolean; onSelect: (id: FilmId) => void;
-  menuOpen?: boolean; onExpand?: () => void; globeButtonRef?: Ref<HTMLButtonElement>;
+  menuOpen?: boolean; onExpand?: () => void; onCollapse?: () => void; globeButtonRef?: Ref<HTMLButtonElement>;
   onOpened?: () => void;
+  /** `dock`: tiles unfold into the bottom ring; `orbit`: tiles circle the globe where it floats. */
+  layout?: MenuLayout;
 }) {
   const { stage, turn, width, dragging, front, align, pointerActive, blockClick, events } = useFilmMenuRing(FILM_CHAPTERS.findIndex(chapter => chapter.id === active), FILM_CHAPTERS.length, disabled || !menuOpen);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  const globe = useFilmMenuGlobe(menuOpen, turn, FILM_CHAPTERS.length, stage, buttons);
+  const globe = useFilmMenuGlobe(menuOpen, turn, FILM_CHAPTERS.length, stage, buttons, layout);
   useImperativeHandle(globeButtonRef, () => globe.control.current as HTMLButtonElement);
   const ringBlocked = !menuOpen || globe.phase !== 'open';
   const pendingOpen = useRef(!menuOpen);
@@ -35,7 +37,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
   }, [menuOpen, globe.phase, onOpened]);
   const selected = FILM_CHAPTERS[front];
   return (
-    <nav className={ringStyles.menu} data-menu-open={menuOpen} data-menu-phase={globe.phase} aria-label="연출 장면 선택" onKeyDown={event => {
+    <nav className={ringStyles.menu} data-menu-open={menuOpen} data-menu-phase={globe.phase} data-menu-layout={layout} aria-label="연출 장면 선택" onKeyDown={event => {
       if (disabled || ringBlocked || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault(); event.stopPropagation();
       const index = event.key === 'Home' ? 0 : event.key === 'End' ? FILM_CHAPTERS.length - 1
@@ -47,12 +49,14 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
         onClickCapture={event => { if (ringBlocked || (event.detail > 0 && blockClick())) { event.preventDefault(); event.stopPropagation(); } }}>
       <div className={ringStyles.orbit} aria-hidden="true" />
       {FILM_CHAPTERS.map((chapter, index) => {
-        const pose = ringPose(index, turn, FILM_CHAPTERS.length, Math.max(40, Math.min(430, width / 2 - 36)));
+        const pose = layout === 'orbit' ? orbitPose(index, turn, FILM_CHAPTERS.length, 1) : ringPose(index, turn, FILM_CHAPTERS.length, Math.max(40, Math.min(430, width / 2 - 36)));
+        const placement = layout === 'orbit'
+          ? { '--orbit-angle': `${(pose as ReturnType<typeof orbitPose>).angle}rad`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity }
+          : { '--ring-x': `${pose.x}px`, '--ring-y': `${pose.y}px`, '--ring-z': `${pose.z}px`, '--ring-yaw': `${pose.yaw}deg`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity };
         return <button key={chapter.id} ref={element => { buttons.current[index] = element; }}
           type="button" className={`${styles.chapterButton} ${ringStyles.tile}`} data-front={index === front}
           tabIndex={index === front ? 0 : -1} aria-describedby="film-ring-hint"
-          style={{ '--ring-x': `${pose.x}px`, '--ring-y': `${pose.y}px`, '--ring-z': `${pose.z}px`,
-            '--ring-yaw': `${pose.yaw}deg`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity } as CSSProperties}
+          style={placement as CSSProperties}
           aria-label={`${pad2(index + 1)} ${chapter.title}`}
           aria-current={active === chapter.id ? 'step' : undefined}
           title={`${chapter.title} · ${chapter.subtitle}`} disabled={disabled}
@@ -81,7 +85,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
       </div>
       <p id="film-ring-hint" className={ringStyles.hint}>좌우로 밀어 회전 · 방향키로 선택 · 정면 클릭 또는 Enter로 실행</p>
       </div>
-      <FilmMenuGlobe menuOpen={menuOpen} onExpand={onExpand}
+      <FilmMenuGlobe menuOpen={menuOpen} onExpand={onExpand} onCollapse={onCollapse} layout={layout}
         layerRef={globe.layer} floatRef={globe.float} controlRef={globe.control}
         faces={globe.faces} ballRef={globe.ball} events={globe.events} blockClick={globe.blockClick} />
     </nav>

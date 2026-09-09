@@ -4,7 +4,8 @@ import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEve
 import { clampGlobeCenter, drawSoccerSphere, globeDiameter, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
   globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, type MenuPose,
   type Point } from './filmMenuGlobe';
-import { ringPose } from './filmMenuRing';
+import { orbitPose, orbitRadius, ringPose, type MenuLayout } from './filmMenuRing';
+import { shockEnvelope, SHOCK_ATTRIBUTE } from './reactorMenuShock';
 
 type Phase = 'open' | 'closed' | 'morphing';
 type Input = { menuOpen: boolean; turn: number };
@@ -19,7 +20,7 @@ const DURATION = 650;
 
 /** RAF owns transforms; React only changes accessibility at phase boundaries. */
 export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
-  stage: RefObject<HTMLDivElement | null>, buttons: RefObject<(HTMLButtonElement | null)[]>) {
+  stage: RefObject<HTMLDivElement | null>, buttons: RefObject<(HTMLButtonElement | null)[]>, layout: MenuLayout = 'dock') {
   const layer = useRef<HTMLDivElement>(null);
   const float = useRef<HTMLDivElement>(null);
   const control = useRef<HTMLButtonElement>(null);
@@ -35,7 +36,15 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const element = stage.current, overlay = layer.current, floating = float.current, button = control.current;
     if (!element || !overlay || !floating || !button) return;
     let input = initial.current;
+    const orbit = layout === 'orbit';
+    const nav = overlay.closest<HTMLElement>('[data-menu-layout]');
     let currentPhase: Phase = input.menuOpen ? 'open' : 'closed';
+    // Orbit layout: where the globe travels to while its ring is open, and where it came from.
+    let orbitCenter = { x: 0, y: 0 }, centerFrom = { x: 0, y: 0 }, centerTo = { x: 0, y: 0 };
+    // Orbit layout: the sphere settles smaller inside its open ring (the tiles carry the menu), easing during the morph.
+    const ORBIT_SPHERE_SCALE = .66;
+    let ballScale = 1, ballScaleFrom = 1;
+    const sphereScale = () => orbit && (currentPhase !== 'closed' || input.menuOpen) ? ballScale : restScale();
     let raf = 0, previousTime: number | null = null, elapsed = 0, angle = 0, floatTime = 0;
     let current: MenuPose[] = [], from: MenuPose[] = [], ringTarget: MenuPose[] = [];
     let ringOrigin = { x: 0, y: 0 }, rect = element.getBoundingClientRect();
@@ -44,7 +53,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     let globeCenter = globeRestingCenter(viewport, diameter);
     let perspective = { ...globeCenter }, fromPerspective = { ...globeCenter };
     let momentum = { x: 0, y: 0 };
-    // Resting size: after the globe has been idle a while it eases to half; hover, focus or drag wakes it.
+    // Resting size: half when idle; hover, focus or drag grows to 70% of the layout diameter.
     let rest = 0, idleMs = 0, awake = false, dragDirty = false;
     const restScale = () => globeRestScale(rest);
     let pointer: null | { id: number; origin: Point; center: Point; lastCenter: Point;
@@ -56,15 +65,36 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
 
     const stageCenter = () => ({ x: rect.left + rect.width / 2,
       y: rect.top + rect.height * (short.matches ? .36 : .4) });
-    const ringPerspective = () => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height * .45 });
+    const ringPerspective = () => orbit ? { ...globeCenter } : { x: rect.left + rect.width / 2, y: rect.top + rect.height * .45 };
+    /** Pull the globe inward so its orbit ring (plus tiles and the readout below) stays on screen above the dock bar. */
+    const orbitCenterFor = (center: Point): Point => {
+      const margin = orbitRadius(diameter) + 56;
+      return { x: Math.max(margin, Math.min(viewport.width - margin, center.x)),
+        y: Math.max(margin, Math.min(viewport.height - 84 - margin - 44, center.y)) };
+    };
+    const orbitFace = (index: number) => {
+      const ringButton = buttons.current[index], hex = ringButton?.firstElementChild as HTMLElement | null;
+      const hexHeight = hex?.offsetHeight || faceHeight, buttonHeight = ringButton?.offsetHeight || (short.matches ? 63 : 70);
+      return { scale: hexHeight / Math.max(1, faceHeight), localY: (hex?.offsetTop ?? 0) + hexHeight / 2 - buttonHeight / 2 };
+    };
+    const orbitPoses = (center: Point): MenuPose[] => Array.from({ length: count }, (_, index) => {
+      const pose = orbitPose(index, input.turn, count, orbitRadius(diameter)), face = orbitFace(index);
+      return { x: center.x + pose.x, y: center.y + pose.y + face.localY * pose.scale, z: 0, yaw: 0, pitch: 0,
+        scale: face.scale * pose.scale, opacity: pose.opacity };
+    });
     const measure = () => {
       rect = element.getBoundingClientRect();
+      const previousViewport = viewport;
       viewport = { width: window.innerWidth, height: window.innerHeight };
       diameter = globeDiameter(viewport.width, viewport.height);
       faceHeight = short.matches ? 43 : 50;
       radius = diameter / (2 + unitFace);
       faceScale = faceHeight > 0 ? unitFace * radius / faceHeight : 0;
-      globeCenter = globeRestingCenter(viewport, diameter * restScale(), rememberedCenter.current);
+      globeCenter = globeRestingCenter(viewport, diameter * restScale(), rememberedCenter.current, previousViewport);
+      if (previousViewport.width !== viewport.width || previousViewport.height !== viewport.height) {
+        rememberedCenter.current = globeCenter;
+        momentum = { x: 0, y: 0 };
+      }
       button.style.width = `${diameter}px`; button.style.height = `${diameter}px`;
       if (ball.current) { ball.current.style.width = `${diameter}px`; ball.current.style.height = `${diameter}px`; }
     };
@@ -83,6 +113,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       });
     };
     const ring = (capture = false) => {
+      if (orbit) return orbitPoses(orbitCenter);
       const origin = stageCenter();
       return Array.from({ length: count }, (_, index) => {
         const ringButton = buttons.current[index];
@@ -113,6 +144,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     };
     const cacheRing = () => { ringTarget = ring(); ringOrigin = stageCenter(); };
     const targetRing = () => {
+      if (orbit) return orbitPoses(orbitCenter);
       const origin = stageCenter();
       return ringTarget.map(pose => ({ ...pose, x: pose.x + origin.x - ringOrigin.x,
         y: pose.y + origin.y - ringOrigin.y }));
@@ -123,17 +155,21 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         face.style.transform = `translate(-50%,-50%) translate3d(${pose.x}px,${pose.y}px,${pose.z}px) rotateY(${pose.yaw}deg) rotateX(${pose.pitch ?? 0}deg) scale(${pose.scale})`;
         face.style.opacity = String(pose.opacity);
       });
-      if (currentPhase === 'closed' && ball.current) {
+      if (nav) {
+        nav.style.setProperty('--orbit-cx', `${globeCenter.x}px`); nav.style.setProperty('--orbit-cy', `${globeCenter.y}px`);
+        nav.style.setProperty('--orbit-r', `${orbitRadius(diameter)}px`);
+      }
+      if ((currentPhase === 'closed' || orbit) && ball.current) {
         // Raster the sphere at its full size and scale it with the same factor as the tiles, so both
         // shrink in lockstep and the per-frame raster cost does not change with the rest size.
-        ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${restScale()})`;
+        ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
         drawSoccerSphere(ball.current, diameter, angle);
       }
       dragDirty = false;
       floating.style.transform = `translateY(${floatingY}px)`;
       const visualY = currentPhase === 'closed' ? floatingY : 0;
       overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y + visualY}px`;
-      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y + floatingY}px,0) translate(-50%,-50%) scale(${restScale()})`;
+      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y + floatingY}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
     };
     const stopFrame = () => { if (raf) cancelAnimationFrame(raf); raf = 0; previousTime = null; };
     const releaseActivePointer = () => {
@@ -142,12 +178,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       if (pointerId !== undefined && button.hasPointerCapture(pointerId)) button.releasePointerCapture(pointerId);
     };
     const schedule = () => {
-      if (!raf && !document.hidden && !reduced.matches && currentPhase !== 'open') {
+      if (!raf && !document.hidden && !reduced.matches && (currentPhase !== 'open' || orbit)) {
         raf = requestAnimationFrame(frame);
       }
     };
     const finish = () => {
-      rest = 0; idleMs = 0;
+      rest = input.menuOpen || awake ? 0 : 1; idleMs = 0;
       current = input.menuOpen ? targetRing() : globe(); floatingY = 0; elapsed = 0; floatTime = 0;
       perspective = input.menuOpen ? ringPerspective() : { ...globeCenter };
       publish(input.menuOpen ? 'open' : 'closed'); draw();
@@ -157,7 +193,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       const raw = previousTime === null ? 0 : time - previousTime, delta = Math.min(64, raw); previousTime = time;
       rect = element.getBoundingClientRect();
       if (pointer) {
-        // Held or dragging: no spin, float or momentum. Grow back to full size while pressed and
+        // Held or dragging: no spin, float or momentum. Grow to the hover size while pressed and
         // redraw once per frame instead of once per pointermove event.
         const before = rest;
         rest = globeRestStep(rest, 0, delta, true);
@@ -165,6 +201,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       } else if (currentPhase === 'morphing') {
         elapsed += delta;
         const progress = Math.min(1, elapsed / DURATION), eased = progress * progress * (3 - 2 * progress);
+        if (orbit) {
+          // The globe itself travels between its corner and the orbit centre while the faces fly, growing to full size.
+          globeCenter = { x: centerFrom.x + (centerTo.x - centerFrom.x) * eased, y: centerFrom.y + (centerTo.y - centerFrom.y) * eased };
+          ballScale = ballScaleFrom + ((input.menuOpen ? ORBIT_SPHERE_SCALE : restScale()) - ballScaleFrom) * eased;
+          rememberedCenter.current = input.menuOpen ? globeCenter : null;
+        }
         const target = input.menuOpen ? targetRing() : globe();
         const targetPerspective = input.menuOpen ? ringPerspective() : globeCenter;
         current = from.map((pose, index) => mixMenuPose(pose, target[index], eased));
@@ -172,16 +214,20 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
           y: fromPerspective.y * (1 - eased) + targetPerspective.y * eased };
         if (progress >= 1) finish(); else draw();
       } else {
-        angle = (angle + delta * Math.PI * 2 / 30000) % (Math.PI * 2);
+        const shockedAt = button.getAttribute(SHOCK_ATTRIBUTE);
+        const shock = shockedAt === null ? 0 : shockEnvelope(time - Number(shockedAt));
+        angle = (angle + delta * Math.PI * 2 / 30000 * (1 + shock * 95)) % (Math.PI * 2);
         if (momentum.x || momentum.y) {
           const next = globeMomentumStep({ center: globeCenter, velocity: momentum }, delta, viewport, diameter * restScale(), false);
           globeCenter = next.center; momentum = next.velocity; rememberedCenter.current = globeCenter;
         }
-        floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / 4800);
+        const orbitOpen = orbit && input.menuOpen;
+        // While the orbit ring is open the globe stays put at full size (the real tiles do not float).
+        if (!orbitOpen) { floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / 4800); }
         // Idle time is wall-clock: a slow frame must not postpone the rest.
         idleMs += raw;
         const before = restScale();
-        rest = globeRestStep(rest, idleMs, delta, awake);
+        rest = globeRestStep(rest, idleMs, delta, awake || orbitOpen);
         // Rest about the globe's bottom-right corner: shift the center by the radius change so that
         // tangent point stays put while the globe shrinks toward, or grows out of, the corner.
         const shift = diameter / 2 * (before - restScale());
@@ -249,14 +295,41 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       from = current.map(pose => ({ ...pose, y: pose.y + floatingY }));
       fromPerspective = { x: perspective.x, y: perspective.y + floatingY };
       floatingY = 0; input = next; elapsed = 0;
+      if (orbit) {
+        // Open: settle the globe at full size and slide it to where the ring fits; close: back to the corner.
+        centerFrom = { x: globeCenter.x, y: globeCenter.y + floatingY };
+        ballScaleFrom = currentPhase === 'open' ? ORBIT_SPHERE_SCALE : restScale(); ballScale = ballScaleFrom;
+        rest = 0; awake = next.menuOpen;
+        orbitCenter = next.menuOpen ? orbitCenterFor(centerFrom) : orbitCenter;
+        centerTo = next.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter, null);
+        rememberedCenter.current = next.menuOpen ? orbitCenter : null;
+        measure(); globeCenter = centerFrom; cacheRing();
+        if (reduced.matches) { globeCenter = centerTo; finish(); } else { publish('morphing'); draw(); schedule(); }
+        return;
+      }
       if (!next.menuOpen) rememberedCenter.current = null;
       measure(); cacheRing();
       if (reduced.matches) finish(); else { publish('morphing'); draw(); schedule(); }
     };
     const resize = () => {
-      measure(); cacheRing();
+      const viewportChanged = viewport.width !== window.innerWidth || viewport.height !== window.innerHeight;
+      if (viewportChanged) releaseActivePointer();
+      measure();
+      if (orbit && viewportChanged) {
+        orbitCenter = orbitCenterFor(globeRestingCenter(viewport, diameter * restScale()));
+        if (input.menuOpen) globeCenter = { ...orbitCenter };
+        centerFrom = { ...globeCenter };
+        centerTo = input.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter * restScale());
+        rememberedCenter.current = { ...globeCenter };
+      }
+      cacheRing();
       if (currentPhase === 'closed') {
         momentum = { x: 0, y: 0 }; perspective = { ...globeCenter }; current = globe(); draw();
+      } else if (currentPhase === 'open') {
+        perspective = ringPerspective(); current = targetRing(); draw();
+      } else {
+        from = current.map(pose => ({ ...pose })); fromPerspective = { ...perspective };
+        elapsed = 0; previousTime = null; schedule();
       }
     };
     const visibility = () => {
@@ -285,7 +358,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);
       reduced.removeEventListener('change', preference); short.removeEventListener('change', resize);
     };
-  }, [buttons, count, stage]);
+  }, [buttons, count, stage, layout]);
 
   useLayoutEffect(() => { update.current?.({ menuOpen, turn }); }, [menuOpen, turn]);
   const events = {

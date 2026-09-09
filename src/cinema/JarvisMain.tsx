@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useJarvisVoice } from './useJarvisVoice';
 import { JarvisWave } from './JarvisWave';
 import type { FilmThemeId } from './filmThemes';
@@ -29,16 +29,29 @@ import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
 
 const overview = jarvisOverview();
-export function JarvisMain({ camera, onChapter, actions, theme = 'cyan' }: { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; theme?: FilmThemeId }) {
-  const voice = useJarvisVoice(onChapter, actions);
+interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean }
+export function JarvisMain(props: JarvisMainProps) {
+  return props.voice ? <JarvisMainContent {...props} voice={props.voice}/> : <ConnectedJarvisMain {...props}/>;
+}
+function ConnectedJarvisMain(props: JarvisMainProps) {
+  const voice = useJarvisVoice(props.onChapter, props.actions);
+  return <JarvisMainContent {...props} voice={voice}/>;
+}
+function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', voice, externalBriefing = false }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
   const [input, setInput] = useState('');
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
-  return <section className={styles.main} aria-label="HATCHERY 메인 메뉴">
+  return <section className={styles.main} data-external-briefing={externalBriefing} aria-label="HATCHERY 메인 메뉴">
     <JarvisMainHeader />
     <div className={styles.body}>
     <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15}>
+    {sceneSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="연출 설정">
+      <details>
+        <summary>SCENE / 연출 설정</summary>
+        {sceneSettings}
+      </details>
+    </section>}
     <section className={styles.left}>
       <div className={styles.sectionTitle}>SESSION / CONNECTIONS</div>
       <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
@@ -85,7 +98,7 @@ export function JarvisMain({ camera, onChapter, actions, theme = 'cyan' }: { cam
         <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>
       </form>
     }>
-      <JarvisDialogue key={reply} text={reply} source={voice.source} />
+      {!externalBriefing && <JarvisDialogue key={reply} text={reply} source={voice.source} />}
     </JarvisCenterLayout>
     <JarvisStream title="DATA / ANALYSIS" label="우측 분석 정보" speed={19} side="right">
       <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials /></section>

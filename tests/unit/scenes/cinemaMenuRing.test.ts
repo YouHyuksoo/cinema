@@ -35,3 +35,23 @@ describe('3D scene menu ring', () => {
     expect(Number.isFinite(dragRingTurn(0, 10, 0, 16))).toBe(true);
   });
 });
+
+describe('orbit layout around the globe', () => {
+  it('places the front slot at twelve o\'clock on a circle just outside the globe and cycles evenly', async () => {
+    const { MENU_LAYOUTS, isMenuLayout, orbitPose, orbitRadius } = await import('@/cinema/filmMenuRing');
+    expect(MENU_LAYOUTS.map(item => item.value)).toEqual(['dock', 'orbit']);
+    expect(isMenuLayout('orbit')).toBe(true); expect(isMenuLayout('grid')).toBe(false);
+    expect(orbitRadius(240)).toBe(216); expect(orbitRadius(NaN)).toBe(96);
+    const front = orbitPose(3, 3, 16, 100);
+    expect(front.x).toBeCloseTo(0); expect(front.y).toBeCloseTo(-100); expect(front.scale).toBeCloseTo(1.32); expect(front.opacity).toBe(1);
+    const opposite = orbitPose(11, 3, 16, 100);
+    expect(opposite.y).toBeCloseTo(100); expect(opposite.scale).toBeCloseTo(1.02); expect(opposite.opacity).toBeCloseTo(.82);
+    const quarter = orbitPose(7, 3, 16, 100);
+    expect(quarter.x).toBeCloseTo(100); expect(quarter.y).toBeCloseTo(0);
+    for (let index = 0; index < 16; index++) {
+      const pose = orbitPose(index, 3, 16, 100);
+      expect(Math.hypot(pose.x, pose.y)).toBeCloseTo(100); expect(pose.z).toBe(0); expect(pose.yaw).toBe(0);
+    }
+    expect(orbitPose(3, 3 + 16, 16, 100)).toEqual(front);
+  });
+});

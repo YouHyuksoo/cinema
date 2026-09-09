@@ -11,7 +11,8 @@
 .menu[data-menu-open=false] { height:0; pointer-events:none; }
 .ringControls { position:relative; }
 .menu[data-menu-phase=closed] .ringControls,.menu[data-menu-phase=morphing] .ringControls { visibility:hidden; pointer-events:none; }
-.menu[data-menu-phase=open] [data-globe-layer] { visibility:hidden; }
+.menu[data-menu-phase=open]:not([data-menu-layout=orbit]) [data-globe-layer] { visibility:hidden; }
+.menu[data-menu-layout=orbit][data-menu-phase=open] [data-globe-face] { visibility:hidden; }
 .stage { position:relative; height:144px; margin-inline:44px; perspective:850px; perspective-origin:50% 45%; touch-action:pan-y; user-select:none; cursor:grab; isolation:isolate; }
 .stage[data-dragging=true] { cursor:grabbing; }
 .orbit { position:absolute; left:50%; top:45%; width:calc(100% - 94px); height:88px; transform:translate(-50%,-50%); border:1px solid color-mix(in srgb,var(--film-accent) 27%,transparent); border-radius:50%; box-shadow:0 8px 0 -7px var(--film-line),0 20px 40px -30px var(--film-accent),inset 0 0 32px color-mix(in srgb,var(--film-accent) 5%,transparent); pointer-events:none; }
@@ -47,3 +48,36 @@
   .tile { top:36%; min-height:61px; }
 }
 @media(prefers-reduced-motion:reduce) { .tile,.menu { transition:none; } }
+
+/* Orbit layout: the ring lives around the globe (viewport coordinates from the globe hook), not in the dock. */
+.menu[data-menu-layout=orbit] { height:0; max-width:none; margin:0; transition:none; pointer-events:none; }
+.menu[data-menu-layout=orbit] .ringControls { position:fixed; inset:0; z-index:4; pointer-events:none; }
+.menu[data-menu-layout=orbit] .stage { position:fixed; inset:0; height:auto; margin:0; perspective:none; pointer-events:none; cursor:default; }
+.menu[data-menu-layout=orbit] .orbit { display:none; }
+/* A dark disc and a faint accent circle separate the ring from the busy main screen behind it. */
+.menu[data-menu-layout=orbit] .stage::before {
+  content:''; position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .45s ease;
+  background:radial-gradient(circle at var(--orbit-cx,50%) var(--orbit-cy,50%),
+    rgba(4,11,16,.92) 0, rgba(4,11,16,.92) calc(var(--orbit-r,180px) + 84px), rgba(4,11,16,0) calc(var(--orbit-r,180px) + 190px));
+}
+.menu[data-menu-layout=orbit] .stage::after {
+  content:''; position:fixed; left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); width:calc(var(--orbit-r,180px) * 2); height:calc(var(--orbit-r,180px) * 2);
+  transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0; transition:opacity .45s ease;
+  border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent);
+  box-shadow:0 0 24px color-mix(in srgb,var(--film-accent) 25%,transparent),inset 0 0 40px color-mix(in srgb,var(--film-accent) 10%,transparent);
+}
+.menu[data-menu-layout=orbit][data-menu-open=true] .stage::before,.menu[data-menu-layout=orbit][data-menu-open=true] .stage::after { opacity:1; }
+.menu[data-menu-layout=orbit] .tile svg { filter:drop-shadow(0 0 9px color-mix(in srgb,var(--film-accent) 55%,transparent)); }
+.menu[data-menu-layout=orbit] .tile[data-front=true] svg { filter:drop-shadow(0 0 14px color-mix(in srgb,var(--film-accent) 80%,transparent)); }
+.menu[data-menu-layout=orbit] .tile {
+  left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); pointer-events:auto; cursor:grab;
+  transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * var(--orbit-r,180px)),calc(sin(var(--orbit-angle,0rad)) * var(--orbit-r,180px))) scale(var(--ring-scale));
+  transition:transform .5s cubic-bezier(.2,.75,.2,1),opacity .35s;
+}
+.menu[data-menu-layout=orbit] .stage[data-dragging=true] .tile { transition:none; cursor:grabbing; }
+.menu[data-menu-layout=orbit] .controls {
+  position:fixed; inset:auto; left:calc(var(--orbit-cx,50%) - var(--orbit-r,180px) - 64px); top:calc(var(--orbit-cy,50%) + var(--orbit-r,180px) + 40px);
+  width:calc(var(--orbit-r,180px) * 2 + 128px); height:48px;
+}
+.menu[data-menu-layout=orbit] .readout { top:50%; }
+@media(prefers-reduced-motion:reduce) { .menu[data-menu-layout=orbit] .tile { transition:none; } }

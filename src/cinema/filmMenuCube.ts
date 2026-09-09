@@ -30,8 +30,9 @@ function finiteSize(value: number) {
 
 export function cubeSize(viewportWidth: number, viewportHeight: number) {
   const width = finiteSize(viewportWidth), height = finiteSize(viewportHeight);
-  // 80% of the original 72 / 88 / 108 so the cube reads as a secondary control beside the globe.
-  const preferred = height <= 500 ? 58 : width <= 680 ? 70 : 86;
+  // Scale with the viewport (9% of its width, 11.5% of its height) between 48px and 86px; the upper
+  // bound is 80% of the original desktop cube so it stays a secondary control beside the globe.
+  const preferred = Math.round(Math.max(48, Math.min(86, width * .09, height * .115)));
   const horizontalFit = width - CUBE_EDGE_PADDING * 2;
   const verticalFit = height - CUBE_EDGE_PADDING * 2 - CUBE_FLOAT_AMPLITUDE * 2 - CUBE_CAPTION_CLEARANCE;
   return Math.max(0, Math.min(preferred, horizontalFit, verticalFit));

@@ -17,6 +17,7 @@ import { createSceneDataStore } from './sceneDataStore';
 import { browserStaticSceneDataOptions, loadStaticSceneData } from './staticSceneData';
 import { browserFeedPollingOptions, startFeedPolling, type FeedPollSummary } from './feedPolling';
 import { DEFAULT_MACHINE_SUBJECT, isMachineSubject, type MachineSubject } from './machinePresentation';
+import { isMenuLayout, type MenuLayout } from './filmMenuRing';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -29,6 +30,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [texture, setTexture] = useState<FilmTextureSettings>(DEFAULT_FILM_TEXTURE);
   const [charts, setCharts] = useState<FilmChartSettings>(DEFAULT_FILM_CHARTS);
   const [theme, setTheme] = useState<FilmThemeId>(DEFAULT_FILM_THEME);
+  const [menuLayout, setMenuLayout] = useState<MenuLayout>('dock');
   const [store] = useState(() => createSceneDataStore());
   const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
   useEffect(() => store.subscribe(setSceneData), [store]);
@@ -72,7 +74,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     const viewport = { bottomInset: 0 };
     const syncDockInset = () => {
       const rect = node.getBoundingClientRect();
-      const dockSpace = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-dock-space')) || 0;
+      const dockSpace = Number.parseFloat(getComputedStyle(node).getPropertyValue('--film-content-inset')) || 0;
       viewport.bottomInset = Math.max(0, dockSpace) * node.height / Math.max(1, rect.height);
     };
     const resize = () => {
@@ -86,7 +88,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     observer.observe(node); resize();
     const dockObserver = new MutationObserver(syncDockInset);
     const page = node.closest('[data-film-theme]');
-    if (page) dockObserver.observe(page, { attributes: true, attributeFilter: ['data-menu-open', 'data-preview'] });
+    if (page) dockObserver.observe(page, { attributes: true, attributeFilter: ['data-menu-open', 'data-preview', 'data-menu-layout'] });
     const sync = requestAnimationFrame(() => { setReady(true); setPlaying(!current.paused); setPosition(chapterAt(current.time)); });
     const render = (now: number) => {
       if (!current.paused) {
@@ -130,7 +132,9 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment, store]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus, machineSubject,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus, machineSubject, menuLayout,
+    /** How the folded globe unfolds: bottom dock ring or a ring around the globe. */
+    changeMenuLayout(value: MenuLayout) { if (isMenuLayout(value)) setMenuLayout(value); },
     changeMachineSubject(value: MachineSubject) {
       if (!isMachineSubject(value) || value === clock.current.machineSubject) return;
       clock.current.machineSubject = value; setMachineSubject(value);
@@ -166,6 +170,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     },
     changeSpeed(value: number) { clock.current.speed = value; setSpeed(value); },
     changeMode(value: PlaybackMode) { clock.current.mode = value; setMode(value); },
+    pause() { factory.clear(); clock.current.paused = true; setPlaying(false); },
+    play() { factory.clear(); clock.current.paused = false; setPlaying(true); },
     togglePlay() { factory.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },
     selectChapter(id: FilmId) {
       factory.clear();

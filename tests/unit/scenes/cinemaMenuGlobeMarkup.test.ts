@@ -38,6 +38,15 @@ describe('collapsed chapter globe accessibility', () => {
     expect(html).toMatch(/data-ring-controls="true"[^>]*inert=""[^>]*aria-hidden="true"/);
   });
 
+  it('defaults to the dock layout and exposes the orbit layout on the nav and dock when chosen', () => {
+    expect(render(true)).toMatch(/<nav[^>]*data-menu-layout="dock"/);
+    const html = renderToStaticMarkup(createElement(FilmChapterMenu, { active: null, disabled: false, onSelect() {}, menuOpen: true, onExpand() {}, layout: 'orbit' }));
+    expect(html).toMatch(/<nav[^>]*data-menu-layout="orbit"/);
+    // With the orbit ring open the globe stays visible as the fold-back control.
+    expect(html).toMatch(/<button[^>]*aria-label="메뉴 접기"[^>]*aria-expanded="true"/);
+    expect(html.match(/<button[^>]*aria-label="메뉴 접기"[^>]*>/)?.[0] ?? '').not.toContain('hidden=');
+  });
+
   it('retains the existing chapter buttons and default open ring behavior', () => {
     const html = render(true);
     expect(html.match(/aria-describedby="film-ring-hint"/g)).toHaveLength(16);

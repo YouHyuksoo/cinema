@@ -51,7 +51,8 @@ describe('auto-collapsing scene dock', () => {
     }
     expect(html).toContain('연출 장면 선택');
     expect(html).toContain('메인 메뉴');
-    expect(html).toContain('연출 설정');
+    if (preview) expect(html).not.toContain('연출 설정');
+    else expect(html).toContain('연출 설정');
     for (const chapter of FILM_CHAPTERS) expect(html).toContain(chapter.title);
   });
 

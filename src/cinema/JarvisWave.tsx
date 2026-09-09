@@ -75,7 +75,7 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
   useEffect(() => { palette.current?.setTheme(theme); }, [theme, audio]);
   return <div className={styles.stage}>
     <canvas ref={canvas} data-reactor-theme={theme} style={{ width: '100%', height: '100%', display: 'block' }} aria-label="회전하는 아크 리액터: 음성 크기에 반응하는 테슬라 스파크" role="img" />
-    <button ref={trigger} type="button" className={styles.trigger} aria-label="리액터 이스터에그 재생" aria-disabled={playing}
+    <button ref={trigger} type="button" data-reactor-trigger className={styles.trigger} aria-label="리액터 이스터에그 재생" aria-disabled={playing}
       onClick={start} onKeyDown={event => {
         if (event.key === 'Escape' && egg.current.active) {
           event.preventDefault(); event.stopPropagation(); egg.current.cancel(); setPlaying(false);

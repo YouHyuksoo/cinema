@@ -19,6 +19,22 @@
 .content>section::after { content:''; pointer-events:none; position:absolute; left:12px; right:12px; top:0; height:1px; background:linear-gradient(90deg,transparent,var(--film-accent),transparent); opacity:.25; box-shadow:0 0 10px var(--film-accent); animation:panelScan 9s linear infinite; }
 .content>section:nth-child(2n)::after { animation-delay:-4s; }
 .content>section:focus-within { opacity:1; }
+.settings { --film-dim:var(--film-muted); }
+.settings summary { cursor:pointer; color:var(--film-accent-soft); font:9px/1.5 var(--font-mono),var(--font-korean),monospace; padding:3px 0; }
+.settings summary:focus-visible { outline:1px solid var(--film-accent); outline-offset:3px; }
+.settings details[open]>summary { margin-bottom:16px; }
+.settings details>div { font-size:10px; }
+.settings details>div>div,.settings fieldset>div { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
+.settings fieldset,.settings label,.settings select { min-width:0; max-width:100%; }
+.settings fieldset { margin-inline:0; }
+.settings legend { line-height:1.6; }
+.settings legend>span { display:block; margin-left:0; }
+.settings label { flex-wrap:wrap; gap:5px; }
+.settings label>select { width:100%; }
+.settings input[type=range] { flex:1 1 60px; min-width:0; width:60px; }
+.settings details>div>div>div { margin-left:0; gap:8px; }
+.settings button { overflow-wrap:anywhere; font-size:10px; }
+.settings fieldset button { justify-content:flex-start; }
 .stream>footer { padding:7px 0; font:8px var(--font-mono),monospace; color:var(--film-muted); opacity:1; }
 .stream footer span { display:block; margin-top:4px; font-size:8px; }
 .block h2 { font:9px var(--font-mono),monospace; font-weight:400; letter-spacing:.08em; color:var(--film-accent-soft); margin:0 0 12px; padding-bottom:8px; border-bottom:3px double var(--film-line); text-shadow:0 0 12px color-mix(in srgb,var(--film-accent) 45%,transparent); }

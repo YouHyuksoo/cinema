@@ -37,6 +37,15 @@ class NativeContextFixture {
 afterEach(() => vi.restoreAllMocks());
 
 describe('film palette conversion', () => {
+  it('offers a neutral white accent while preserving warning colors', () => {
+    expect(FILM_THEMES.find(theme => theme.id === 'white')).toEqual({
+      id: 'white', label: '흰색', accent: '#f5f5f5', warning: '#ffc168',
+    });
+    const map = createFilmColorMapper('white');
+    expect(rgb(map('#5fe3ff'))).toEqual([245, 245, 245]);
+    expect(map('#ffc168')).toBe('#ffc168');
+    expect(map('#000')).toBe('#000');
+  });
   it('keeps offscreen surfaces in the current parent palette when the theme changes', () => {
     const parent = createFilmThemeContext(new NativeContextFixture() as unknown as CanvasRenderingContext2D);
     const child = createFilmThemeContext(new NativeContextFixture() as unknown as CanvasRenderingContext2D);
@@ -82,14 +91,14 @@ describe('film palette conversion', () => {
   });
 
   it('preserves warning tint variations outside the amber theme', () => {
-    for (const theme of ['emerald', 'blue', 'rose'] as FilmThemeId[]) {
+    for (const theme of ['emerald', 'blue', 'rose', 'white'] as FilmThemeId[]) {
       const map = createFilmColorMapper(theme);
       for (const color of ['#ffc168', '#ffdda3', 'rgba(242,209,153,.018)']) expect(map(color)).toBe(color);
     }
   });
 
   it('retains light and dark variations and changes heat blends continuously', () => {
-    for (const theme of ['emerald', 'blue', 'amber', 'rose'] as FilmThemeId[]) {
+    for (const theme of ['emerald', 'blue', 'amber', 'rose', 'white'] as FilmThemeId[]) {
       const map = createFilmColorMapper(theme);
       const lightness = (color: string) => { const channels = rgb(color); return (Math.min(...channels) + Math.max(...channels)) / 2; };
       expect(lightness(map('#c4e7f0'))).toBeGreaterThan(lightness(map('#398698')));

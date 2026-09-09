@@ -2,9 +2,19 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { JarvisMain } from '@/cinema/JarvisMain';
+import { SignalFilm } from '@/cinema/SignalFilm';
 import type { FilmCamera } from '@/cinema/useFilmCamera';
 
 describe('main stream responsibilities', () => {
+  it('hosts the existing scene controls only in the left stream on the main page', () => {
+    const html = renderToStaticMarkup(createElement(SignalFilm));
+    const left = html.match(/<aside\b[^>]*data-side="left"[^>]*>[\s\S]*?<\/aside>/)?.[0];
+    expect(left).toContain('aria-label="연출 설정"');
+    expect(left).toContain('<summary>SCENE / 연출 설정</summary>');
+    for (const label of ['색상 테마', '화면 질감', '질감 강도', '재생 속도', '거울 모드', '얼굴 확대']) expect(left).toContain(label);
+    expect(html.match(/aria-label="연출 설정"/g)).toHaveLength(1);
+    expect(html).not.toContain('aria-controls="film-playback-settings"');
+  });
   it('keeps guidance/settings left and every operational analysis card right without duplicates', () => {
     const html = renderToStaticMarkup(createElement(JarvisMain, {
       camera: { status: 'off', frameRef: { current: null }, stop() {}, start: async () => {} } as unknown as FilmCamera,

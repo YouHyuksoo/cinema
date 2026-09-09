@@ -16,7 +16,7 @@ interface Props {
 function pointerPoint(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
   const rect = canvas.getBoundingClientRect();
   const ratioX = canvas.width / Math.max(1, rect.width), ratioY = canvas.height / Math.max(1, rect.height);
-  const dock = Number.parseFloat(getComputedStyle(canvas).getPropertyValue('--film-dock-space')) || 0;
+  const dock = Number.parseFloat(getComputedStyle(canvas).getPropertyValue('--film-content-inset')) || 0;
   return filmViewportPoint((clientX - rect.left) * ratioX, (clientY - rect.top) * ratioY,
     canvas.width, canvas.height, { bottomInset: dock * ratioY });
 }

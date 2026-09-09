@@ -2,7 +2,7 @@ import type { JarvisPhase } from './jarvisAudio';
 
 export const VOICE_CORE_VIEW = { width: 440, height: 320, x: 220, y: 134 } as const;
 /** Cap in CSS pixels so a tall stage does not blow the reactor up to fill START–camera. */
-export const VOICE_CORE_SCALE_MAX = .82;
+export const VOICE_CORE_SCALE_MAX = .72;
 
 export function voiceCoreCanvasTransform(cssWidth: number, cssHeight: number, dpr = 1) {
   const width = Number.isFinite(cssWidth) ? Math.max(1, cssWidth) : 1;

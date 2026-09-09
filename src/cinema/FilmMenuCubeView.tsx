@@ -11,6 +11,8 @@ import { CUBE_CUBIES, CUBE_FACES, CUBE_HUD_HOLD_MS, CUBE_IDENTITY, CUBE_MOVE_MS,
 export type CubeMenuId = (typeof CUBE_FACES)[number]['id'];
 const MENU_SLOTS = cubeMenuSlots();
 import styles from './filmMenuCube.module.css';
+import { SHOCK_ATTRIBUTE } from './reactorMenuShock';
+import { cubeReactorFlight, CUBE_FLIGHT_PERSPECTIVE } from './cubeReactorFlight';
 
 const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
   admin: <>
@@ -76,12 +78,18 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     let turning: { move: CubeMove; t: number; reverse: boolean } | null = null;
     let phase: 'idle' | 'mix' | 'solve' = 'idle';
     let cycled = false;
+    let shockMix = false, lastShock: string | null = null;
+    let flightElapsed:number|null = null, flightPending = false;
+    let flightPose:ReturnType<typeof cubeReactorFlight> = null;
+    let reactorMask = '';
+    const root = overlay.closest('main');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const cubieNodes = [...body.querySelectorAll<HTMLElement>('[data-cube-cubie]')];
 
     const resetCube = () => {
       orients = CUBE_CUBIES.map(() => CUBE_IDENTITY);
-      queue = []; applied = []; turning = null; phase = 'idle'; cycled = false;
+      queue = []; applied = []; turning = null; phase = 'idle'; cycled = false; shockMix = false;
+      flightElapsed = null; flightPending = false; flightPose = null;
     };
     const startMix = () => {
       queue = cubeScramble();
@@ -109,13 +117,20 @@ export function FilmMenuCube({ onSelect, links = {} }: {
       button.style.width = `${size}px`; button.style.height = `${size}px`;
     };
     const draw = () => {
-      const visualY = reduced.matches ? 0 : floatingY;
+      const visualY = reduced.matches || flightPose ? 0 : floatingY;
+      const position = flightPose ?? center;
       const step = size / 3;
       floating.style.transform = `translateY(${visualY}px)`;
-      overlay.style.perspectiveOrigin = `${center.x}px ${center.y + visualY}px`;
+      const camera = flightPose?.camera ?? position;
+      const projected = flightPose?.projected ?? { ...center, scale:1 };
+      overlay.style.perspective = `${flightPose?.perspective ?? CUBE_FLIGHT_PERSPECTIVE}px`;
+      overlay.style.perspectiveOrigin = `${camera.x}px ${camera.y + visualY}px`;
+      overlay.style.maskImage = flightPose && flightPose.z < -1 ? reactorMask : '';
       overlay.dataset.twisting = String(!!turning || queue.length > 0);
-      body.style.transform = `translate3d(${center.x}px,${center.y}px,0) translate(-50%,-50%) rotateX(${TILT}deg) rotateY(${YAW + showcaseYaw}deg)`;
-      button.style.transform = `translate3d(${center.x}px,${center.y + visualY}px,0) translate(-50%,-50%)`;
+      if (flightPose) { overlay.dataset.cubeFlight = flightPose.phase; overlay.dataset.flightDepth = String(flightPose.z); }
+      else { delete overlay.dataset.cubeFlight; delete overlay.dataset.flightDepth; }
+      body.style.transform = `translate3d(${position.x}px,${position.y}px,${flightPose?.z ?? 0}px) translate(-50%,-50%) rotateX(${TILT}deg) rotateY(${YAW + showcaseYaw + (flightPose?.yaw ?? 0)}deg) rotateZ(${flightPose?.bank ?? 0}deg)`;
+      button.style.transform = `translate3d(${projected.x}px,${projected.y + visualY}px,0) translate(-50%,-50%) scale(${projected.scale})`;
       cubieNodes.forEach((node, index) => {
         let matrix = orients[index];
         if (turning && cubeInLayer(CUBE_CUBIES[index], matrix, turning.move)) {
@@ -159,17 +174,22 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     const frame = (time: number) => {
       raf = 0;
       const delta = previousTime === null ? 0 : Math.min(64, time - previousTime); previousTime = time;
+      const shock = button.getAttribute(SHOCK_ATTRIBUTE);
+      if (shock !== null && shock !== lastShock && phase === 'idle' && !turning && !queue.length && flightElapsed === null && overlay.dataset.menuOpen !== 'true') {
+        queue = cubeScramble(5, Math.floor(Number(shock))); applied = []; phase = 'mix'; shockMix = true; flightPending = true;
+      }
+      lastShock = shock;
       if (time - measuredAt >= MEASURE_MS) { measuredAt = time; measure(); }
       floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / FLOAT_MS);
       if (overlay.dataset.hud === 'true' && time >= hudUntil) overlay.dataset.hud = 'false';
-      showcase(delta);
+      if (flightElapsed === null && !flightPending) showcase(delta);
       if (hovering) hoverMs += delta; else hoverMs = 0;
-      if (hovering && hoverMs >= CUBE_TWIST_DELAY_MS && phase === 'idle' && !turning && !cycled) startMix();
+      if (hovering && hoverMs >= CUBE_TWIST_DELAY_MS && phase === 'idle' && !turning && !cycled && flightElapsed === null) startMix();
       if (turning) {
-        if (!hovering && phase === 'mix' && !turning.reverse) {
+        if (!hovering && !shockMix && phase === 'mix' && !turning.reverse) {
           turning.reverse = true; turning.t = 1 - Math.min(1, turning.t);
         }
-        turning.t += delta / CUBE_MOVE_MS;
+        turning.t += delta / (shockMix ? 110 : CUBE_MOVE_MS);
         if (turning.t >= 1) finishTurn();
       } else if (queue.length) {
         const move = queue.shift();
@@ -179,13 +199,31 @@ export function FilmMenuCube({ onSelect, links = {} }: {
         phase = 'solve';
       } else if (phase === 'solve') {
         applied = [];
-        phase = 'idle';
+        if (shockMix && flightPending) { flightElapsed = 0; flightPending = false; }
+        phase = 'idle'; shockMix = false;
+      }
+      if (flightElapsed !== null) {
+        const reactor = root?.querySelector<HTMLElement>('[data-reactor-trigger]');
+        const rect = reactor?.getBoundingClientRect();
+        if (!rect || !rect.width || !rect.height || reactor?.getAttribute('aria-disabled') === 'true' || overlay.dataset.menuOpen === 'true') {
+          flightElapsed = null; flightPose = null;
+        } else {
+          flightPose = cubeReactorFlight(flightElapsed,center,{x:rect.x+rect.width/2,y:rect.y+rect.height/2,radius:Math.min(180,rect.width*.85+size*.4)});
+          reactorMask = `radial-gradient(ellipse ${rect.width*.53}px ${rect.height*.53}px at ${rect.x+rect.width/2}px ${rect.y+rect.height/2}px,transparent 97%,black 100%)`;
+          if (flightPose) flightElapsed += delta; else { flightElapsed = null; sinceSpin = 0; hoverMs = 0; }
+        }
       }
       draw(); schedule();
     };
 
     const resize = () => { measure(); draw(); };
-    const visibility = () => { stopFrame(); if (!document.hidden) schedule(); };
+    const cancelFlight = () => { flightPending = false; flightElapsed = null; flightPose = null; measure(); draw(); };
+    const cancelOnInteraction = (event:Event) => {
+      // Let a click on the flying cube reach its existing menu toggle before it docks.
+      if (event.type === 'pointerdown' && event.target instanceof Node && button.contains(event.target)) return;
+      cancelFlight();
+    };
+    const visibility = () => { stopFrame(); cancelFlight(); if (!document.hidden) schedule(); };
     const preference = () => {
       stopFrame(); floatingY = 0; floatTime = 0; hoverMs = 0; resetCube();
       draw(); if (!reduced.matches) schedule();
@@ -193,18 +231,20 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     const enter = () => { hovering = true; sinceSpin = 0; schedule(); };
     const leave = () => {
       hovering = false; hoverMs = 0; cycled = false;
-      if (phase === 'mix') queue = [];
+      if (phase === 'mix' && !shockMix) queue = [];
       schedule();
     };
     measure(); draw();
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); schedule();
     button.addEventListener('pointerenter', enter); button.addEventListener('pointerleave', leave);
+    root?.addEventListener('pointerdown',cancelOnInteraction,true); root?.addEventListener('keydown',cancelOnInteraction,true);
     return () => {
       stopFrame(); document.documentElement.style.removeProperty(STRIP_SPACE_PROPERTY); document.documentElement.style.removeProperty(BAY_WIDTH_PROPERTY); delete document.documentElement.dataset.cubeDocked;
       button.removeEventListener('pointerenter', enter); button.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);
       reduced.removeEventListener('change', preference);
+      root?.removeEventListener('pointerdown',cancelOnInteraction,true); root?.removeEventListener('keydown',cancelOnInteraction,true);
     };
   }, []);
 

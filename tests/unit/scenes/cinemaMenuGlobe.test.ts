@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GLOBE_GROW_MS, GLOBE_REST_DELAY_MS, GLOBE_REST_SCALE, GLOBE_SHRINK_MS, globeRestScale, globeRestStep,
+  GLOBE_AWAKE_SCALE, GLOBE_GROW_MS, GLOBE_REST_DELAY_MS, GLOBE_REST_SCALE, GLOBE_SHRINK_MS, globeRestScale, globeRestStep,
   clampGlobeCenter,
   globeDiameter,
   globeFaceSize,
@@ -9,6 +9,8 @@ import {
   globeRestingCenter,
   isGlobeDrag,
   mixMenuPose,
+  SOCCER_INSET_SEAMS,
+  SOCCER_PANELS,
   SOCCER_SEAMS,
   soccerHexPoses,
   soccerHexScreenPoses,
@@ -18,10 +20,20 @@ import {
 import { ringPose } from '@/cinema/filmMenuRing';
 
 describe('floating menu globe geometry', () => {
+  it('reanchors on both viewport growth and shrink instead of retaining old pixels', () => {
+    const small = { width: 800, height: 600 }, large = { width: 1440, height: 900 };
+    const remembered = { x: 400, y: 300 };
+    for (const [before, after] of [[small, large], [large, small]]) {
+      const size = globeDiameter(after.width, after.height) * .5;
+      expect(globeRestingCenter(after, size, remembered, before))
+        .toEqual(globeRestingCenter(after, size));
+    }
+    expect(globeRestingCenter(large, 120, remembered, large)).toEqual(remembered);
+  });
   it.each([
     { width: 1200, height: 805, expected: { x: 1064, y: 637 } },
-    { width: 390, height: 845, expected: { x: 274, y: 707 } },
-    { width: 843, height: 390, expected: { x: 727, y: 276 } },
+    { width: 390, height: 845, expected: { x: 274, y: 737 } },
+    { width: 843, height: 390, expected: { x: 727, y: 282 } },
   ])('docks at bottom right with caption clearance in $width x $height', ({ width, height, expected }) => {
     expect(globeRestingCenter({ width, height }, globeDiameter(width, height))).toEqual(expected);
   });
@@ -35,13 +47,15 @@ describe('floating menu globe geometry', () => {
 
   it('uses the requested desktop, mobile, and short-screen diameters', () => {
     expect(globeDiameter(1440, 900)).toBe(240);
-    expect(globeDiameter(680, 900)).toBe(180);
-    expect(globeDiameter(1440, 500)).toBe(132);
-    expect(globeDiameter(680, 500)).toBe(132);
+    expect(globeDiameter(1000, 900)).toBe(240);
+    expect(globeDiameter(680, 900)).toBe(177);
+    expect(globeDiameter(1440, 500)).toBe(150);
+    expect(globeDiameter(680, 500)).toBe(150);
+    expect(globeDiameter(400, 900)).toBe(120);
   });
 
   it('shrinks only as needed to keep the globe, float, and caption on screen', () => {
-    expect(globeDiameter(200, 900)).toBe(168);
+    expect(globeDiameter(200, 900)).toBe(120);
     expect(globeDiameter(900, 160)).toBe(92);
     expect(globeDiameter(30, 30)).toBe(0);
   });
@@ -177,37 +191,36 @@ describe('menu pose transition', () => {
 });
 
 describe('globe resting size', () => {
-  it('stays full until the rest delay, then eases to half and grows back quickly when awake', () => {
-    expect(globeRestScale(0)).toBe(1);
+  it('grows to 70% on hover and shrinks immediately when idle', () => {
+    expect(GLOBE_AWAKE_SCALE).toBeCloseTo(.7);
+    expect(globeRestScale(0)).toBe(GLOBE_AWAKE_SCALE);
     expect(globeRestScale(1)).toBe(GLOBE_REST_SCALE);
+    expect(GLOBE_REST_DELAY_MS).toBe(0);
     let rest = 0;
-    for (let idle = 0; idle < GLOBE_REST_DELAY_MS; idle += 16) rest = globeRestStep(rest, idle, 16, false);
-    expect(rest).toBe(0);
-    for (let idle = GLOBE_REST_DELAY_MS; idle < GLOBE_REST_DELAY_MS + GLOBE_SHRINK_MS + 16; idle += 16) rest = globeRestStep(rest, idle, 16, false);
+    rest = globeRestStep(rest, 0, 16, false);
+    expect(rest).toBeGreaterThan(0);
+    for (let idle = 0; idle < GLOBE_SHRINK_MS + 16; idle += 16) rest = globeRestStep(rest, idle, 16, false);
     expect(rest).toBe(1);
     expect(globeRestScale(.5)).toBeGreaterThan(GLOBE_REST_SCALE);
-    expect(globeRestScale(.5)).toBeLessThan(1);
+    expect(globeRestScale(.5)).toBeLessThan(GLOBE_AWAKE_SCALE);
     let grown = rest;
-    for (let step = 0; step < GLOBE_GROW_MS / 16 + 1; step++) grown = globeRestStep(grown, 99999, 16, true);
+    for (let step = 0; step < GLOBE_GROW_MS / 16 + 1; step++) grown = globeRestStep(grown, 0, 16, true);
     expect(grown).toBe(0);
   });
 });
 
 describe('soccer ball globe lattice', () => {
-  it('connects 90 unique seams and 20 hexagon cells on the sphere', () => {
+  it('wraps the globe with inset panels that leave gaps between cells', () => {
+    expect(SOCCER_PANELS).toHaveLength(32);
+    expect(SOCCER_INSET_SEAMS).toHaveLength(180);
     expect(SOCCER_SEAMS).toHaveLength(90);
-    const seams = soccerSeamPoses(56, .4);
-    expect(seams).toHaveLength(90);
-    expect(new Set(seams.map(seam => `${seam.x.toFixed(4)},${seam.y.toFixed(4)},${seam.z.toFixed(4)}`)).size).toBe(90);
-    for (const seam of seams) {
-      expect(seam.length).toBeGreaterThan(0);
-      expect(Object.values(seam).every(Number.isFinite)).toBe(true);
-    }
     const hexes = soccerHexPoses(56, .4);
     expect(hexes).toHaveLength(20);
     for (const pose of hexes) expect(Math.hypot(pose.x, pose.y, pose.z)).toBeCloseTo(56);
-    const seam = SOCCER_SEAMS[0];
-    expect(soccerPattern({ x: seam.a.x + seam.b.x, y: seam.a.y + seam.b.y, z: seam.a.z + seam.b.z })).toBe('seam');
+    const shared = SOCCER_SEAMS[0];
+    expect(soccerPattern({ x: shared.a.x + shared.b.x, y: shared.a.y + shared.b.y, z: shared.a.z + shared.b.z })).toBe('gap');
+    const inset = SOCCER_INSET_SEAMS[0];
+    expect(soccerPattern({ x: inset.a.x + inset.b.x, y: inset.a.y + inset.b.y, z: inset.a.z + inset.b.z })).toBe('seam');
     const cell = soccerHexPoses(1, 0)[0];
     expect(soccerPattern({ x: cell.x, y: cell.y, z: cell.z })).toBe('cell');
   });

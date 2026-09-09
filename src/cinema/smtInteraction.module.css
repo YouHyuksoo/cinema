@@ -26,7 +26,7 @@
   gap: 10px;
   width: 276px;
   max-width: calc(100% - 48px);
-  max-height: calc(100dvh - var(--film-dock-space, 156px) - 84px);
+  max-height: calc(100dvh - var(--film-content-inset, 156px) - 84px);
   overflow-y: auto;
   box-sizing: border-box;
   padding: 14px;
@@ -88,12 +88,12 @@
 .hint { margin: 0; color: var(--film-muted); text-align: center; font-size: 10px; letter-spacing: .01em; }
 
 @media (max-width: 680px) {
-  .toolbar { top: 36px; right: 12px; width: 248px; max-width: calc(100% - 24px); max-height: calc(100dvh - var(--film-dock-space, 390px) - 52px); padding: 9px 10px; gap: 6px; }
+  .toolbar { top: 36px; right: 12px; width: 248px; max-width: calc(100% - 24px); max-height: calc(100dvh - var(--film-content-inset, 390px) - 52px); padding: 9px 10px; gap: 6px; }
   .button { min-height: 28px; padding-top: 3px; padding-bottom: 3px; }
   .select { min-height: 30px; padding-top: 4px; padding-bottom: 4px; }
   .selection { min-height: 30px; gap: 0; }
 }
 
 @media (max-height: 500px) {
-  .toolbar { top: 36px; max-height: calc(100dvh - var(--film-dock-space, 116px) - 50px); padding: 9px 10px; gap: 6px; }
+  .toolbar { top: 36px; max-height: calc(100dvh - var(--film-content-inset, 116px) - 50px); padding: 9px 10px; gap: 6px; }
 }

@@ -11,7 +11,8 @@ import { MACHINE_PRESENTATIONS } from './machinePresentation';
 export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   player: FilmPlayback; camera: FilmCameraMode; menuOpen: boolean; onMenuOpenChange: (open: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [settingsOpen, setExpanded] = useState(false);
+  const expanded = settingsOpen && !camera.preview;
   const settingsToggle = useRef<HTMLButtonElement>(null);
   const globeButton = useRef<HTMLButtonElement>(null);
   const dock = useRef<HTMLDivElement>(null);
@@ -52,7 +53,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   };
   const { chapter, localTime } = player.position;
   return (
-    <div ref={dock} id="film-dock-panel" className={`${styles.filmDock} ${mobileStyles.dock}`} data-menu-open={menuOpen}
+    <div ref={dock} id="film-dock-panel" className={`${styles.filmDock} ${mobileStyles.dock}`} data-menu-open={menuOpen} data-menu-layout={player.menuLayout ?? 'dock'}
       onFocusCapture={() => { focusWasInDock.current = true; }}
       onBlurCapture={event => {
         if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) focusWasInDock.current = false;
@@ -66,7 +67,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
     }}>
       <div className={mobileStyles.panel} data-dock-actions="true" inert={!menuOpen} aria-hidden={!menuOpen}>
       <div id="film-dock-content" className={mobileStyles.content}>
-      {expanded && (
+      {expanded && !camera.preview && (
         <section className={styles.dockSettings} id="film-playback-settings" aria-label="연출 설정">
           <FilmControls player={player} camera={camera} />
         </section>
@@ -87,16 +88,16 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
           {!expanded && !camera.preview && <button type="button" className={styles.dockAction} disabled={!player.ready} onClick={player.togglePlay}>
             {player.playing ? '일시정지' : '재생'}
           </button>}
-          <button ref={settingsToggle} type="button" className={styles.dockAction}
+          {!camera.preview && <button ref={settingsToggle} type="button" className={styles.dockAction}
             aria-expanded={expanded} aria-controls="film-playback-settings"
-            onClick={() => setExpanded(!expanded)}>{expanded ? '설정 닫기' : '연출 설정'}</button>
+            onClick={() => setExpanded(!expanded)}>{expanded ? '설정 닫기' : '연출 설정'}</button>}
           <button type="button" className={styles.dockAction} onClick={collapseMenu}>메뉴 축소</button>
         </div>
       </div>
       </div>
       </div>
-      <FilmChapterMenu active={camera.preview ? null : chapter.id} disabled={!player.ready} menuOpen={menuOpen}
-        onExpand={expandMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={(id) => {
+      <FilmChapterMenu active={camera.preview ? null : chapter.id} disabled={!player.ready} menuOpen={menuOpen} layout={player.menuLayout ?? 'dock'}
+        onExpand={expandMenu} onCollapse={collapseMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={(id) => {
           focusIntent.current = 'globe'; setExpanded(false); camera.closePreview(); player.selectChapter(id); onMenuOpenChange(false);
         }} />
       {camera.preview && <FilmMenuCube links={{ admin: '/cinema/admin', ai: '/cinema/ai' }} />}

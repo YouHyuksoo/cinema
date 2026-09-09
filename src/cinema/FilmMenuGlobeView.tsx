@@ -1,12 +1,13 @@
 import type { ComponentPropsWithoutRef, RefObject } from 'react';
 import { FILM_CHAPTERS } from './filmProgram';
+import type { MenuLayout } from './filmMenuRing';
 import { FilmChapterIcon } from './FilmChapterIcon';
 import filmStyles from './film.module.css';
 import styles from './filmMenuGlobe.module.css';
 
-export function FilmMenuGlobe({ menuOpen, onExpand, layerRef, floatRef, faces, ballRef,
+export function FilmMenuGlobe({ menuOpen, onExpand, onCollapse, layout = 'dock', layerRef, floatRef, faces, ballRef,
   controlRef, events, blockClick }: {
-  menuOpen: boolean; onExpand?: () => void;
+  menuOpen: boolean; onExpand?: () => void; onCollapse?: () => void; layout?: MenuLayout;
   layerRef: RefObject<HTMLDivElement | null>; floatRef: RefObject<HTMLDivElement | null>;
   faces: RefObject<(HTMLSpanElement | null)[]>;
   ballRef: RefObject<HTMLCanvasElement | null>;
@@ -32,11 +33,11 @@ export function FilmMenuGlobe({ menuOpen, onExpand, layerRef, floatRef, faces, b
     </div>
     {onExpand && <button ref={controlRef} type="button" className={styles.expand}
       data-globe-control="true" {...events}
-      aria-label="하단 메뉴 펼치기" aria-expanded={menuOpen} aria-controls="film-dock-panel"
-      hidden={menuOpen} onClick={event => {
+      aria-label={menuOpen && layout === 'orbit' ? '메뉴 접기' : '하단 메뉴 펼치기'} aria-expanded={menuOpen} aria-controls="film-dock-panel"
+      hidden={menuOpen && layout !== 'orbit'} onClick={event => {
         event.stopPropagation();
         if (event.detail > 0 && blockClick()) { event.preventDefault(); return; }
-        onExpand?.();
+        if (menuOpen) onCollapse?.(); else onExpand?.();
       }} />}
   </div>;
 }

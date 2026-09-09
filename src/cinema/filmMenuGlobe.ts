@@ -27,7 +27,9 @@ function finiteSize(value: number) {
 
 export function globeDiameter(viewportWidth: number, viewportHeight: number) {
   const width = finiteSize(viewportWidth), height = finiteSize(viewportHeight);
-  const preferred = height <= 500 ? 132 : width <= 680 ? 180 : 240;
+  // Scale with the viewport (26% of its width, 30% of its height) between 120px and 240px, so a
+  // smaller window shrinks the globe proportionally instead of jumping at two breakpoints.
+  const preferred = Math.round(Math.max(120, Math.min(240, width * .26, height * .3)));
   const horizontalFit = width - GLOBE_EDGE_PADDING * 2;
   const verticalFit = height - GLOBE_EDGE_PADDING * 2 - GLOBE_FLOAT_AMPLITUDE * 2 - GLOBE_CAPTION_CLEARANCE;
   return Math.max(0, Math.min(preferred, horizontalFit, verticalFit));
@@ -54,8 +56,9 @@ export function isGlobeDrag(origin: Point, current: Point, threshold = GLOBE_DRA
 }
 
 /** A cleared position docks at bottom right; only dragging overrides the resting place. */
-export function globeRestingCenter(viewport: Viewport, diameter: number, remembered: Point | null = null): Point {
-  return clampGlobeCenter(remembered ?? { x: viewport.width, y: viewport.height }, viewport, diameter);
+export function globeRestingCenter(viewport: Viewport, diameter: number, remembered: Point | null = null, previousViewport?: Viewport): Point {
+  const resized = previousViewport && (previousViewport.width !== viewport.width || previousViewport.height !== viewport.height);
+  return clampGlobeCenter((resized ? null : remembered) ?? { x: viewport.width, y: viewport.height }, viewport, diameter);
 }
 
 /** Velocity uses CSS pixels per millisecond and exponentially settles to zero. */
@@ -149,13 +152,14 @@ export function mixMenuPose(from: MenuPose, to: MenuPose, progress: number): Req
   };
 }
 
-/** After the menu folds into the globe it rests at full size, then eases down to half so it stays out of the way. */
-export const GLOBE_REST_DELAY_MS = 4000;
-export const GLOBE_SHRINK_MS = 1400;
-export const GLOBE_GROW_MS = 350;
+/** Hover grows to 70% of the layout diameter; leaving hover shrinks back to half immediately. */
+export const GLOBE_REST_DELAY_MS = 0;
+export const GLOBE_SHRINK_MS = 280;
+export const GLOBE_GROW_MS = 280;
 export const GLOBE_REST_SCALE = .5;
+export const GLOBE_AWAKE_SCALE = .7;
 
-/** Advance the 0..1 rest amount: 0 = full globe, 1 = resting size. `awake` (hover, focus, drag) always grows. */
+/** Advance the 0..1 rest amount: 0 = hover size, 1 = resting size. `awake` (hover, focus, drag) always grows. */
 export function globeRestStep(rest: number, idleMs: number, elapsedMs: number, awake: boolean) {
   const target = !awake && idleMs >= GLOBE_REST_DELAY_MS ? 1 : 0;
   const rate = elapsedMs / (target ? GLOBE_SHRINK_MS : GLOBE_GROW_MS);
@@ -165,7 +169,7 @@ export function globeRestStep(rest: number, idleMs: number, elapsedMs: number, a
 /** Visual scale for a rest amount, eased so the change starts and ends softly. */
 export function globeRestScale(rest: number) {
   const t = Math.max(0, Math.min(1, rest)), eased = t * t * (3 - 2 * t);
-  return 1 - (1 - GLOBE_REST_SCALE) * eased;
+  return GLOBE_AWAKE_SCALE - (GLOBE_AWAKE_SCALE - GLOBE_REST_SCALE) * eased;
 }
 
 const PHI = (1 + Math.sqrt(5)) / 2;
@@ -233,13 +237,15 @@ function orderAround(axis: { x: number; y: number; z: number }, points: { x: num
   });
 }
 
-function buildSoccerSeams() {
+const SOCCER_INSET = .34;
+
+function soccerCycles() {
   const adj: number[][] = ICOSA_VERTS.map(() => []);
   for (const [a, b, c] of ICOSA_FACES) {
     const link = (i: number, j: number) => { if (!adj[i].includes(j)) adj[i].push(j); };
     link(a, b); link(b, a); link(b, c); link(c, b); link(c, a); link(a, c);
   }
-  const cycles = [
+  return [
     ...ICOSA_VERTS.map((vertex, index) => orderAround(vertex, adj[index].map(other => lerpUnit(vertex, ICOSA_VERTS[other], 1 / 3)))),
     ...ICOSA_FACES.map(([a, b, c]) => {
       const loop = [a, b, c];
@@ -251,6 +257,9 @@ function buildSoccerSeams() {
       return hex;
     }),
   ];
+}
+
+function uniqueEdges(cycles: { x: number; y: number; z: number }[][]) {
   const unique = new Map<string, { a: { x: number; y: number; z: number }; b: { x: number; y: number; z: number } }>();
   for (const cycle of cycles) {
     for (let i = 0; i < cycle.length; i++) {
@@ -262,7 +271,19 @@ function buildSoccerSeams() {
   return [...unique.values()];
 }
 
-export const SOCCER_SEAMS = buildSoccerSeams();
+function insetCycle(cycle: { x: number; y: number; z: number }[]) {
+  const center = asUnit(
+    cycle.reduce((sum, p) => sum + p.x, 0),
+    cycle.reduce((sum, p) => sum + p.y, 0),
+    cycle.reduce((sum, p) => sum + p.z, 0),
+  );
+  return cycle.map(point => lerpUnit(point, center, SOCCER_INSET));
+}
+
+const SOCCER_CYCLES = soccerCycles();
+export const SOCCER_SEAMS = uniqueEdges(SOCCER_CYCLES);
+export const SOCCER_PANELS = SOCCER_CYCLES.map(insetCycle);
+export const SOCCER_INSET_SEAMS = uniqueEdges(SOCCER_PANELS);
 
 export type SoccerSeamPose = {
   x: number; y: number; z: number;
@@ -312,22 +333,28 @@ function distToArc(
   return Math.min(ap, bp);
 }
 
-export function soccerPattern(dir: { x: number; y: number; z: number }, seam = .016): 'seam' | 'cell' {
+export function soccerPattern(dir: { x: number; y: number; z: number }, seam = .014): 'seam' | 'cell' | 'gap' {
   const point = asUnit(dir.x, dir.y, dir.z);
   let nearest = 1;
-  for (const { a, b } of SOCCER_SEAMS) {
+  for (const { a, b } of SOCCER_INSET_SEAMS) {
     nearest = Math.min(nearest, distToArc(point, a, b));
     if (nearest < seam * .2) break;
   }
-  return nearest < seam ? 'seam' : 'cell';
+  if (nearest < seam) return 'seam';
+  let shared = 1;
+  for (const { a, b } of SOCCER_SEAMS) {
+    shared = Math.min(shared, distToArc(point, a, b));
+    if (shared < .04) return 'gap';
+  }
+  return 'cell';
 }
 
 let sphereTexture: { width: number; height: number; data: Uint8ClampedArray } | null = null;
 
-function soccerSeamWeight(dir: { x: number; y: number; z: number }, width = .012, feather = .01) {
+function soccerSeamWeight(dir: { x: number; y: number; z: number }, width = .007, feather = .006) {
   const point = asUnit(dir.x, dir.y, dir.z);
   let nearest = 1;
-  for (const { a, b } of SOCCER_SEAMS) {
+  for (const { a, b } of SOCCER_INSET_SEAMS) {
     nearest = Math.min(nearest, distToArc(point, a, b));
     if (nearest < width * .3) break;
   }
@@ -409,7 +436,7 @@ function sphereTable(ctx: CanvasRenderingContext2D, size: number): SphereTable {
   return table;
 }
 
-/** Paint a lit sphere with the soccer-ball texture mapped onto it. Spinning only shifts longitude. */
+/** Paint a lit sphere wrapped by inset panel outlines with gaps between cells. Spinning only shifts longitude. */
 export function drawSoccerSphere(canvas: HTMLCanvasElement, cssSize: number, angleRadians: number) {
   const size = Math.max(1, Math.round(finiteSize(cssSize)));
   const ctx = canvas.getContext('2d');

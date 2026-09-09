@@ -1,7 +1,8 @@
 import { createFilmColorMapper } from './filmThemeCanvas';
 import { DEFAULT_FILM_THEME, type FilmThemeId } from './filmThemes';
+import { createAmbientTextureRenderer } from './filmAmbientTexture';
 
-export type FilmTextureStyle = 'none' | 'glass' | 'film' | 'hologram';
+export type FilmTextureStyle = 'none' | 'glass' | 'film' | 'hologram' | 'underwater' | 'space';
 
 export interface FilmTextureSettings {
   style: FilmTextureStyle;
@@ -14,6 +15,8 @@ export const FILM_TEXTURE_STYLES = [
   { value: 'glass', label: '유리' },
   { value: 'film', label: '필름' },
   { value: 'hologram', label: '홀로그램' },
+  { value: 'underwater', label: '물속' },
+  { value: 'space', label: '우주' },
 ] as const satisfies readonly { value: FilmTextureStyle; label: string }[];
 
 const VIEW_WIDTH = 1280;
@@ -132,6 +135,7 @@ function sweepSurface(color: ColorMapper) {
  * only a small 320 x 180 bloom surface is redrawn for each scene frame.
  */
 export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEME) {
+  const drawAmbient = createAmbientTextureRenderer();
   const color = createFilmColorMapper(theme);
   const grain = noiseSurface(color);
   const reflection = reflectionSurface(color);
@@ -167,6 +171,13 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
     ctx.setLineDash([]);
+
+    if (settings.style === 'underwater' || settings.style === 'space') {
+      ctx.setTransform(width / VIEW_WIDTH, 0, 0, height / VIEW_HEIGHT, 0, 0);
+      drawAmbient(ctx, settings.style, t, intensity);
+      ctx.restore();
+      return;
+    }
 
     if (bloomContext) {
       bloomContext.clearRect(0, 0, 320, 180);
