@@ -3,6 +3,8 @@ import { jarvisOverview } from '@/cinema/jarvisCommands';
 import { jarvisMainData } from '@/cinema/jarvisMainData';
 import { FILM_CHAPTERS } from '@/cinema/filmProgram';
 import { JARVIS_REALTIME_VOICES } from '@/cinema/jarvisAudio';
+import { DEFAULT_VOICE_GENDER, voiceGenderOf, type VoiceGender } from '@/cinema/jarvisVoiceGender';
+import { effectiveJarvisPrompt, renderJarvisPrompt } from '@/cinema/jarvisPrompt';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import { describeHatcheryPatch, hatcheryObjectCatalog, SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from '@/cinema/hatcheryTargets';
 import type { JarvisReply } from '@/cinema/jarvisCommands';
@@ -21,23 +23,25 @@ export function realtimeRuntime(): { apiKey: string; model: string } | null {
 }
 export const realtimeModel = () => realtimeRuntime()?.model ?? (process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini');
 export const REALTIME_VOICES = JARVIS_REALTIME_VOICES;
-/** Built-in instructions plus the operator's directives saved on the AI settings screen. */
-export function jarvisInstructions() {
-  const extra = resolveAiRuntime()?.instructions.trim();
-  return extra ? `${baseInstructions()}\n\n운영자 추가 지시:\n${extra}` : baseInstructions();
+/**
+ * The instructions both the text model and the realtime session receive: the editable prompt
+ * (built-in or the copy saved on the AI settings screen) with the persona of the selected voice,
+ * the operator's extra directives, then the bulky reference data last and marked as reference only.
+ */
+export function jarvisInstructions(gender: VoiceGender = DEFAULT_VOICE_GENDER) {
+  const runtime = resolveAiRuntime();
+  const extra = runtime?.instructions.trim();
+  return [renderJarvisPrompt(effectiveJarvisPrompt(runtime?.prompt), gender), extra ? `# 운영자 추가 지시\n${extra}` : '', referenceData()]
+    .filter(Boolean).join('\n\n');
 }
-function baseInstructions() {
-  return `당신은 제조 모니터링 HUD의 AI 보조자 HATCHERY입니다. 한국어로 간결하게 답하세요.
-차분하고 낮은 남성적인 음색과 절제된 로봇 같은 말투를 사용하되 발음은 명료하게 하세요. 영화 배우와 동일한 목소리라고 주장하지 마세요.
-현재 현장 데이터는 실제 MES가 아닌 시연 데이터입니다. 수치를 말할 때 시연 기준임을 밝히고, 없는 측정값이나 원인을 지어내지 마세요.
-카메라는 볼 수 없습니다. 설비를 제어하거나 DB를 변경할 권한은 없습니다.
-연출을 열어달라는 명시적 요청은 open_scene 도구가 제공되면 사용하세요. 일반 질문이나 추천만으로 화면을 전환하지 마세요. 도구 없이 화면을 열었다고 주장하지 마세요.
-machine은 PCB 불량 분석이 기본이며 subject는 pcb입니다. 사용자가 자동차/레이싱카를 명시적으로 요청한 경우에만 subject car로 호출하세요. PCB와 자동차는 자동 전환하지 않습니다.
-화면 객체의 값을 바꿔달라는 명시적 요청은 set_scene_object_values 도구로만 처리하세요. 시연 값이 바뀔 뿐 설비는 제어되지 않습니다. 도구 없이 값을 바꿨다고 주장하지 마세요. 바꿀 수 있는 장면·객체·필드:
+function referenceData() {
+  return `# 참고 데이터 (질문을 받았을 때만 근거로 사용하고, 먼저 읊지 않습니다)
+## 사용 가능한 연출
+${FILM_CHAPTERS.map(c => `${c.id}: ${c.title}`).join(', ')}
+## 바꿀 수 있는 장면·객체·필드
 ${hatcheryObjectCatalog(DEFAULT_FILM_SCENE_DATA)}
-현장 수치는 아래 스냅샷만 근거로 사용하고 추정은 추정이라고 말하세요.
-사용 가능한 연출: ${FILM_CHAPTERS.map(c => `${c.id}: ${c.title}`).join(', ')}.
-시연 스냅샷: ${JSON.stringify({ zones: jarvisOverview().zones, energy: jarvisMainData.energy,
+## 시연 스냅샷
+${JSON.stringify({ zones: jarvisOverview().zones, energy: jarvisMainData.energy,
     process: jarvisMainData.process, quality: jarvisMainData.quality, inspection: jarvisMainData.inspection })}`;
 }
 export const ChatBody = z.object({ message: z.string().trim().min(1).max(1200),
@@ -96,7 +100,7 @@ export async function answerWithOpenAi(body: z.infer<typeof ChatBody>, signal: A
   return { source: 'ai', reply };
 }
 export function realtimeConfiguration(voice: string) {
-  return { type: 'realtime', model: realtimeModel(), instructions: jarvisInstructions(), max_output_tokens: 800,
+  return { type: 'realtime', model: realtimeModel(), instructions: jarvisInstructions(voiceGenderOf(voice)), max_output_tokens: 800,
     audio: { input: { transcription: { model: 'gpt-4o-mini-transcribe', language: 'ko' },
       turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true } }, output: { voice } },
     tools: [{ type: 'function', name: 'open_scene', description: '사용자가 명시적으로 요청한 HUD 연출을 엽니다. 설비 제어는 하지 않습니다.',

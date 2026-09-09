@@ -195,7 +195,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if (options.speakReplies === false) { finish(chapter); }
       else if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(data.reply);
-        configureJarvisSpeech(utterance, window.speechSynthesis.getVoices(), speechProfile.preferredVoice.current);
+        configureJarvisSpeech(utterance, window.speechSynthesis.getVoices(), speechProfile.preferredGender.current);
         utterance.onstart = () => { if (token === current.generation) phaseTo('speaking'); };
         utterance.onend = () => finish(chapter);
         utterance.onerror = () => { if (token === current.generation) setError('음성 출력을 사용할 수 없어 답변을 글로 표시했습니다.'); finish(chapter); };

@@ -4,9 +4,13 @@ import type { JarvisAudioFrame } from './jarvisAudio';
 import { drawJarvisVoiceField } from './drawJarvisVoiceField';
 import { voiceCoreCanvasTransform, voiceCoreEnvelope } from './jarvisVoiceCore';
 import { createReactorEggPlayback } from './reactorEasterEgg';
+import { reactorTriggerStyle } from './reactorTriggerLayout';
+import { createFilmThemeContext } from './filmThemeCanvas';
+import type { FilmThemeId } from './filmThemes';
 import styles from './jarvisWave.module.css';
 
-export function JarvisWave({ audio }: { audio: RefObject<JarvisAudioFrame> }) {
+export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisAudioFrame>; theme?: FilmThemeId }) {
+  const palette = useRef<ReturnType<typeof createFilmThemeContext> | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const egg = useRef(createReactorEggPlayback());
@@ -17,6 +21,8 @@ export function JarvisWave({ audio }: { audio: RefObject<JarvisAudioFrame> }) {
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d');
     if (!node || !ctx) return;
+    const themed = createFilmThemeContext(ctx);
+    palette.current = themed;
     let frame = 0, previous = 0, level = 0, visualTime = 0, cssW = 1, cssH = 1, dpr = 1, lastPhase = '';
     const playback = egg.current;
     let samples = new Uint8Array(1024);
@@ -26,11 +32,8 @@ export function JarvisWave({ audio }: { audio: RefObject<JarvisAudioFrame> }) {
       dpr = Math.min(devicePixelRatio || 1, 2);
       cssW = Math.max(1, rect.width); cssH = Math.max(1, rect.height);
       node.width = Math.max(1, cssW * dpr); node.height = Math.max(1, cssH * dpr);
-      const fit = voiceCoreCanvasTransform(cssW, cssH);
       if (trigger.current) {
-        const size = Math.max(44, 224 * fit.scale);
-        Object.assign(trigger.current.style, { width: size + 'px', height: size + 'px',
-          left: (cssW - size) / 2 + 'px', top: (cssH - size) / 2 + 'px' });
+        Object.assign(trigger.current.style, reactorTriggerStyle(cssW, cssH));
       }
     };
     const observer = new ResizeObserver(resize);
@@ -57,7 +60,7 @@ export function JarvisWave({ audio }: { audio: RefObject<JarvisAudioFrame> }) {
       if (eggPhase !== lastPhase) { node.dataset.easterEgg = eggPhase; lastPhase = eggPhase; }
       const expression = eggFrame && eggFrame.anger > .98 ? 'angry' : 'calm';
       if (node.dataset.expression !== expression) node.dataset.expression = expression;
-      drawJarvisVoiceField(ctx, { time: visualTime, phase, level, reduced: motion.matches, egg: eggFrame });
+      drawJarvisVoiceField(themed.ctx, { time: visualTime, phase, level, reduced: motion.matches, egg: eggFrame }, ctx);
       frame = requestAnimationFrame(draw);
     };
     const visibility = () => {
@@ -68,8 +71,10 @@ export function JarvisWave({ audio }: { audio: RefObject<JarvisAudioFrame> }) {
     document.addEventListener('visibilitychange', visibility); visibility();
     return () => { playback.cancel(); cancelAnimationFrame(frame); observer.disconnect(); document.removeEventListener('visibilitychange', visibility); };
   }, [audio]);
+  // Recolor the existing renderer, without cancelling a running Easter egg or resetting its clock.
+  useEffect(() => { palette.current?.setTheme(theme); }, [theme, audio]);
   return <div className={styles.stage}>
-    <canvas ref={canvas} style={{ width: '100%', height: '100%', display: 'block' }} aria-label="회전하는 아크 리액터: 음성 크기에 반응하는 테슬라 스파크" role="img" />
+    <canvas ref={canvas} data-reactor-theme={theme} style={{ width: '100%', height: '100%', display: 'block' }} aria-label="회전하는 아크 리액터: 음성 크기에 반응하는 테슬라 스파크" role="img" />
     <button ref={trigger} type="button" className={styles.trigger} aria-label="리액터 이스터에그 재생" aria-disabled={playing}
       onClick={start} onKeyDown={event => {
         if (event.key === 'Escape' && egg.current.active) {

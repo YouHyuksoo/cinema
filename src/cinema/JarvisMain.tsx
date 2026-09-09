@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useJarvisVoice } from './useJarvisVoice';
 import { JarvisWave } from './JarvisWave';
+import type { FilmThemeId } from './filmThemes';
 import { JarvisConversationTrail } from './JarvisConversationTrail';
 import { JarvisIgnition } from './JarvisIgnition';
 import { JarvisMainHeader } from './JarvisMainHeader';
@@ -16,6 +17,7 @@ import { JarvisChannelDials } from './JarvisChannelDials';
 import { JarvisVoiceSettings } from './JarvisVoiceSettings';
 import { JarvisAiVoiceSettings } from './JarvisAiVoiceSettings';
 import { JarvisVoiceModeToggle } from './JarvisVoiceModeToggle';
+import { JarvisAiProviderSelect } from './JarvisAiProviderSelect';
 import { JarvisDialogue } from './JarvisDialogue';
 import { jarvisOverview } from './jarvisCommands';
 import { JARVIS_PHASE_LABELS } from './jarvisAudio';
@@ -27,7 +29,7 @@ import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
 
 const overview = jarvisOverview();
-export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions }) {
+export function JarvisMain({ camera, onChapter, actions, theme = 'cyan' }: { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; theme?: FilmThemeId }) {
   const voice = useJarvisVoice(onChapter, actions);
   const [input, setInput] = useState('');
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
@@ -44,11 +46,16 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
         <dt>현장 명령</dt><dd>사용 가능</dd><dt>자유 대화 AI</dt><dd>{voice.configured === null ? '확인 중' : voice.configured ? `${voice.providerLabel ?? 'AI'} 설정됨` : '미연결'}</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
     </section>
     <section className={styles.left}>
+      <div className={styles.sectionTitle}>AI / 모델 선택</div>
+      <JarvisAiProviderSelect providers={voice.providers} provider={voice.provider} model={voice.model} busy={voice.active || voice.switching}
+        onChange={(id, model) => void voice.selectProvider(id, model)} />
+    </section>
+    <section className={styles.left}>
       <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
       {voice.configured && <JarvisVoiceModeToggle mode={voice.voiceMode} realtimeAvailable={voice.realtimeAvailable} busy={voice.active || voice.switching}
         onChange={mode => void voice.setVoiceMode(mode)} />}
-      {voice.realtime ? <JarvisAiVoiceSettings voice={voice.realtimeVoice} active={voice.active} effect={voice.robotVoice}
-        onVoice={voice.setRealtimeVoice} onEffect={voice.setRobotVoice} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
+      {voice.realtime ? <JarvisAiVoiceSettings gender={voice.voiceGender} active={voice.active}
+        onGender={voice.setVoiceGender} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
       <p className={styles.notice}>{voice.realtime ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : voice.configured ? '대화 시작을 누르면 브라우저 음성으로 듣고, 텍스트 모델의 답을 브라우저 목소리로 읽어 줍니다.' : '대화 시작을 누르고 HATCHERY에게 말을 걸어보세요.'}</p>
       <p className={styles.notice}>최근 질문: {voice.transcript || '아직 입력한 질문이 없습니다.'}</p>
       {(voice.error || voice.statusError || camera.error) && <p className={styles.error} role="alert">{voice.error || voice.statusError || camera.error}</p>}
@@ -69,7 +76,7 @@ export function JarvisMain({ camera, onChapter, actions }: { camera: FilmCamera;
     } visual={
       <div className={styles.wave}>
         <JarvisConversationTrail messages={voice.messages} />
-        <JarvisWave audio={voice.audioRef} />
+        <JarvisWave theme={theme} audio={voice.audioRef} />
       </div>
     } form={
       <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>

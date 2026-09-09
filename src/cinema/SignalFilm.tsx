@@ -54,7 +54,7 @@ export function SignalFilm() {
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}
       </div>
-      {preview && <JarvisMain camera={camera} onChapter={(id, subject) => { cameraMode.closePreview(); if (subject) player.changeMachineSubject(subject); player.selectChapter(id); }}
+      {preview && <JarvisMain theme={player.theme} camera={camera} onChapter={(id, subject) => { cameraMode.closePreview(); if (subject) player.changeMachineSubject(subject); player.selectChapter(id); }}
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
     </main>

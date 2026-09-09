@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AI_PROVIDERS, DEFAULT_AI_CONFIG, maskAiConfig, mergeAiKey, parseAiConfig, type AiConfig } from '@/cinema/aiConfig';
+import { AI_PROVIDERS, DEFAULT_AI_CONFIG, aiKeyVault, aiProviderReadiness, maskAiConfig, mergeAiKey, parseAiConfig, type AiConfig } from '@/cinema/aiConfig';
+import { DEFAULT_JARVIS_PROMPT, JARVIS_VOICE_PLACEHOLDER, effectiveJarvisPrompt, renderJarvisPrompt } from '@/cinema/jarvisPrompt';
 import { parseHatcheryConfig } from '@/cinema/feedConfig';
 import { CODEX_RESPONSES_URL, buildChatRequest, extractChatText, extractSseText } from '@/server/cinema/aiProviders';
 import { jwtExpiry, readCodexTokens } from '@/server/cinema/codexAuth';
@@ -8,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const saved: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'sk-ant-secret', temperature: 0.4, maxOutputTokens: 600,
-  instructions: '세 문장 이내로 답할 것.', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' };
+  instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' };
 
 describe('AI settings model', () => {
   it('lists four providers, OpenAI API alone realtime-capable and the ChatGPT subscription keyless', () => {
@@ -25,13 +26,18 @@ describe('AI settings model', () => {
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', maxOutputTokens: 10 })).toMatchObject({ ok: false });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', instructions: 'x'.repeat(4001) })).toMatchObject({ ok: false });
     const parsed = parseAiConfig({ provider: 'anthropic', model: ' claude-sonnet-5 ', apiKey: ' k ', temperature: '0.456', maxOutputTokens: 900, instructions: ' 짧게 ' });
-    expect(parsed).toEqual({ ok: true, config: { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'k', temperature: 0.46, maxOutputTokens: 900, instructions: '짧게', realtimeModel: DEFAULT_AI_CONFIG.realtimeModel, voiceMode: 'realtime' } });
+    expect(parsed).toEqual({ ok: true, config: { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'k', temperature: 0.46, maxOutputTokens: 900, instructions: '짧게', prompt: '', realtimeModel: DEFAULT_AI_CONFIG.realtimeModel, voiceMode: 'realtime' } });
+    expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', prompt: ' # 역할\n짧게. ' })).toMatchObject({ ok: true, config: { prompt: '# 역할\n짧게.' } });
+    expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', prompt: 'x'.repeat(12001) })).toMatchObject({ ok: false });
+    expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', apiKeys: { anthropic: ' sk-a ', gemini: '', cohere: 'x', openai: 7 } })).toMatchObject({ ok: true, config: { apiKeys: { anthropic: 'sk-a' } } });
+    expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', apiKeys: { gemini: '' } }).ok && 'apiKeys' in (parseAiConfig({ provider: 'openai', model: 'gpt-5', apiKeys: { gemini: '' } }) as { config: AiConfig }).config).toBe(false);
     expect(parseAiConfig({ provider: 'chatgpt', model: 'gpt-6-astra', voiceMode: 'browser' })).toMatchObject({ ok: true, config: { provider: 'chatgpt', apiKey: '', voiceMode: 'browser' } });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', voiceMode: 'phone' })).toMatchObject({ ok: false });
   });
   it('masks the key and reports where it comes from', () => {
     expect(maskAiConfig(saved, true)).toEqual({ provider: 'anthropic', model: 'claude-sonnet-5', temperature: 0.4, maxOutputTokens: 600,
-      instructions: '세 문장 이내로 답할 것.', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', hasApiKey: true, keySource: 'config' });
+      instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', hasApiKey: true, keySource: 'config' });
+    expect(JSON.stringify(maskAiConfig({ ...saved, apiKeys: { gemini: 'AIza-secret' } }, true))).not.toContain('AIza-secret');
     expect(maskAiConfig({ ...saved, provider: 'chatgpt', apiKey: '' }, true, true)).toMatchObject({ hasApiKey: true, keySource: 'codex' });
     expect(maskAiConfig({ ...saved, provider: 'chatgpt', apiKey: '' }, true, false)).toMatchObject({ hasApiKey: false, keySource: 'none' });
     expect(maskAiConfig(undefined, true)).toMatchObject({ provider: 'openai', hasApiKey: true, keySource: 'env' });
@@ -43,7 +49,35 @@ describe('AI settings model', () => {
     expect(mergeAiKey({ ...saved, apiKey: '' }, saved).apiKey).toBe('sk-ant-secret');
     expect(mergeAiKey({ ...saved, apiKey: 'new' }, saved).apiKey).toBe('new');
     expect(mergeAiKey({ ...saved, provider: 'gemini', apiKey: '' }, saved).apiKey).toBe('');
-    expect(mergeAiKey({ ...saved, apiKey: '' }, undefined).apiKey).toBe('');
+    expect(mergeAiKey({ ...saved, apiKey: '' }, undefined)).toEqual({ ...saved, apiKey: '' });
+  });
+  it('moves the previous provider key into the vault and brings it back when that provider is re-selected', () => {
+    const gemini = mergeAiKey({ ...saved, provider: 'gemini', model: 'gemini-2.5-flash', apiKey: 'AIza1' }, saved);
+    expect(gemini).toMatchObject({ provider: 'gemini', apiKey: 'AIza1', apiKeys: { anthropic: 'sk-ant-secret' } });
+    const back = mergeAiKey({ ...gemini, provider: 'anthropic', apiKey: '' }, gemini);
+    expect(back).toMatchObject({ provider: 'anthropic', apiKey: 'sk-ant-secret', apiKeys: { gemini: 'AIza1' } });
+    // The ChatGPT route has no key of its own but keeps everyone else's.
+    const chatgpt = mergeAiKey({ ...back, provider: 'chatgpt', apiKey: 'ignored' }, back);
+    expect(chatgpt).toMatchObject({ provider: 'chatgpt', apiKey: '', apiKeys: { gemini: 'AIza1', anthropic: 'sk-ant-secret' } });
+    expect(aiKeyVault(chatgpt)).toEqual({ gemini: 'AIza1', anthropic: 'sk-ant-secret' });
+    expect(aiKeyVault(undefined)).toEqual({});
+    // A fresh key for the active provider wins over the vault copy.
+    expect(mergeAiKey({ ...back, apiKey: 'sk-ant-new' }, { ...back, apiKeys: { anthropic: 'stale', gemini: 'AIza1' } })).toMatchObject({ apiKey: 'sk-ant-new', apiKeys: { gemini: 'AIza1' } });
+  });
+  it('reports which providers the main screen may switch to', () => {
+    expect(aiProviderReadiness(undefined, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: false, gemini: false });
+    expect(aiProviderReadiness(undefined, true, true)).toMatchObject({ openai: true, chatgpt: true, anthropic: false });
+    expect(aiProviderReadiness({ ...saved, apiKeys: { gemini: 'AIza1' } }, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: true, gemini: true });
+  });
+  it('renders the editable prompt with the voice persona and falls back to the built-in text', () => {
+    expect(DEFAULT_JARVIS_PROMPT).toContain(JARVIS_VOICE_PLACEHOLDER);
+    expect(DEFAULT_JARVIS_PROMPT.indexOf('# 성격과 말투')).toBeLessThan(DEFAULT_JARVIS_PROMPT.indexOf('# 규칙'));
+    expect(effectiveJarvisPrompt('')).toBe(DEFAULT_JARVIS_PROMPT); expect(effectiveJarvisPrompt(undefined)).toBe(DEFAULT_JARVIS_PROMPT);
+    expect(effectiveJarvisPrompt(' 짧게. ')).toBe('짧게.');
+    const female = renderJarvisPrompt(DEFAULT_JARVIS_PROMPT, 'female');
+    expect(female).toContain('여성 목소리'); expect(female).not.toContain(JARVIS_VOICE_PLACEHOLDER); expect(female).not.toContain('남성');
+    expect(renderJarvisPrompt(DEFAULT_JARVIS_PROMPT, 'male')).toContain('남성 목소리');
+    expect(renderJarvisPrompt('자리표시자 없음', 'female')).toBe('자리표시자 없음');
   });
   it('rides along inside the hatchery config file and stays optional', () => {
     expect(parseHatcheryConfig({ sources: [], feeds: [] })).toEqual({ ok: true, config: { sources: [], feeds: [] } });

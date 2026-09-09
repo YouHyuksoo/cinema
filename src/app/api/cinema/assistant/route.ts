@@ -1,14 +1,20 @@
 import { resolveJarvisCommand } from '@/cinema/jarvisCommands';
 import { ChatBody, aiProviderId, answerWithOpenAi, apiFailure, openAiConfigured, realtimeRuntime, rejectExternalRequest, textModel, realtimeModel } from '@/server/cinema/openai';
 import { savedAiConfig } from '@/server/cinema/aiProviders';
-import { aiProvider } from '@/cinema/aiConfig';
+import { codexLoginStatus } from '@/server/cinema/codexAuth';
+import { DEFAULT_AI_CONFIG, aiProvider, aiProviderOptions, aiProviderReadiness } from '@/cinema/aiConfig';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export function GET() {
   const configured = openAiConfigured();
-  const voiceMode = savedAiConfig()?.voiceMode ?? 'realtime';
+  const saved = savedAiConfig();
+  const voiceMode = saved?.voiceMode ?? 'realtime';
   const realtimeAvailable = realtimeRuntime() !== null;
-  return Response.json({ aiConfigured: configured, mode: configured ? aiProviderId() : 'local', provider: configured ? aiProviderId() : null,
+  const envKey = Boolean(process.env.OPENAI_API_KEY?.trim());
+  // The selection is what the operator picked, even when that provider cannot answer yet (no key, no login).
+  const selected = saved ?? { ...DEFAULT_AI_CONFIG, model: textModel() };
+  return Response.json({ selectedProvider: selected.provider, selectedModel: selected.model,
+    providers: aiProviderOptions(aiProviderReadiness(saved, envKey, codexLoginStatus().ok)), aiConfigured: configured, mode: configured ? aiProviderId() : 'local', provider: configured ? aiProviderId() : null,
     providerLabel: configured ? aiProvider(aiProviderId()).label : null, textModel: textModel(), realtimeModel: realtimeAvailable ? realtimeModel() : null,
     realtimeAvailable, voiceMode, /** true when the browser should open the realtime voice session instead of its own speech engine */
     useRealtime: configured && realtimeAvailable && voiceMode === 'realtime' },

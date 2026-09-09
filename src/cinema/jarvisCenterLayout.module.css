@@ -25,16 +25,16 @@
 .cameraImage .cameraToggle:focus-visible { outline-offset:-2px; }
 .bottomRow { grid-area:input; min-width:0; }
 .bottomRow>form { min-width:0; }
-.hud { border-color:#4bdcfa70; background:linear-gradient(180deg,#061019,#050b11 76%); }
-.hud .backgroundPicker { grid-area:art; position:absolute; right:5%; top:73%; width:20%; height:18%; padding:0 2px; flex-direction:column; align-items:stretch; justify-content:center; gap:4px; color:#95d5e4; pointer-events:auto; }
+.hud { border-color:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 98%,black) 43.9%,transparent); background:linear-gradient(180deg,#061019,#050b11 76%); }
+.hud .backgroundPicker { grid-area:art; position:absolute; right:5%; top:73%; width:20%; height:18%; padding:0 2px; flex-direction:column; align-items:stretch; justify-content:center; gap:4px; color:color-mix(in srgb,var(--film-accent) 66%,white); pointer-events:auto; }
 .hud .backgroundPicker>span { display:none; }
-.hud .backgroundPicker label { position:relative; flex-direction:column; align-items:stretch; gap:2px; font-size:10px; color:#8fbfce; }
-.hud .backgroundPicker label::after { content:''; position:absolute; right:5px; bottom:13px; width:5px; height:5px; border-right:1px solid #b4f3ff; border-bottom:1px solid #b4f3ff; transform:rotate(45deg); filter:drop-shadow(0 0 3px #00dfff); pointer-events:none; }
-.hud .backgroundPicker select { appearance:none; width:100%; max-width:none; min-height:36px; padding:4px 18px 4px 0; border:0; border-bottom:1px solid #54c9ec70; border-radius:0; background:transparent; box-shadow:none; color:#d7fbff; font:14px/1.4 var(--font-mono),var(--font-korean),monospace; letter-spacing:.06em; text-shadow:0 0 7px #00dfff70; transition:border-color .18s,color .18s,text-shadow .18s; }
-.hud .backgroundPicker select:hover,.hud .backgroundPicker select:focus-visible { border-bottom-color:#b4f3ff; color:#fff; text-shadow:0 0 9px #00dfffa0; }
-.hud .backgroundPicker select:focus-visible { outline:none; box-shadow:0 2px 0 #b4f3ff; }
-.hud .backgroundPicker option { background:#071b2c; color:#d7fbff; text-shadow:none; }
-.hud .scene { --film-line:#54d9f655; --film-accent-soft:#d7fbff; --film-muted:#8fbfce; container-type:size; grid-template-areas:"art"; grid-template-rows:minmax(0,1fr); gap:0; overflow:hidden; border-radius:4px; }
+.hud .backgroundPicker label { position:relative; flex-direction:column; align-items:stretch; gap:2px; font-size:10px; color:color-mix(in srgb,var(--film-accent) 70%,white); }
+.hud .backgroundPicker label::after { content:''; position:absolute; right:5px; bottom:13px; width:5px; height:5px; border-right:1px solid color-mix(in srgb,var(--film-accent) 47%,white); border-bottom:1px solid color-mix(in srgb,var(--film-accent) 47%,white); transform:rotate(45deg); filter:drop-shadow(0 0 3px color-mix(in srgb,var(--film-accent) 100%,black)); pointer-events:none; }
+.hud .backgroundPicker select { appearance:none; width:100%; max-width:none; min-height:36px; padding:4px 18px 4px 0; border:0; border-bottom:1px solid color-mix(in srgb,color-mix(in srgb,var(--film-accent) 93%,black) 43.9%,transparent); border-radius:0; background:transparent; box-shadow:none; color:color-mix(in srgb,var(--film-accent) 25%,white); font:14px/1.4 var(--font-mono),var(--font-korean),monospace; letter-spacing:.06em; text-shadow:0 0 7px color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 43.9%,transparent); transition:border-color .18s,color .18s,text-shadow .18s; }
+.hud .backgroundPicker select:hover,.hud .backgroundPicker select:focus-visible { border-bottom-color:color-mix(in srgb,var(--film-accent) 47%,white); color:#fff; text-shadow:0 0 9px color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 62.7%,transparent); }
+.hud .backgroundPicker select:focus-visible { outline:none; box-shadow:0 2px 0 color-mix(in srgb,var(--film-accent) 47%,white); }
+.hud .backgroundPicker option { background:color-mix(in srgb,var(--film-accent) 17%,black); color:color-mix(in srgb,var(--film-accent) 25%,white); text-shadow:none; }
+.hud .scene { --film-line:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 96%,black) 33.3%,transparent); --film-accent-soft:color-mix(in srgb,var(--film-accent) 25%,white); --film-muted:color-mix(in srgb,var(--film-accent) 70%,white); container-type:size; grid-template-areas:"art"; grid-template-rows:minmax(0,1fr); gap:0; overflow:hidden; border-radius:4px; }
 /* One design plane: frames, controls, typography and reactor share the same scale. */
 .hud .sceneSurface { position:absolute; left:50%; top:50%; display:grid; grid-template-areas:"art"; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); width:800px; height:400px; transform:translate(-50%,-50%) scale(min(calc(100cqw / 800px),calc(100cqh / 400px))); transform-origin:center; isolation:isolate; }
 .hud .toolbar { align-self:stretch; position:relative; display:block; margin:0; }
@@ -43,7 +43,7 @@
 .hud .aiPanel .panelLabel { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:5px; }
 .hud .cameraDock { right:5%; top:14%; width:20%; height:19%; max-width:none; background:none; display:flex; flex-direction:column; padding:0; overflow:hidden; }
 .hud .startPanel { left:3%; top:72%; height:23%; display:flex; align-items:center; justify-content:center; }
-.hud .startPanel>[data-compact=true] { width:100%; justify-content:center; flex-wrap:nowrap; gap:8px; --ignition-accent:#91efff; }
+.hud .startPanel>[data-compact=true] { width:100%; justify-content:center; flex-wrap:nowrap; gap:8px; }
 .hud .startPanel>[data-compact=true]>div:first-child { width:88px; height:88px; }
 .hud .startPanel button[aria-pressed] { width:76px; height:76px; }
 .hud .startPanel button[aria-pressed] strong { font-size:15px; }
@@ -55,12 +55,12 @@
 .hud .cameraImage { flex:1; min-height:0; border:0; }
 .hud .cameraImage>canvas { height:100%; object-fit:cover; }
 .hud .cameraImage>span { display:none; }
-.hud .cameraImage .cameraToggle { font-size:11px; padding:3px 4px; background:#05121edc; border-color:#71c6df70; }
-.hud .aiPanel section { text-align:left; font-size:10px; color:#bcdfe9; }
+.hud .cameraImage .cameraToggle { font-size:11px; padding:3px 4px; background:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 12%,black) 86.3%,transparent); border-color:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 89%,white) 43.9%,transparent); }
+.hud .aiPanel section { text-align:left; font-size:10px; color:color-mix(in srgb,var(--film-accent) 42%,white); }
 .hud .aiPanel section>div:first-child { justify-content:flex-start; align-items:flex-start; }
 .hud .aiPanel [aria-label="AI 모델명"] { display:grid; gap:3px; margin-top:6px; white-space:normal; overflow:visible; font-size:9px; overflow-wrap:anywhere; }
 .hud .aiPanel [aria-label="AI 모델명"]>span { margin:0; }
-.panelLabel { margin-bottom:7px; color:#b4f3ff; font:8px/1.4 var(--font-mono),monospace; letter-spacing:.1em; }
+.panelLabel { margin-bottom:7px; color:color-mix(in srgb,var(--film-accent) 47%,white); font:8px/1.4 var(--font-mono),monospace; letter-spacing:.1em; }
 .hud .visual>div::before,.hud .visual>div::after { display:none; }
 @media(max-width:680px) {
   .toolbar { gap:4px 8px; }

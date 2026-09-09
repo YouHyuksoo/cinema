@@ -9,7 +9,8 @@ import type { HatcheryActions } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA } from './filmSceneData';
 import type { MachineSubject } from './machinePresentation';
 import { cinemaApi, cinemaApiUrl } from './cinemaApi';
-import type { AiVoiceMode } from './aiConfig';
+import type { AiProviderId, AiProviderOption, AiVoiceMode } from './aiConfig';
+import { realtimeVoiceFor } from './jarvisVoiceGender';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
@@ -20,10 +21,13 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const [voiceMode, setVoiceModeState] = useState<AiVoiceMode | null>(null);
   const [realtimeAvailable, setRealtimeAvailable] = useState(false);
   const [switching, setSwitching] = useState(false);
+  // What the operator picked on the AI settings screen or the main screen, and what can be picked now.
+  const [provider, setProvider] = useState<AiProviderId | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const [providers, setProviders] = useState<AiProviderOption[]>([]);
   const [statusError, setStatusError] = useState('');
   const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
   const [connected, setConnected] = useState(false);
-  const [realtimeVoice, setRealtimeVoice] = useState('cedar');
   const [robotVoice, setRobotVoice] = useState<RobotVoiceSettings>(DEFAULT_ROBOT_VOICE);
   const [realtimeView, setRealtimeView] = useState(false);
   const [active, setActive] = useState(false);
@@ -48,6 +52,9 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
       setRealtimeAvailable(data.realtimeAvailable === true);
       setVoiceModeState(data.voiceMode === 'browser' ? 'browser' : 'realtime');
       setProviderLabel(typeof data.providerLabel === 'string' ? data.providerLabel : null);
+      setProvider(typeof data.selectedProvider === 'string' ? data.selectedProvider as AiProviderId : null);
+      setModel(typeof data.selectedModel === 'string' ? data.selectedModel : null);
+      setProviders(Array.isArray(data.providers) ? data.providers as AiProviderOption[] : []);
       setModels({ text: typeof data.textModel === 'string' && data.textModel.trim() ? data.textModel : null,
         realtime: typeof data.realtimeModel === 'string' && data.realtimeModel.trim() ? data.realtimeModel : null });
     });
@@ -81,27 +88,31 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
         });
       },
     });
-    session.current = current; current.setRobotVoice(robotVoice); await current.start(realtimeVoice);
+    session.current = current; current.setRobotVoice(robotVoice); await current.start(realtimeVoiceFor(local.speechProfile.gender));
   }
   function stop() { session.current?.stop(); local.stop(); }
-  /** Persist the voice mode from the main screen, then re-read what the server will actually do. */
-  async function setVoiceMode(mode: AiVoiceMode) {
+  /** Persist a main-screen quick setting (voice mode, provider, model), then re-read what the server will actually do. */
+  async function patchSettings(change: { voiceMode?: AiVoiceMode; provider?: AiProviderId; model?: string }, failure: string) {
     if (active || switching) return;
-    setSwitching(true);
+    setSwitching(true); setStatusError('');
     try {
-      const response = await cinemaApi('admin/ai', { method: 'PATCH', body: JSON.stringify({ voiceMode: mode }) });
-      if (!response.ok) throw new Error((await response.json().catch(() => ({})) as { error?: string }).error ?? '음성 방식을 바꾸지 못했습니다.');
+      const response = await cinemaApi('admin/ai', { method: 'PATCH', body: JSON.stringify(change) });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({})) as { error?: string }).error ?? failure);
       await readStatus();
-    } catch (error) { setStatusError(error instanceof Error ? error.message : '음성 방식을 바꾸지 못했습니다.'); }
+    } catch (error) { setStatusError(error instanceof Error ? error.message : failure); }
     finally { setSwitching(false); }
   }
+  const setVoiceMode = (mode: AiVoiceMode) => patchSettings({ voiceMode: mode }, '음성 방식을 바꾸지 못했습니다.');
+  const selectProvider = (id: AiProviderId, nextModel?: string) => patchSettings({ provider: id, ...(nextModel ? { model: nextModel } : {}) }, 'AI 프로바이더를 바꾸지 못했습니다.');
   async function ask(input: string) {
     if (active) session.current?.ask(input);
     else { setRealtimeView(false); await local.ask(input); }
   }
   const selected = realtimeView ? { phase, transcript, messages, error, source: 'OpenAI Realtime · AI 생성 음성',
     supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
-  return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError, realtimeVoice, setRealtimeVoice, robotVoice, setRobotVoice, speechProfile: local.speechProfile,
+  return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError,
+    provider, model, providers, selectProvider, voiceGender: local.speechProfile.gender, setVoiceGender: local.speechProfile.setGender,
+    robotVoice, setRobotVoice, speechProfile: local.speechProfile,
     aiConnection: { configured, statusError, models, connected, realtimeActive: active, error: realtimeView ? error : local.error },
     start, stop, ask, stopReply: realtimeView ? () => session.current?.interrupt() : local.stopReply };
 }

@@ -13,9 +13,14 @@ describe('main stream responsibilities', () => {
     const left = html.match(/<aside\b[^>]*data-side="left"[^>]*>[\s\S]*?<\/aside>/)?.[0];
     const right = html.match(/<aside\b[^>]*data-side="right"[^>]*>[\s\S]*?<\/aside>/)?.[0];
     expect(left).toBeDefined(); expect(right).toBeDefined();
-    for (const title of ['SESSION / CONNECTIONS', 'VOICE / 대화 설정', 'GUIDE / 화면 안내', 'HELP / 조작 도움말']) {
+    for (const title of ['SESSION / CONNECTIONS', 'AI / 모델 선택', 'VOICE / 대화 설정', 'GUIDE / 화면 안내', 'HELP / 조작 도움말']) {
       expect(left).toContain(title); expect(right).not.toContain(title);
     }
+    expect(left!.indexOf('AI / 모델 선택')).toBeLessThan(left!.indexOf('VOICE / 대화 설정'));
+    // Before the status arrives the AI block only points at the settings screen; the voice choice is male/female and nothing else.
+    expect(left).toContain('href="/cinema/ai"');
+    expect(left).toContain('data-voice-gender-toggle'); expect(left).toContain('>남성</button>'); expect(left).toContain('>여성</button>');
+    for (const legacy of ['목소리 스타일', '기본 음색', '안드로이드형', 'CEDAR']) expect(html).not.toContain(legacy);
     for (const title of ['CHANNELS / 현장 게이지', 'PRODUCTION / 생산 진행', 'PROCESS / 공정 흐름', 'QUEUE / 병목 대기', 'QUALITY / 공정 품질', 'ENERGY / 전력·효율', 'INSPECTION / 제품 검사']) {
       expect(right).toContain(title); expect(left).not.toContain(title);
       expect(html.split(title)).toHaveLength(2);

@@ -43,17 +43,21 @@ export interface AiConfig {
   /** 0–2; providers that cap at 1 receive the value clamped. */
   temperature: number;
   maxOutputTokens: number;
-  /** Operator directives appended to the built-in HATCHERY instructions. */
+  /** Operator directives appended to the HATCHERY instructions. */
   instructions: string;
+  /** Edited copy of the built-in instructions (jarvisPrompt.ts); empty means the built-in text. */
+  prompt: string;
   /** OpenAI realtime voice model; ignored by other providers. */
   realtimeModel: string;
   voiceMode: AiVoiceMode;
+  /** Keys saved earlier for the other providers, so the main screen can switch back without re-entering them. */
+  apiKeys?: Partial<Record<AiProviderId, string>>;
 }
 
-export const AI_LIMITS = { temperature: { min: 0, max: 2 }, maxOutputTokens: { min: 64, max: 8000 }, instructions: 4000 } as const;
+export const AI_LIMITS = { temperature: { min: 0, max: 2 }, maxOutputTokens: { min: 64, max: 8000 }, instructions: 4000, prompt: 12000 } as const;
 
 export const DEFAULT_AI_CONFIG: AiConfig = {
-  provider: 'openai', model: 'gpt-4.1-mini', apiKey: '', temperature: 0.7, maxOutputTokens: 800, instructions: '', realtimeModel: 'gpt-realtime-2.1-mini',
+  provider: 'openai', model: 'gpt-4.1-mini', apiKey: '', temperature: 0.7, maxOutputTokens: 800, instructions: '', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini',
   voiceMode: 'realtime',
 };
 export const isAiVoiceMode = (value: unknown): value is AiVoiceMode => AI_VOICE_MODES.some(mode => mode.id === value);
@@ -65,7 +69,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | { ok: false; reason: string } {
   if (!isRecord(input)) return { ok: false, reason: 'AI 설정은 객체여야 합니다.' };
-  const { provider, model, apiKey, temperature, maxOutputTokens, instructions, realtimeModel, voiceMode } = input;
+  const { provider, model, apiKey, temperature, maxOutputTokens, instructions, prompt, realtimeModel, voiceMode, apiKeys } = input;
   if (!isAiProvider(provider)) return { ok: false, reason: `지원하지 않는 AI 프로바이더입니다: ${String(provider)}` };
   if (typeof model !== 'string' || !model.trim()) return { ok: false, reason: '모델 이름이 필요합니다.' };
   if (!/^[\w.:/-]{1,120}$/.test(model.trim())) return { ok: false, reason: '모델 이름에 쓸 수 없는 문자가 있습니다.' };
@@ -75,17 +79,44 @@ export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | 
   if (!Number.isInteger(tokens) || tokens < AI_LIMITS.maxOutputTokens.min || tokens > AI_LIMITS.maxOutputTokens.max) return { ok: false, reason: `최대 출력 토큰은 ${AI_LIMITS.maxOutputTokens.min}~${AI_LIMITS.maxOutputTokens.max} 사이의 정수여야 합니다.` };
   if (instructions !== undefined && typeof instructions !== 'string') return { ok: false, reason: '프롬프트 지시어는 문자열이어야 합니다.' };
   if (typeof instructions === 'string' && instructions.length > AI_LIMITS.instructions) return { ok: false, reason: `프롬프트 지시어는 ${AI_LIMITS.instructions}자 이하여야 합니다.` };
+  if (prompt !== undefined && typeof prompt !== 'string') return { ok: false, reason: '시스템 프롬프트는 문자열이어야 합니다.' };
+  if (typeof prompt === 'string' && prompt.length > AI_LIMITS.prompt) return { ok: false, reason: `시스템 프롬프트는 ${AI_LIMITS.prompt}자 이하여야 합니다.` };
   if (apiKey !== undefined && typeof apiKey !== 'string') return { ok: false, reason: 'API 키는 문자열이어야 합니다.' };
   if (realtimeModel !== undefined && typeof realtimeModel !== 'string') return { ok: false, reason: '실시간 음성 모델은 문자열이어야 합니다.' };
   if (voiceMode !== undefined && !isAiVoiceMode(voiceMode)) return { ok: false, reason: `지원하지 않는 음성 방식입니다: ${String(voiceMode)}` };
+  if (apiKeys !== undefined && !isRecord(apiKeys)) return { ok: false, reason: '보관 키 목록은 객체여야 합니다.' };
+  const vault = compactKeys(Object.fromEntries(Object.entries(apiKeys ?? {}).filter(([id, key]) => isAiProvider(id) && typeof key === 'string').map(([id, key]) => [id, (key as string).trim()])));
   return { ok: true, config: {
     provider, model: model.trim(), apiKey: typeof apiKey === 'string' ? apiKey.trim() : '',
     temperature: Math.round(temp * 100) / 100, maxOutputTokens: tokens,
     instructions: typeof instructions === 'string' ? instructions.trim() : '',
+    prompt: typeof prompt === 'string' ? prompt.trim() : '',
     realtimeModel: typeof realtimeModel === 'string' && realtimeModel.trim() ? realtimeModel.trim() : DEFAULT_AI_CONFIG.realtimeModel,
     voiceMode: isAiVoiceMode(voiceMode) ? voiceMode : DEFAULT_AI_CONFIG.voiceMode,
+    ...(vault ? { apiKeys: vault } : {}),
   } };
 }
+
+type KeyVault = Partial<Record<AiProviderId, string>>;
+/** Drop empty entries; `undefined` when nothing is left so the config file stays free of an empty block. */
+function compactKeys(keys: KeyVault): KeyVault | undefined {
+  const entries = Object.entries(keys).filter(([, key]) => key) as [AiProviderId, string][];
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+/** Every key on file, the active provider's included; the ChatGPT route has none. */
+export function aiKeyVault(config: AiConfig | undefined): KeyVault {
+  if (!config) return {};
+  return compactKeys({ ...config.apiKeys, ...(config.provider !== 'chatgpt' ? { [config.provider]: config.apiKey } : {}) }) ?? {};
+}
+/** Which providers the main screen may switch to right now: a key on file, the OpenAI environment key, or the Codex login. */
+export function aiProviderReadiness(config: AiConfig | undefined, envKey: boolean, codexLogin: boolean): Record<AiProviderId, boolean> {
+  const vault = aiKeyVault(config);
+  return { openai: Boolean(vault.openai) || envKey, chatgpt: codexLogin, anthropic: Boolean(vault.anthropic), gemini: Boolean(vault.gemini) };
+}
+/** What the main screen's provider selector receives from the status endpoint. */
+export interface AiProviderOption { id: AiProviderId; label: string; models: readonly string[]; ready: boolean }
+export const aiProviderOptions = (ready: Record<AiProviderId, boolean>): AiProviderOption[] =>
+  AI_PROVIDERS.map(({ id, label, models }) => ({ id, label, models, ready: ready[id] }));
 
 /** What the settings screen receives: the key replaced by a presence flag and where it comes from. */
 export type AiKeySource = 'config' | 'env' | 'codex' | 'none';
@@ -93,7 +124,8 @@ export type MaskedAiConfig = Omit<AiConfig, 'apiKey'> & { hasApiKey: boolean; ke
 
 export function maskAiConfig(config: AiConfig | undefined, envKey: boolean, codexLogin = false): MaskedAiConfig {
   const base = config ?? DEFAULT_AI_CONFIG;
-  const { apiKey, ...rest } = base;
+  const { apiKey, apiKeys: _vault, ...rest } = base;
+  void _vault;
   if (base.provider === 'chatgpt') return { ...rest, hasApiKey: codexLogin, keySource: codexLogin ? 'codex' : 'none' };
   const fromConfig = apiKey.length > 0;
   // The environment key only stands in for OpenAI; other providers must save a key.
@@ -101,8 +133,17 @@ export function maskAiConfig(config: AiConfig | undefined, envKey: boolean, code
   return { ...rest, hasApiKey: fromConfig || fromEnv, keySource: fromConfig ? 'config' : fromEnv ? 'env' : 'none' };
 }
 
-/** An incoming config with an empty key keeps the key already on file for the same provider. */
+/**
+ * An incoming config with an empty key takes the key on file for its provider, and every other
+ * provider's key moves into the vault so switching providers never throws a saved key away.
+ */
 export function mergeAiKey(incoming: AiConfig, current: AiConfig | undefined): AiConfig {
-  if (incoming.apiKey || !current || current.provider !== incoming.provider) return incoming;
-  return { ...incoming, apiKey: current.apiKey };
+  const vault = { ...aiKeyVault(current), ...aiKeyVault(incoming) };
+  const apiKey = incoming.provider === 'chatgpt' ? '' : incoming.apiKey || vault[incoming.provider] || '';
+  const { [incoming.provider]: _own, ...others } = vault;
+  void _own;
+  const apiKeys = compactKeys(others);
+  const { apiKeys: _stale, ...rest } = incoming;
+  void _stale;
+  return { ...rest, apiKey, ...(apiKeys ? { apiKeys } : {}) };
 }

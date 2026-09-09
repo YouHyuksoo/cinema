@@ -6,31 +6,31 @@
   pointer-events:none;
   border-radius:7px;
   background:
-    radial-gradient(ellipse at 0% 50%,#00d9ff55 0%,#007eaa28 27%,transparent 60%),
-    radial-gradient(ellipse at 100% 50%,#487bff48 0%,#115a9528 27%,transparent 60%),
-    linear-gradient(180deg,#050d15,#071b2c 45%,#060d17);
-  box-shadow:inset 0 0 0 1px #8deaff25,inset 0 0 32px #01060c;
+    radial-gradient(ellipse at 0% 50%,color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 33.3%,transparent) 0%,color-mix(in srgb,color-mix(in srgb,var(--film-accent) 67%,black) 15.7%,transparent) 27%,transparent 60%),
+    radial-gradient(ellipse at 100% 50%,color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 28.2%,transparent) 0%,color-mix(in srgb,color-mix(in srgb,var(--film-accent) 58%,black) 15.7%,transparent) 27%,transparent 60%),
+    linear-gradient(180deg,#050d15,color-mix(in srgb,var(--film-accent) 17%,black) 45%,#060d17);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,color-mix(in srgb,var(--film-accent) 71%,white) 14.5%,transparent),inset 0 0 32px #01060c;
 }
 
 .grid {
   position:absolute;
   inset:0;
   opacity:.24;
-  background-image:linear-gradient(#79dfff26 1px,transparent 1px),linear-gradient(90deg,#79dfff26 1px,transparent 1px);
+  background-image:linear-gradient(color-mix(in srgb,color-mix(in srgb,var(--film-accent) 84%,white) 14.9%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,color-mix(in srgb,var(--film-accent) 84%,white) 14.9%,transparent) 1px,transparent 1px);
   background-size:24px 24px;
   mask-image:radial-gradient(ellipse at center,transparent 15%,black 65%);
 }
 
 .frames { position:absolute; inset:0; width:100%; height:100%; fill:none; }
-.frameWash { fill:#44c9ff10; stroke:none; }
-.frameOuter { stroke:#9feeffa6; stroke-width:2; }
-.frameInner { stroke:#54c9ec70; stroke-width:1; }
-.frameAccent { stroke:#c0f6ffdf; stroke-width:5; filter:drop-shadow(0 0 3px #00dfff70); }
-.fineTrace { stroke:#73d8fa2b; stroke-width:1; }
-.tinyBars { stroke:#90dfff8c; stroke-width:3; }
-.sideTraces { stroke:#6ddcff63; stroke-width:1; }
-.sideTraces path:nth-last-child(1) { stroke:#a3edff62; stroke-width:4; }
-.edgeTicks { stroke:#8adeff47; stroke-width:1; }
+.frameWash { fill:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 6.3%,transparent); stroke:none; }
+.frameOuter { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 60%,white) 65.1%,transparent); stroke-width:2; }
+.frameInner { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 93%,black) 43.9%,transparent); stroke-width:1; }
+.frameAccent { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 39%,white) 87.5%,transparent); stroke-width:5; filter:drop-shadow(0 0 3px color-mix(in srgb,color-mix(in srgb,var(--film-accent) 100%,black) 43.9%,transparent)); }
+.fineTrace { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 88%,white) 16.9%,transparent); stroke-width:1; }
+.tinyBars { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 69%,white) 54.9%,transparent); stroke-width:3; }
+.sideTraces { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 91%,white) 38.8%,transparent); stroke-width:1; }
+.sideTraces path:nth-last-child(1) { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 57%,white) 38.4%,transparent); stroke-width:4; }
+.edgeTicks { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 73%,white) 27.8%,transparent); stroke-width:1; }
 
 .reactorRing {
   position:absolute;
@@ -45,32 +45,32 @@
   fill:none;
 }
 
-.outerTrack { stroke:#62ddff3b; stroke-width:8; }
-.disc { fill:#05101a; }
+.outerTrack { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 98%,white) 23.1%,transparent); stroke-width:8; }
+.disc { fill:color-mix(in srgb,var(--film-accent) 10%,black); }
 .segmentedRing {
-  stroke:#b5f8ffc9;
+  stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 46%,white) 78.8%,transparent);
   stroke-width:14;
   stroke-dasharray:1.6 .55;
   transform:rotate(-86deg);
   transform-origin:200px 200px;
 }
 .fineRing {
-  stroke:#6ddfff;
+  stroke:color-mix(in srgb,var(--film-accent) 91%,white);
   stroke-width:14;
   stroke-dasharray:.15 .3;
   opacity:.48;
 }
-.innerTrack { stroke:#66dfff44; stroke-width:3; }
+.innerTrack { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 96%,white) 26.7%,transparent); stroke-width:3; }
 .innerArc {
-  stroke:#d1faffc4;
+  stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 29%,white) 76.9%,transparent);
   stroke-width:4;
   stroke-dasharray:29 6 22 10 25 8;
   transform:rotate(-98deg);
   transform-origin:200px 200px;
 }
-.innerTicks { stroke:#9ceaff63; stroke-width:5; stroke-dasharray:.12 3.01; }
-.reticle { fill:#c5f8ffae; }
-.crosshair { stroke:#76dfff33; stroke-width:1; }
+.innerTicks { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 62%,white) 38.8%,transparent); stroke-width:5; stroke-dasharray:.12 3.01; }
+.reticle { fill:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 36%,white) 68.2%,transparent); }
+.crosshair { stroke:color-mix(in srgb,color-mix(in srgb,var(--film-accent) 86%,white) 20%,transparent); stroke-width:1; }
 
 @media(max-width:680px) {
   .frameAccent { stroke-width:4; }

@@ -37,7 +37,7 @@ function ringPoints(outer: number, inner: number, z: number, rotation: number, y
   return [...arc(outer), ...arc(inner).reverse()];
 }
 
-export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreState) {
+export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreState, effects: CanvasRenderingContext2D = ctx) {
   const pitch = state.pitch, yaw = state.gazeYaw;
   const disc = (angle: number, radius: number, depth: number) => reactorDiscPoint(angle, radius, depth, state.rotation, yaw);
   const ring = (outer: number, inner: number, depth: number, start = 0, end = TAU) =>
@@ -93,6 +93,9 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
     x: Math.cos(angle) * radius, y: Math.sin(angle) * height, z: depth,
   }, 0, yaw);
   const emitter = Array.from({ length: 65 }, (_, i) => iris(i / 64 * TAU, state.coreRadius, state.coreRadius * open, frontZ - 9));
+  const bodyContext = ctx;
+  // Anger keeps its authored red/orange palette, including the molten iris tongues.
+  if (state.irisColor) ctx = effects;
   const aura = ctx.createRadialGradient(core.x, core.y, 0, core.x, core.y, 102 * open);
   const eyeColor = state.irisColor ?? state.highlight;
   aura.addColorStop(0, eyeColor + '70'); aura.addColorStop(.45, eyeColor + '24'); aura.addColorStop(1, eyeColor + '00');
@@ -108,6 +111,7 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
     ctx.save(); path(ctx, emitter, true, pitch); ctx.clip();
     drawReactorEyeHeat(ctx, state); ctx.restore();
   }
+  ctx = bodyContext;
   ctx.globalAlpha = 1;
   if (state.blink > .02) {
     const lid = (sign: number) => {

@@ -5,6 +5,7 @@ import { AI_LIMITS, AI_PROVIDERS, AI_VOICE_MODES, DEFAULT_AI_CONFIG, aiProvider,
 import type { AiTestResult } from '@/server/cinema/aiProviders';
 import type { CodexLoginStatus } from '@/server/cinema/codexAuth';
 import { CINEMA_BASE_PATH, cinemaApi } from '../cinemaApi';
+import { DEFAULT_JARVIS_PROMPT, JARVIS_VOICE_PLACEHOLDER } from '../jarvisPrompt';
 import styles from './hatcheryAdmin.module.css';
 
 type Draft = AiConfig & { hasApiKey: boolean; keySource: MaskedAiConfig['keySource'] };
@@ -48,7 +49,11 @@ export function HatcheryAiSettings() {
     update({ provider: id, model: next.models[0], apiKey: '', hasApiKey: false, keySource: 'none' });
   };
   const payload = (): AiConfig => ({ provider: draft.provider, model: draft.model, apiKey: draft.apiKey, temperature: draft.temperature,
-    maxOutputTokens: draft.maxOutputTokens, instructions: draft.instructions, realtimeModel: draft.realtimeModel, voiceMode: draft.voiceMode });
+    maxOutputTokens: draft.maxOutputTokens, instructions: draft.instructions, realtimeModel: draft.realtimeModel, voiceMode: draft.voiceMode,
+    // An unchanged prompt is stored empty so later built-in improvements still apply.
+    prompt: draft.prompt.trim() === DEFAULT_JARVIS_PROMPT.trim() ? '' : draft.prompt });
+  const promptText = draft.prompt || DEFAULT_JARVIS_PROMPT;
+  const promptEdited = promptText.trim() !== DEFAULT_JARVIS_PROMPT.trim();
 
   async function save() {
     setSaving(true); setNotice(null);
@@ -154,13 +159,22 @@ export function HatcheryAiSettings() {
     </section>
 
     <section className={styles.section}>
-      <h2>5. 프롬프트 지시어</h2>
+      <h2>5. 시스템 프롬프트</h2>
       <div className={styles.card}>
-        <label className={styles.block}>운영자 추가 지시 (최대 {AI_LIMITS.instructions}자 · 기본 HATCHERY 지시문 뒤에 붙습니다)
+        <label className={styles.block}>HATCHERY 지시문 (최대 {AI_LIMITS.prompt}자 · 음성·텍스트 모델 공통 · {promptEdited ? '수정됨' : '기본값'})
+          <textarea rows={22} value={promptText} maxLength={AI_LIMITS.prompt} spellCheck={false} data-prompt-editor
+            onChange={event => update({ prompt: event.target.value })} /></label>
+        <div className={styles.actions}>
+          <button type="button" className={styles.button} disabled={!promptEdited} onClick={() => update({ prompt: '' })}>기본값으로 되돌리기</button>
+          <span className={styles.muted}>역할·말투·언어·답변 길이·규칙·도구 정책을 여기서 직접 고칩니다. <code>{JARVIS_VOICE_PLACEHOLDER}</code> 자리에는 메인 화면에서 고른 목소리(남성/여성)의 묘사가 들어갑니다. 연출 목록·바꿀 수 있는 객체·시연 스냅샷은 서버가 뒤에 참고 데이터로 자동으로 붙입니다.</span>
+        </div>
+      </div>
+      <div className={styles.card}>
+        <label className={styles.block}>운영자 추가 지시 (최대 {AI_LIMITS.instructions}자 · 위 지시문 뒤에 붙습니다)
           <textarea rows={8} value={draft.instructions} maxLength={AI_LIMITS.instructions} spellCheck={false}
             placeholder={'예) 답변은 세 문장 이내로. 설비명은 라인 번호와 함께 말할 것. 영어 약어는 처음 한 번 풀어 쓸 것.'}
             onChange={event => update({ instructions: event.target.value })} /></label>
-        <p className={styles.muted}>기본 지시문은 HATCHERY의 역할·말투·시연 데이터 주의·연출/값 변경 도구 규칙을 담고 있으며 코드(<code>src/server/cinema/openai.ts</code>)에서 관리합니다. 여기 입력한 내용은 그 뒤에 &quot;운영자 추가 지시&quot;로 이어집니다.</p>
+        <p className={styles.muted}>지시문을 통째로 고치지 않고 몇 줄만 덧붙이고 싶을 때 씁니다. 여기 입력한 내용은 지시문 뒤에 &quot;운영자 추가 지시&quot;로 이어집니다.</p>
       </div>
     </section>
 

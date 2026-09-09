@@ -1,24 +1,42 @@
-export const JARVIS_SPEECH_PROFILE = { pitch: .72, rate: .94, volume: 1 } as const;
+import { DEFAULT_VOICE_GENDER, voiceGenderOption, type VoiceGender } from './jarvisVoiceGender';
+
+/** The male profile: the deliberate low robot register HATCHERY started with. */
+export const JARVIS_SPEECH_PROFILE = voiceGenderOption('male').speech;
 
 export function koreanSpeechVoices(voices: readonly SpeechSynthesisVoice[]) {
   return voices.filter(voice => /^ko(?:[-_]|$)/i.test(voice.lang));
 }
 
-/** The browser API has no gender field. Recognize documented names or an explicit male label only. */
+/** The browser API has no gender field. Recognize documented names or an explicit label only. */
 export function isKnownMaleVoice(voice: SpeechSynthesisVoice) {
-  return /InJoon|Hyunsu|BongJin|GookMin|Junho|\bmale\b|남성/i.test(voice.name);
+  return /InJoon|Hyunsu|BongJin|GookMin|Junho|Minsu|\bmale\b|남성/i.test(voice.name);
+}
+export function isKnownFemaleVoice(voice: SpeechSynthesisVoice) {
+  return /SunHi|Heami|JiMin|SeoHyeon|SoonBok|YuJin|Yuna|Sora|Suhyun|Jian|Google 한국의|\bfemale\b|여성/i.test(voice.name);
 }
 
-export function selectJarvisVoice(voices: readonly SpeechSynthesisVoice[], voiceURI = '') {
+/**
+ * A Korean voice for the requested gender: a recognized name first, then any Korean voice not
+ * recognized as the other gender (the default one preferred), then whatever Korean voice exists.
+ */
+export function selectJarvisVoice(voices: readonly SpeechSynthesisVoice[], gender: VoiceGender = DEFAULT_VOICE_GENDER) {
   const korean = koreanSpeechVoices(voices);
-  return korean.find(voice => voice.voiceURI === voiceURI)
-    ?? korean.find(isKnownMaleVoice)
+  const wanted = gender === 'male' ? isKnownMaleVoice : isKnownFemaleVoice;
+  const other = gender === 'male' ? isKnownFemaleVoice : isKnownMaleVoice;
+  return korean.find(wanted)
+    ?? korean.find(voice => !other(voice) && voice.default)
+    ?? korean.find(voice => !other(voice))
     ?? korean.find(voice => voice.default)
     ?? korean[0] ?? null;
 }
 
-export function configureJarvisSpeech(utterance: SpeechSynthesisUtterance, voices: readonly SpeechSynthesisVoice[], voiceURI = '') {
+/** True when the list holds a voice recognized as the requested gender, so the pick is not a fallback. */
+export function hasKnownVoice(voices: readonly SpeechSynthesisVoice[], gender: VoiceGender) {
+  return koreanSpeechVoices(voices).some(gender === 'male' ? isKnownMaleVoice : isKnownFemaleVoice);
+}
+
+export function configureJarvisSpeech(utterance: SpeechSynthesisUtterance, voices: readonly SpeechSynthesisVoice[], gender: VoiceGender = DEFAULT_VOICE_GENDER) {
   utterance.lang = 'ko-KR';
-  utterance.voice = selectJarvisVoice(voices, voiceURI);
-  Object.assign(utterance, JARVIS_SPEECH_PROFILE);
+  utterance.voice = selectJarvisVoice(voices, gender);
+  Object.assign(utterance, voiceGenderOption(gender).speech);
 }
