@@ -30,8 +30,11 @@ describe('collapsed chapter globe accessibility', () => {
     }
     expect(html.match(/aria-label="하단 메뉴 펼치기"/g)).toHaveLength(1);
     expect(html).toMatch(/<button[^>]*aria-label="하단 메뉴 펼치기"[^>]*aria-expanded="false"[^>]*aria-controls="film-dock-panel"/);
-    expect(html).toContain('드래그로 이동 · 눌러서 메뉴 펼치기');
+    expect(html).not.toContain('드래그로 이동');
     expect(html).toContain('data-globe-control="true"');
+    expect(html).toContain('data-globe-ball="true"');
+    expect(html).toMatch(/<canvas[^>]*data-globe-ball="true"/);
+    expect(html).not.toContain('data-globe-seam=');
     expect(html).toMatch(/data-ring-controls="true"[^>]*inert=""[^>]*aria-hidden="true"/);
   });
 
@@ -53,5 +56,8 @@ describe('collapsed chapter globe accessibility', () => {
     expect(globeCss).toMatch(/\.expand\s*{[^}]*position:fixed[^}]*width:240px[^}]*touch-action:none/);
     expect(ringCss).toMatch(/\.menu\[data-menu-open=false\]\s*{[^}]*height:0[^}]*pointer-events:none/);
     expect(globeCss).toMatch(/\.expand\s*{[^}]*pointer-events:auto/);
+    expect(globeCss).toMatch(/\.layer\[data-phase=closed\] \.ball\s*{[^}]*opacity:1/);
+    expect(globeCss).toMatch(/\.ball\s*{[^}]*border-radius:50%/);
+    expect(globeCss).not.toMatch(/\[data-phase=closed\] \.face>:first-child/);
   });
 });

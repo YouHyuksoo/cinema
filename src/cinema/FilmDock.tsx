@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FilmControls } from './FilmControls';
 import { FilmChapterMenu } from './FilmChapterMenu';
+import { FilmMenuCube } from './FilmMenuCubeView';
 import type { FilmPlayback } from './useFilmPlayback';
 import type { FilmCameraMode } from './FilmCameraControls';
 import styles from './film.module.css';
@@ -98,6 +99,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
         onExpand={expandMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={(id) => {
           focusIntent.current = 'globe'; setExpanded(false); camera.closePreview(); player.selectChapter(id); onMenuOpenChange(false);
         }} />
+      <FilmMenuCube />
     </div>
   );
 }

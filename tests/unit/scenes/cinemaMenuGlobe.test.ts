@@ -9,6 +9,11 @@ import {
   globeRestingCenter,
   isGlobeDrag,
   mixMenuPose,
+  SOCCER_SEAMS,
+  soccerHexPoses,
+  soccerHexScreenPoses,
+  soccerPattern,
+  soccerSeamPoses,
 } from '@/cinema/filmMenuGlobe';
 import { ringPose } from '@/cinema/filmMenuRing';
 
@@ -185,5 +190,64 @@ describe('globe resting size', () => {
     let grown = rest;
     for (let step = 0; step < GLOBE_GROW_MS / 16 + 1; step++) grown = globeRestStep(grown, 99999, 16, true);
     expect(grown).toBe(0);
+  });
+});
+
+describe('soccer ball globe lattice', () => {
+  it('connects 90 unique seams and 20 hexagon cells on the sphere', () => {
+    expect(SOCCER_SEAMS).toHaveLength(90);
+    const seams = soccerSeamPoses(56, .4);
+    expect(seams).toHaveLength(90);
+    expect(new Set(seams.map(seam => `${seam.x.toFixed(4)},${seam.y.toFixed(4)},${seam.z.toFixed(4)}`)).size).toBe(90);
+    for (const seam of seams) {
+      expect(seam.length).toBeGreaterThan(0);
+      expect(Object.values(seam).every(Number.isFinite)).toBe(true);
+    }
+    const hexes = soccerHexPoses(56, .4);
+    expect(hexes).toHaveLength(20);
+    for (const pose of hexes) expect(Math.hypot(pose.x, pose.y, pose.z)).toBeCloseTo(56);
+    const seam = SOCCER_SEAMS[0];
+    expect(soccerPattern({ x: seam.a.x + seam.b.x, y: seam.a.y + seam.b.y, z: seam.a.z + seam.b.z })).toBe('seam');
+    const cell = soccerHexPoses(1, 0)[0];
+    expect(soccerPattern({ x: cell.x, y: cell.y, z: cell.z })).toBe('cell');
+  });
+
+  it('orients hex cells outward so chapter tiles can sit on the surface', () => {
+    const hexes = soccerHexPoses(56, .8);
+    for (const pose of hexes) {
+      const yaw = pose.yaw * Math.PI / 180, pitch = pose.pitch * Math.PI / 180;
+      expect(Math.sin(yaw) * Math.cos(pitch)).toBeCloseTo(pose.x / 56);
+      expect(-Math.sin(pitch)).toBeCloseTo(pose.y / 56);
+      expect(Math.cos(yaw) * Math.cos(pitch)).toBeCloseTo(pose.z / 56);
+    }
+  });
+
+  it('projects hex menus with the same orthographic rotation as the painted sphere', () => {
+    const cells = soccerHexPoses(1, 0);
+    const front = cells.reduce((best, pose, index, list) => pose.z > list[best].z ? index : best, 0);
+    const screens = soccerHexScreenPoses(100, 0);
+    const nearest = screens.reduce((best, pose, index, list) =>
+      Math.hypot(pose.x, pose.y) < Math.hypot(list[best].x, list[best].y) ? index : best, 0);
+    expect(nearest).toBe(front);
+    expect(screens[front].opacity).toBeGreaterThan(.8);
+    const right = cells.reduce((best, pose, index, list) => pose.x > list[best].x ? index : best, 0);
+    const turn = Math.atan2(cells[right].x, cells[right].z);
+    const turned = soccerHexScreenPoses(100, turn);
+    const nearestTurned = turned.reduce((best, pose, index, list) =>
+      Math.hypot(pose.x, pose.y) < Math.hypot(list[best].x, list[best].y) ? index : best, 0);
+    expect(nearestTurned).toBe(right);
+    expect(screens.filter(pose => pose.opacity > .15).length).toBeGreaterThan(6);
+  });
+
+  it('returns the same lattice after a full revolution and hides invalid radii', () => {
+    const first = soccerSeamPoses(56, .3), full = soccerSeamPoses(56, .3 + Math.PI * 2);
+    first.forEach((pose, index) => {
+      expect(full[index].x).toBeCloseTo(pose.x);
+      expect(full[index].y).toBeCloseTo(pose.y);
+      expect(full[index].z).toBeCloseTo(pose.z);
+      expect(full[index].length).toBeCloseTo(pose.length);
+    });
+    expect(soccerSeamPoses(0, 0).every(seam => seam.length === 0)).toBe(true);
+    expect(soccerHexPoses(NaN, 1).every(pose => pose.opacity === 0)).toBe(true);
   });
 });

@@ -167,3 +167,265 @@ export function globeRestScale(rest: number) {
   const t = Math.max(0, Math.min(1, rest)), eased = t * t * (3 - 2 * t);
   return 1 - (1 - GLOBE_REST_SCALE) * eased;
 }
+
+const PHI = (1 + Math.sqrt(5)) / 2;
+
+function asUnit(x: number, y: number, z: number) {
+  const length = Math.hypot(x, y, z) || 1;
+  return { x: x / length, y: y / length, z: z / length };
+}
+
+function icosahedronVertices() {
+  return [
+    [0, 1, PHI], [0, -1, PHI], [0, 1, -PHI], [0, -1, -PHI],
+    [1, PHI, 0], [-1, PHI, 0], [1, -PHI, 0], [-1, -PHI, 0],
+    [PHI, 0, 1], [-PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, -1],
+  ].map(([x, y, z]) => asUnit(x, y, z));
+}
+
+function icosahedronFaces(verts: readonly { x: number; y: number; z: number }[]) {
+  let edge = Infinity;
+  for (let i = 0; i < verts.length; i++) for (let j = i + 1; j < verts.length; j++) {
+    edge = Math.min(edge, Math.hypot(verts[i].x - verts[j].x, verts[i].y - verts[j].y, verts[i].z - verts[j].z));
+  }
+  const slack = edge * .08;
+  const faces: [number, number, number][] = [];
+  for (let i = 0; i < verts.length; i++) for (let j = i + 1; j < verts.length; j++) {
+    if (Math.abs(Math.hypot(verts[i].x - verts[j].x, verts[i].y - verts[j].y, verts[i].z - verts[j].z) - edge) > slack) continue;
+    for (let k = j + 1; k < verts.length; k++) {
+      const ik = Math.hypot(verts[i].x - verts[k].x, verts[i].y - verts[k].y, verts[i].z - verts[k].z);
+      const jk = Math.hypot(verts[j].x - verts[k].x, verts[j].y - verts[k].y, verts[j].z - verts[k].z);
+      if (Math.abs(ik - edge) > slack || Math.abs(jk - edge) > slack) continue;
+      faces.push([i, j, k]);
+    }
+  }
+  return faces;
+}
+
+const ICOSA_VERTS = icosahedronVertices();
+const ICOSA_FACES = icosahedronFaces(ICOSA_VERTS);
+const SOCCER_HEX_DIRS = ICOSA_FACES.map(([a, b, c]) => asUnit(
+  ICOSA_VERTS[a].x + ICOSA_VERTS[b].x + ICOSA_VERTS[c].x,
+  ICOSA_VERTS[a].y + ICOSA_VERTS[b].y + ICOSA_VERTS[c].y,
+  ICOSA_VERTS[a].z + ICOSA_VERTS[b].z + ICOSA_VERTS[c].z,
+));
+
+function rotateY(point: { x: number; y: number; z: number }, angle: number) {
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  return { x: point.x * cos + point.z * sin, y: point.y, z: -point.x * sin + point.z * cos };
+}
+
+function lerpUnit(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }, t: number) {
+  return asUnit(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+}
+
+function orderAround(axis: { x: number; y: number; z: number }, points: { x: number; y: number; z: number }[]) {
+  const hint = Math.abs(axis.y) < .9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
+  const tangent = asUnit(axis.y * hint.z - axis.z * hint.y, axis.z * hint.x - axis.x * hint.z, axis.x * hint.y - axis.y * hint.x);
+  const bitangent = asUnit(axis.y * tangent.z - axis.z * tangent.y, axis.z * tangent.x - axis.x * tangent.z,
+    axis.x * tangent.y - axis.y * tangent.x);
+  return [...points].sort((left, right) => {
+    const angleOf = (point: { x: number; y: number; z: number }) => Math.atan2(
+      point.x * bitangent.x + point.y * bitangent.y + point.z * bitangent.z,
+      point.x * tangent.x + point.y * tangent.y + point.z * tangent.z,
+    );
+    return angleOf(left) - angleOf(right);
+  });
+}
+
+function buildSoccerSeams() {
+  const adj: number[][] = ICOSA_VERTS.map(() => []);
+  for (const [a, b, c] of ICOSA_FACES) {
+    const link = (i: number, j: number) => { if (!adj[i].includes(j)) adj[i].push(j); };
+    link(a, b); link(b, a); link(b, c); link(c, b); link(c, a); link(a, c);
+  }
+  const cycles = [
+    ...ICOSA_VERTS.map((vertex, index) => orderAround(vertex, adj[index].map(other => lerpUnit(vertex, ICOSA_VERTS[other], 1 / 3)))),
+    ...ICOSA_FACES.map(([a, b, c]) => {
+      const loop = [a, b, c];
+      const hex: { x: number; y: number; z: number }[] = [];
+      for (let i = 0; i < 3; i++) {
+        const from = ICOSA_VERTS[loop[i]], to = ICOSA_VERTS[loop[(i + 1) % 3]];
+        hex.push(lerpUnit(from, to, 1 / 3), lerpUnit(from, to, 2 / 3));
+      }
+      return hex;
+    }),
+  ];
+  const unique = new Map<string, { a: { x: number; y: number; z: number }; b: { x: number; y: number; z: number } }>();
+  for (const cycle of cycles) {
+    for (let i = 0; i < cycle.length; i++) {
+      const a = cycle[i], b = cycle[(i + 1) % cycle.length];
+      const key = [a, b].map(point => `${point.x.toFixed(5)},${point.y.toFixed(5)},${point.z.toFixed(5)}`).sort().join('|');
+      unique.set(key, { a, b });
+    }
+  }
+  return [...unique.values()];
+}
+
+export const SOCCER_SEAMS = buildSoccerSeams();
+
+export type SoccerSeamPose = {
+  x: number; y: number; z: number;
+  yaw: number; pitch: number;
+  length: number; opacity: number;
+};
+
+/** Connected truncated-icosahedron seams (soccer-ball grid) on a sphere. */
+export function soccerSeamPoses(radius: number, angleRadians: number): SoccerSeamPose[] {
+  const size = safeRadius(radius);
+  const angle = Number.isFinite(angleRadians) ? angleRadians % TAU : 0;
+  if (size === 0) return SOCCER_SEAMS.map(() => ({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, length: 0, opacity: 0 }));
+  return SOCCER_SEAMS.map(({ a, b }) => {
+    const pa = rotateY(a, angle), pb = rotateY(b, angle);
+    const ax = pa.x * size, ay = pa.y * size, az = pa.z * size;
+    const bx = pb.x * size, by = pb.y * size, bz = pb.z * size;
+    const dx = bx - ax, dy = by - ay, dz = bz - az;
+    const length = Math.hypot(dx, dy, dz);
+    const hyp = Math.hypot(dx, dz);
+    return {
+      x: (ax + bx) / 2, y: (ay + by) / 2, z: (az + bz) / 2,
+      yaw: Math.atan2(-dz, dx) * DEGREES,
+      pitch: Math.atan2(dy, hyp) * DEGREES,
+      length,
+      opacity: .22 + ((az + bz) / 2 / size + 1) / 2 * .78,
+    };
+  });
+}
+
+function clampUnit(value: number) {
+  return value < -1 ? -1 : value > 1 ? 1 : value;
+}
+
+function distToArc(
+  point: { x: number; y: number; z: number },
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number },
+) {
+  const cx = from.y * to.z - from.z * to.y, cy = from.z * to.x - from.x * to.z, cz = from.x * to.y - from.y * to.x;
+  const nlen = Math.hypot(cx, cy, cz);
+  if (nlen < 1e-8) return 1;
+  const toCircle = Math.abs((point.x * cx + point.y * cy + point.z * cz) / nlen);
+  const ab = Math.acos(clampUnit(from.x * to.x + from.y * to.y + from.z * to.z));
+  const ap = Math.acos(clampUnit(point.x * from.x + point.y * from.y + point.z * from.z));
+  const bp = Math.acos(clampUnit(point.x * to.x + point.y * to.y + point.z * to.z));
+  if (ap + bp <= ab + .12) return toCircle;
+  return Math.min(ap, bp);
+}
+
+export function soccerPattern(dir: { x: number; y: number; z: number }, seam = .016): 'seam' | 'cell' {
+  const point = asUnit(dir.x, dir.y, dir.z);
+  let nearest = 1;
+  for (const { a, b } of SOCCER_SEAMS) {
+    nearest = Math.min(nearest, distToArc(point, a, b));
+    if (nearest < seam * .2) break;
+  }
+  return nearest < seam ? 'seam' : 'cell';
+}
+
+let sphereTexture: { width: number; height: number; data: Uint8ClampedArray } | null = null;
+
+function soccerSeamWeight(dir: { x: number; y: number; z: number }, width = .012, feather = .01) {
+  const point = asUnit(dir.x, dir.y, dir.z);
+  let nearest = 1;
+  for (const { a, b } of SOCCER_SEAMS) {
+    nearest = Math.min(nearest, distToArc(point, a, b));
+    if (nearest < width * .3) break;
+  }
+  if (nearest >= width + feather) return 0;
+  if (nearest <= width) return 1;
+  return 1 - (nearest - width) / feather;
+}
+
+function soccerSphereTexture() {
+  if (sphereTexture) return sphereTexture;
+  const width = 512, height = 256, data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const lat = (y / (height - 1) - .5) * Math.PI, cy = Math.sin(lat), cl = Math.cos(lat);
+    for (let x = 0; x < width; x++) {
+      const lon = x / width * TAU;
+      const weight = soccerSeamWeight({ x: cl * Math.sin(lon), y: cy, z: cl * Math.cos(lon) });
+      const i = (y * width + x) * 4;
+      data[i] = 255;
+      data[i + 1] = 194;
+      data[i + 2] = 229;
+      data[i + 3] = Math.round(38 + weight * 110);
+    }
+  }
+  sphereTexture = { width, height, data };
+  return sphereTexture;
+}
+
+const sphereBuffers = new Map<number, ImageData>();
+
+/** Paint a lit sphere with the soccer-ball texture mapped onto it. */
+export function drawSoccerSphere(canvas: HTMLCanvasElement, cssSize: number, angleRadians: number) {
+  const size = Math.max(1, Math.round(finiteSize(cssSize)));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  if (canvas.width !== size || canvas.height !== size) { canvas.width = size; canvas.height = size; }
+  let out = sphereBuffers.get(size);
+  if (!out || out.width !== size) { out = ctx.createImageData(size, size); sphereBuffers.set(size, out); }
+  const pixels = out.data, tex = soccerSphereTexture(), tw = tex.width, th = tex.height, src = tex.data;
+  const cos = Math.cos(Number.isFinite(angleRadians) ? angleRadians : 0);
+  const sin = Math.sin(Number.isFinite(angleRadians) ? angleRadians : 0);
+  const radius = size / 2;
+  pixels.fill(0);
+  for (let y = 0; y < size; y++) {
+    const ny = (y + .5 - radius) / radius;
+    for (let x = 0; x < size; x++) {
+      const nx = (x + .5 - radius) / radius, d2 = nx * nx + ny * ny;
+      if (d2 > 1) continue;
+      const nz = Math.sqrt(1 - d2);
+      const rx = nx * cos + nz * sin, rz = -nx * sin + nz * cos;
+      const u = (Math.atan2(rx, rz) / TAU + 1.5) % 1;
+      const v = Math.asin(clampUnit(ny)) / Math.PI + .5;
+      const tx = Math.min(tw - 1, u * tw) | 0, ty = Math.min(th - 1, Math.max(0, v) * th) | 0;
+      const ti = (ty * tw + tx) * 4;
+      const light = Math.max(.28, nx * -.32 + ny * -.52 + nz * .79);
+      const spec = Math.pow(Math.max(0, nz * .5 + light * .5), 22) * 28;
+      const i = (y * size + x) * 4;
+      pixels[i] = Math.min(255, src[ti] * light + spec);
+      pixels[i + 1] = Math.min(255, src[ti + 1] * light + spec);
+      pixels[i + 2] = Math.min(255, src[ti + 2] * light + spec);
+      pixels[i + 3] = Math.min(255, src[ti + 3] * (.75 + nz * .25));
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+/** Hexagon-cell centers of the soccer lattice, for placing chapter hex tiles. */
+export function soccerHexPoses(radius: number, angleRadians: number): Required<MenuPose>[] {
+  const size = safeRadius(radius);
+  const angle = Number.isFinite(angleRadians) ? angleRadians % TAU : 0;
+  if (size === 0) return SOCCER_HEX_DIRS.map(() => ({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, scale: 0, opacity: 0 }));
+  return SOCCER_HEX_DIRS.map(dir => {
+    const unit = rotateY(dir, angle);
+    return {
+      x: unit.x * size, y: unit.y * size, z: unit.z * size,
+      yaw: Math.atan2(unit.x, unit.z) * DEGREES,
+      pitch: -Math.asin(Math.max(-1, Math.min(1, unit.y))) * DEGREES,
+      scale: 1,
+      opacity: .42 + (unit.z + 1) / 2 * .58,
+    };
+  });
+}
+
+/**
+ * Screen positions for hex cells on the painted sphere. Uses the same
+ * orthographic view and Y rotation as `drawSoccerSphere`, so tiles sit in the
+ * drawn cells instead of a separate CSS-perspective orbit.
+ */
+export function soccerHexScreenPoses(radius: number, angleRadians: number): Required<MenuPose>[] {
+  const size = safeRadius(radius);
+  const angle = Number.isFinite(angleRadians) ? angleRadians % TAU : 0;
+  return SOCCER_HEX_DIRS.map(dir => {
+    const view = rotateY(dir, -angle);
+    const front = view.z > .06;
+    const depth = Math.max(0, view.z);
+    return {
+      x: view.x * size, y: view.y * size, z: 0, yaw: 0, pitch: 0,
+      scale: depth,
+      opacity: front ? .2 + .8 * depth : 0,
+    };
+  });
+}

@@ -83,7 +83,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
       </div>
       <FilmMenuGlobe menuOpen={menuOpen} onExpand={onExpand}
         layerRef={globe.layer} floatRef={globe.float} controlRef={globe.control}
-        faces={globe.faces} events={globe.events} blockClick={globe.blockClick} />
+        faces={globe.faces} ballRef={globe.ball} events={globe.events} blockClick={globe.blockClick} />
     </nav>
   );
 }

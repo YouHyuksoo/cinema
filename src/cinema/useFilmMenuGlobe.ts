@@ -1,8 +1,9 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
-import { clampGlobeCenter, globeDiameter, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
-  globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, type MenuPose, type Point } from './filmMenuGlobe';
+import { clampGlobeCenter, drawSoccerSphere, globeDiameter, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
+  globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, type MenuPose,
+  type Point } from './filmMenuGlobe';
 import { ringPose } from './filmMenuRing';
 
 type Phase = 'open' | 'closed' | 'morphing';
@@ -23,6 +24,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
   const float = useRef<HTMLDivElement>(null);
   const control = useRef<HTMLButtonElement>(null);
   const faces = useRef<(HTMLSpanElement | null)[]>([]);
+  const ball = useRef<HTMLCanvasElement>(null);
   const rememberedCenter = useRef<Point | null>(null);
   const [phase, setPhase] = useState<Phase>(menuOpen ? 'open' : 'closed');
   const update = useRef<((next: Input) => void) | null>(null);
@@ -67,9 +69,16 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     };
     const globe = () => {
       const sized = restScale();
+      const visual = diameter * sized;
+      const hexes = soccerHexScreenPoses(visual / 2, angle);
+      const tile = faceHeight > 0 ? visual * .155 / faceHeight : 0;
       return Array.from({ length: count }, (_, index) => {
-        const pose = globePose(index, count, radius * sized, angle);
-        return { ...pose, x: globeCenter.x + pose.x, y: globeCenter.y + pose.y, scale: faceScale * sized };
+        const pose = hexes[index] ?? globePose(index, count, radius * sized, angle);
+        return {
+          ...pose,
+          x: globeCenter.x + pose.x, y: globeCenter.y + pose.y,
+          scale: tile * (.55 + .45 * pose.scale),
+        };
       });
     };
     const ring = (capture = false) => {
@@ -113,6 +122,12 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         face.style.transform = `translate(-50%,-50%) translate3d(${pose.x}px,${pose.y}px,${pose.z}px) rotateY(${pose.yaw}deg) rotateX(${pose.pitch ?? 0}deg) scale(${pose.scale})`;
         face.style.opacity = String(pose.opacity);
       });
+      if (currentPhase === 'closed' && ball.current) {
+        const visual = Math.max(1, diameter * restScale());
+        ball.current.style.width = `${visual}px`; ball.current.style.height = `${visual}px`;
+        ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%)`;
+        drawSoccerSphere(ball.current, visual, angle);
+      }
       floating.style.transform = `translateY(${floatingY}px)`;
       const visualY = currentPhase === 'closed' ? floatingY : 0;
       overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y + visualY}px`;
@@ -282,6 +297,6 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       event.stopPropagation(); actions.current?.cancel(event.pointerId);
     },
   };
-  return { phase, layer, float, control, faces, events,
+  return { phase, layer, float, control, faces, ball, events,
     blockClick: () => actions.current?.blockClick() ?? false };
 }

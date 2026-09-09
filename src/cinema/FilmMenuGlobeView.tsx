@@ -4,18 +4,20 @@ import { FilmChapterIcon } from './FilmChapterIcon';
 import filmStyles from './film.module.css';
 import styles from './filmMenuGlobe.module.css';
 
-export function FilmMenuGlobe({ menuOpen, onExpand, layerRef, floatRef, faces,
+export function FilmMenuGlobe({ menuOpen, onExpand, layerRef, floatRef, faces, ballRef,
   controlRef, events, blockClick }: {
   menuOpen: boolean; onExpand?: () => void;
   layerRef: RefObject<HTMLDivElement | null>; floatRef: RefObject<HTMLDivElement | null>;
   faces: RefObject<(HTMLSpanElement | null)[]>;
+  ballRef: RefObject<HTMLCanvasElement | null>;
   controlRef: RefObject<HTMLButtonElement | null>;
   events: Pick<ComponentPropsWithoutRef<'button'>, 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onLostPointerCapture'>;
   blockClick: () => boolean;
 }) {
-  return <>
+  return <div className={styles.shell}>
     <div ref={layerRef} className={styles.layer} aria-hidden="true" data-globe-layer="true">
       <div ref={floatRef} className={styles.float}>
+        <canvas ref={ballRef} className={styles.ball} data-globe-ball="true" />
         {FILM_CHAPTERS.map((chapter, index) => <span key={chapter.id}
           ref={node => { faces.current[index] = node; }} data-globe-face={chapter.id} className={styles.face}>
           <svg className={filmStyles.hexFrame} viewBox="0 0 64 72" fill="none" focusable="false">
@@ -35,8 +37,6 @@ export function FilmMenuGlobe({ menuOpen, onExpand, layerRef, floatRef, faces,
         event.stopPropagation();
         if (event.detail > 0 && blockClick()) { event.preventDefault(); return; }
         onExpand?.();
-      }}>
-      <span className={styles.label}>드래그로 이동 · 눌러서 메뉴 펼치기</span>
-    </button>}
-  </>;
+      }} />}
+  </div>;
 }
