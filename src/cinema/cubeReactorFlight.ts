@@ -1,9 +1,11 @@
+import { lensScale } from './filmLens';
+
 export const CUBE_REACTOR_FLIGHT_MS = 7300;
 export const CUBE_FLIGHT_PERSPECTIVE = 900;
 type Point = { x:number; y:number };
 const smooth = (t:number) => t*t*(3-2*t);
 const project = (x:number,y:number,z:number,center:Point,perspective:number) => {
-  const scale=perspective/(perspective-z);
+  const scale=lensScale(perspective,-z);
   return {x:center.x+(x-center.x)*scale,y:center.y+(y-center.y)*scale,scale};
 };
 

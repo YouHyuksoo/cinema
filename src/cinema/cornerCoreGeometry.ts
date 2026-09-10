@@ -1,3 +1,5 @@
+import { createLensProjection } from './filmLens';
+
 export const CORE_OUTER_RADIUS = 190;
 export const CORE_BOUNDS = { width: 440, height: 440 } as const;
 
@@ -14,18 +16,7 @@ export interface CoreProjectedPoint {
 export function createCoreProjection(time: number) {
   const pitch = .16 + Math.sin(time * .31) * .025;
   const yaw = .1 + Math.sin(time * .23 + .8) * .02;
-  const cosPitch = Math.cos(pitch), sinPitch = Math.sin(pitch);
-  const cosYaw = Math.cos(yaw), sinYaw = Math.sin(yaw);
-
-  function point(x: number, y: number, z = 0): CoreProjectedPoint {
-    const tiltedY = y * cosPitch - z * sinPitch;
-    const tiltedZ = y * sinPitch + z * cosPitch;
-    const rotatedX = x * cosYaw + tiltedZ * sinYaw;
-    const depth = -x * sinYaw + tiltedZ * cosYaw;
-    const perspective = LENS / (LENS + depth);
-    return { x: rotatedX * perspective, y: tiltedY * perspective, depth };
-  }
-
+  const point: (x: number, y: number, z?: number) => CoreProjectedPoint = createLensProjection({ lens: LENS, yaw, pitch });
   return {
     point,
     ring(angle: number, radius: number, z = 0) {

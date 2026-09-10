@@ -1,5 +1,6 @@
 import type { CornerItemState } from './cornerSequence';
 import { smooth } from './filmDrawing';
+import { createLensProjection } from './filmLens';
 
 const LENS = 760;
 const VIEW_CENTER = { x: 640, y: 350 };
@@ -29,26 +30,7 @@ export function cornerReadingProjection(reading: CornerItemState) {
   const depth = LENS * (1 / reading.scale - 1) + hover.depth;
   const originX = (reading.x + hover.x - VIEW_CENTER.x) / reading.scale;
   const originY = (reading.y + hover.y - VIEW_CENTER.y) / reading.scale;
-  const cosYaw = Math.cos(yaw), sinYaw = Math.sin(yaw);
-  const cosPitch = Math.cos(pitch), sinPitch = Math.sin(pitch);
-  const cosRoll = Math.cos(hover.roll), sinRoll = Math.sin(hover.roll);
-
-  return {
-    depth, yaw, pitch,
-    point(x: number, y: number, z = 0) {
-      const tiltedY = y * cosPitch - z * sinPitch;
-      const tiltedZ = y * sinPitch + z * cosPitch;
-      const rotatedX = x * cosYaw + tiltedZ * sinYaw;
-      const rotatedZ = -x * sinYaw + tiltedZ * cosYaw;
-      const rolledX = rotatedX * cosRoll - tiltedY * sinRoll;
-      const rolledY = rotatedX * sinRoll + tiltedY * cosRoll;
-      const pointDepth = depth + rotatedZ;
-      const perspective = LENS / (LENS + pointDepth);
-      return {
-        x: VIEW_CENTER.x + (originX + rolledX) * perspective,
-        y: VIEW_CENTER.y + (originY + rolledY) * perspective,
-        depth: pointDepth,
-      };
-    },
-  };
+  const point = createLensProjection({ lens: LENS, yaw, pitch, roll: hover.roll, depth, originX, originY,
+    centerX: VIEW_CENTER.x, centerY: VIEW_CENTER.y });
+  return { depth, yaw, pitch, point };
 }

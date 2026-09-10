@@ -1,4 +1,5 @@
 import { smooth } from './filmDrawing';
+import { lensScale } from './filmLens';
 
 export interface FocusTiming { enter: readonly [number, number]; exit: readonly [number, number] }
 export interface FocusProjection {
@@ -18,7 +19,7 @@ export function focusProjection({ x, y, focus, depth = 160, lift = 20 }: {
 }): FocusProjection {
   const amount = Math.max(0, Math.min(1, Number.isFinite(focus) ? focus : 0));
   const z = Math.max(-FOCUS_LENS, Math.min(FOCUS_LENS * .65, depth)) * amount;
-  return { x, y: y - lift * amount, anchorX: x, anchorY: y, scale: FOCUS_LENS / (FOCUS_LENS - z), depth: z };
+  return { x, y: y - lift * amount, anchorX: x, anchorY: y, scale: lensScale(FOCUS_LENS, -z), depth: z };
 }
 
 export function projectFocusPoint(projection: FocusProjection, point: { x: number; y: number }) {

@@ -1,14 +1,13 @@
 import { VOICE_CORE_VIEW, type VoiceCoreState } from './jarvisVoiceCore';
+import { createLensProjection } from './filmLens';
 
 export interface ReactorPoint { x: number; y: number; z: number }
 const TAU = Math.PI * 2;
 
 export function projectReactor(p: ReactorPoint, pitch = .27) {
   const tilt = Number.isFinite(pitch) ? pitch : .27;
-  const cosP = Math.cos(tilt), sinP = Math.sin(tilt);
-  const y = p.y * cosP - p.z * sinP, z = p.y * sinP + p.z * cosP;
-  const scale = 900 / (900 + z);
-  return { x: VOICE_CORE_VIEW.x + p.x * scale, y: VOICE_CORE_VIEW.y + y * scale, z };
+  const view = createLensProjection({ lens: 900, pitch: tilt, centerX: VOICE_CORE_VIEW.x, centerY: VOICE_CORE_VIEW.y })(p.x, p.y, p.z);
+  return { x: view.x, y: view.y, z: view.depth };
 }
 
 /** The entire solid reactor turns around its tilted axis, including attached sparks. */
