@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { chooseShockTarget, shockEnvelope, shockLightning, shockLightningBranches, shockWaitMs, SHOCK_ATTRIBUTE, SHOCK_DURATION_MS, type ShockTarget } from './reactorMenuShock';
+import { createFrameLoop, fitCanvasToBox, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './reactorMenuPrank.module.css';
 
 const targets: Record<ShockTarget, string> = {
@@ -19,12 +20,11 @@ export function ReactorMenuPrank() {
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d'), root = node?.closest('main');
     if (!node || !ctx || !root) return;
-    const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    let timer = 0, frame = 0, previous: ShockTarget | null = null;
+    let timer = 0, previous: ShockTarget | null = null;
     let victim: HTMLElement | null = null, source: HTMLElement | null = null;
     let started = 0;
     const clear = () => {
-      cancelAnimationFrame(frame); frame = 0;
+      loop.stop();
       victim?.removeAttribute(SHOCK_ATTRIBUTE); source?.removeAttribute(SHOCK_ATTRIBUTE);
       victim = null; source = null;
       node.removeAttribute('data-shock-target');
@@ -32,19 +32,16 @@ export function ReactorMenuPrank() {
     };
     const schedule = (first = false) => {
       clearTimeout(timer);
-      if (!motion.matches && !document.hidden) timer = window.setTimeout(start, first ? 6500 + Math.random() * 3500 : shockWaitMs(Math.random()));
+      if (!motion.reduced && !document.hidden) timer = window.setTimeout(start, first ? 6500 + Math.random() * 3500 : shockWaitMs(Math.random()));
     };
     const draw = (now: number) => {
-      if (!visible(victim) || !visible(source) || source.getAttribute('aria-disabled') === 'true' || document.hidden || motion.matches) {
+      if (!visible(victim) || !visible(source) || source.getAttribute('aria-disabled') === 'true' || document.hidden || motion.reduced) {
         clear(); schedule(); return;
       }
       const elapsed = now - started;
       if (elapsed >= SHOCK_DURATION_MS) { clear(); schedule(); return; }
-      const dpr = Math.min(devicePixelRatio || 1, 2), width = innerWidth, height = innerHeight;
-      if (node.width !== Math.round(width*dpr) || node.height !== Math.round(height*dpr)) {
-        node.width = Math.round(width*dpr); node.height = Math.round(height*dpr);
-      }
-      ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,width,height);
+      const width = innerWidth, height = innerHeight;
+      fitCanvasToBox(node, ctx, width, height); ctx.clearRect(0,0,width,height);
       const a = center(source), b = center(victim), power = shockEnvelope(elapsed);
       const accent = getComputedStyle(root).getPropertyValue('--film-accent').trim() || '#5fe3ff';
       // One sustained short discharge, then residual arcs on the victim; no full-screen flashes.
@@ -73,11 +70,11 @@ export function ReactorMenuPrank() {
         ctx.beginPath(); arc.forEach((point,j) => j ? ctx.lineTo(point.x,point.y) : ctx.moveTo(point.x,point.y)); ctx.stroke();
       }
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-      frame = requestAnimationFrame(draw);
     };
+    const loop = createFrameLoop(draw);
     const start = () => {
       const reactor = root.querySelector<HTMLElement>('[data-reactor-trigger]');
-      if (!visible(reactor) || reactor.getAttribute('aria-disabled') === 'true' || root.querySelector('[data-cube-flight]') || motion.matches || document.hidden) { schedule(); return; }
+      if (!visible(reactor) || reactor.getAttribute('aria-disabled') === 'true' || root.querySelector('[data-cube-flight]') || motion.reduced || document.hidden) { schedule(); return; }
       const available = (Object.keys(targets) as ShockTarget[]).filter(key => {
         const target = root.querySelector<HTMLElement>(targets[key]);
         if (!visible(target) || target.getAttribute('aria-expanded') === 'true' || target.matches(':hover,:focus-visible')) return false;
@@ -90,15 +87,16 @@ export function ReactorMenuPrank() {
       victim = root.querySelector<HTMLElement>(targets[target]); source = reactor;
       started = performance.now(); previous = target;
       victim?.setAttribute(SHOCK_ATTRIBUTE, String(started)); source.setAttribute(SHOCK_ATTRIBUTE, String(started));
-      node.dataset.shockTarget = target; frame = requestAnimationFrame(draw);
+      node.dataset.shockTarget = target; loop.start();
     };
     const cancel = () => { clear(); schedule(); };
+    const motion = watchReducedMotion(cancel);
+    const unwatch = watchPageVisibility(cancel);
     root.addEventListener('pointerdown', cancel, true); root.addEventListener('keydown', cancel, true);
-    document.addEventListener('visibilitychange', cancel); motion.addEventListener('change', cancel);
     schedule(true);
     return () => {
       clearTimeout(timer); clear(); root.removeEventListener('pointerdown', cancel, true); root.removeEventListener('keydown', cancel, true);
-      document.removeEventListener('visibilitychange', cancel); motion.removeEventListener('change', cancel);
+      unwatch(); motion.stop();
     };
   }, []);
   return <canvas ref={canvas} className={styles.overlay} data-reactor-menu-prank aria-hidden="true"/>;

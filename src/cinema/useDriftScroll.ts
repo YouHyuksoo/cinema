@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createFrameLoop, watchReducedMotion } from './filmMotion';
 
 export interface DriftScrollOptions {
   /** Scroll axis of the viewport element. */
@@ -39,11 +40,11 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     const viewport = viewportRef.current;
     const host: HTMLElement | null = hostRef.current ?? viewport;
     if (!viewport || !host) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reduced = watchReducedMotion();
     const scrollKey = axis === 'x' ? 'scrollLeft' : 'scrollTop';
     const extent = () => axis === 'x' ? viewport.scrollWidth - viewport.clientWidth : viewport.scrollHeight - viewport.clientHeight;
     let hovered = host.matches(':hover'), focused = host.contains(document.activeElement);
-    let manualUntil = 0, holdUntil = performance.now() + initialHoldMs, frame = 0, last = 0;
+    let manualUntil = 0, holdUntil = performance.now() + initialHoldMs, last = 0;
     let position = viewport[scrollKey], direction = 1;
     const enter = () => { hovered = true; };
     const leave = () => { hovered = false; };
@@ -55,24 +56,24 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
       last = now;
       frameCallback.current?.(now, viewport);
       const max = Math.max(0, extent());
-      const stopped = paused || hovered || focused || reduced.matches || document.hidden || now < manualUntil;
+      const stopped = paused || hovered || focused || reduced.reduced || document.hidden || now < manualUntil;
       if (stopped || !max) { position = viewport[scrollKey]; holdUntil = now + resumeMs; }
       else if (now >= holdUntil) {
         position = Math.max(0, Math.min(max, position + direction * delta * speed));
         viewport[scrollKey] = position;
         if (position >= max || position <= 0) { direction *= -1; holdUntil = now + holdMs; }
       }
-      frame = requestAnimationFrame(tick);
     };
+    const loop = createFrameLoop(tick);
     host.addEventListener('pointerenter', enter);
     host.addEventListener('pointerleave', leave);
     host.addEventListener('focusin', focus);
     host.addEventListener('focusout', blur);
     const manualEvents = ['wheel', 'touchstart', 'touchmove', 'touchend', 'keydown'] as const;
     for (const type of manualEvents) viewport.addEventListener(type, manual, { passive: true });
-    frame = requestAnimationFrame(tick);
+    loop.start();
     return () => {
-      cancelAnimationFrame(frame);
+      loop.stop(); reduced.stop();
       host.removeEventListener('pointerenter', enter);
       host.removeEventListener('pointerleave', leave);
       host.removeEventListener('focusin', focus);

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import { createFrameLoop, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './jarvisHeader.module.css';
 
 /** Optical heading demo, not a device compass reading. */
@@ -8,17 +9,16 @@ export function JarvisHeading() {
   const dial = useRef<SVGGElement>(null);
   const reading = useRef<SVGTextElement>(null);
   useEffect(() => {
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    let frame = 0;
-    const draw = (now: number) => {
-      const angle = reduced.matches ? 90 : 90 + Math.sin(now / 18000) * 42 + Math.sin(now / 7000) * 7;
+    const motion = watchReducedMotion();
+    const loop = createFrameLoop(now => {
+      const angle = motion.reduced ? 90 : 90 + Math.sin(now / 18000) * 42 + Math.sin(now / 7000) * 7;
       tape.current?.setAttribute('transform', `translate(${430 - angle * 4} 0)`);
       dial.current?.setAttribute('transform', `rotate(${-angle} 36 34)`);
       if (reading.current) reading.current.textContent = `${angle.toFixed(1).padStart(5, '0')}°`;
-      frame = requestAnimationFrame(draw);
-    };
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    });
+    const unwatch = watchPageVisibility(hidden => hidden ? loop.stop() : loop.start());
+    if (!document.hidden) loop.start();
+    return () => { loop.stop(); unwatch(); motion.stop(); };
   }, []);
   return <div className={styles.heading} role="img" aria-label="움직이는 나침반과 방위각 눈금 · 시연 연출">
     <svg viewBox="0 0 860 68" preserveAspectRatio="xMidYMid meet" aria-hidden="true">

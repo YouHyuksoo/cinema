@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { scannerOrbFlight, SCANNER_ORB_FLIGHT_MS } from './scannerOrbFlight';
 import { drawScannerFlight, drawScannerTesla, type FlightSphere } from './drawScannerFlight';
 import { CONNECTION_LABELS, type ConnectionState } from './scannerConnectionStatus';
+import { createFrameLoop, fitCanvasToBox, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './scannerTeslaEffect.module.css';
 
 /** Hover discharges in place; clicking launches the independent full-screen flight. */
@@ -18,33 +19,30 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
     const scanner=triggerRef.current?.closest('[data-signal-scanner]');
     const plane=scanner?.querySelector<HTMLElement>('[data-status-orbits]');
     const sources=Array.from(scanner?.querySelectorAll<HTMLElement>('[data-status-orb]')??[]);
-    const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
     const initialBox=canvas.getBoundingClientRect();
     const homes=()=>sources.map(node=>{const rect=node.getBoundingClientRect();return {x:rect.left+rect.width/2,y:rect.top+rect.height/2,r:rect.width/2};});
     const launches=homes();
     // RAF timestamps can predate an effect's performance.now() within the same frame.
-    let started:number|null=null,frame=0;
+    let started:number|null=null;
     const clear=()=>{
-      cancelAnimationFrame(frame);ctx.clearRect(0,0,canvas.width,canvas.height);canvas.dataset.active='false';
+      loop.stop();ctx.clearRect(0,0,canvas.width,canvas.height);canvas.dataset.active='false';
       delete canvas.dataset.flightPhase;
       delete canvas.dataset.inspectedOrb;
       if(plane)delete plane.dataset.flight;
     };
     const finish=(cancelHover=false)=>{clear();setPlaying(false);if(cancelHover)setHovered(false);};
+    const motion=watchReducedMotion(reduced=>{if(reduced)finish(true);});
     const draw=(time:number)=>{
       started??=time;
       const elapsed=Math.max(0,time-started),box=canvas.getBoundingClientRect();
       const dock=homes();
-      if(document.hidden||motion.matches||!box.width||!box.height||!initialBox.width||!initialBox.height||dock.length!==4||dock.some(p=>!p.r)){finish(true);return;}
+      if(document.hidden||motion.reduced||!box.width||!box.height||!initialBox.width||!initialBox.height||dock.length!==4||dock.some(p=>!p.r)){finish(true);return;}
       if(mode==='flight'&&elapsed>=SCANNER_ORB_FLIGHT_MS){finish();return;}
-      const dpr=Math.min(window.devicePixelRatio||1,2);
-      const width=Math.round(box.width*dpr),height=Math.round(box.height*dpr);
-      if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
-      ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,box.width,box.height);
+      fitCanvasToBox(canvas,ctx,box.width,box.height);ctx.clearRect(0,0,box.width,box.height);
       if(mode==='hover'){
         drawScannerTesla(ctx,dock.map(orb=>({...orb,x:orb.x-box.left,y:orb.y-box.top})),elapsed);
         canvas.dataset.active='true';canvas.dataset.flightPhase='hover';
-        frame=requestAnimationFrame(draw);return;
+        return;
       }
       const rect=scanner?.closest('main')?.querySelector('[data-reactor-trigger]')?.getBoundingClientRect();
       const reactor=rect?.width?{x:rect.left+rect.width/2,y:rect.top+rect.height/2,r:rect.width*.44}:{x:box.width*.5,y:box.height*.42,r:0};
@@ -62,15 +60,13 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
       const inspected=orbs.find(orb=>orb.phase==='inspect');
       canvas.dataset.active='true';canvas.dataset.flightPhase=inspected?'inspect':orbs[0].phase;
       canvas.dataset.inspectedOrb=inspected?.label??'';
-      frame=requestAnimationFrame(draw);
     };
-    const visibility=()=>{if(document.hidden)finish(true);};
-    const reduce=()=>{if(motion.matches)finish(true);};
+    const loop=createFrameLoop(draw);
+    const unwatch=watchPageVisibility(hidden=>{if(hidden)finish(true);});
     const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')finish(true);};
-    document.addEventListener('visibilitychange',visibility);
-    document.addEventListener('keydown',escape);motion.addEventListener('change',reduce);
-    frame=requestAnimationFrame(draw);
-    return ()=>{clear();document.removeEventListener('visibilitychange',visibility);document.removeEventListener('keydown',escape);motion.removeEventListener('change',reduce);};
+    document.addEventListener('keydown',escape);
+    loop.start();
+    return ()=>{clear();unwatch();document.removeEventListener('keydown',escape);motion.stop();};
   },[mode]);
   const canvas=<canvas ref={canvasRef} className={playing?styles.flyby:styles.arcs} data-scanner-tesla="true" data-active="false" aria-hidden="true" />;
   return <>

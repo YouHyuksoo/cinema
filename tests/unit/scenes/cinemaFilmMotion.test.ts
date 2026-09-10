@@ -84,9 +84,9 @@ describe('watchPageVisibility', () => {
 describe('fitCanvasToBox', () => {
   it('rounds the bitmap at a capped ratio, resizes only on change and maps units to CSS pixels', () => {
     vi.stubGlobal('window', { devicePixelRatio: 3 });
-    let writes = 0;
-    const canvas = { w: 0, h: 0, get width() { return this.w; }, set width(v: number) { this.w = v; writes++; },
-      get height() { return this.h; }, set height(v: number) { this.h = v; writes++; } } as unknown as HTMLCanvasElement;
+    let writes = 0, w = 0, h = 0;
+    const canvas = { get width() { return w; }, set width(v: number) { w = v; writes++; },
+      get height() { return h; }, set height(v: number) { h = v; writes++; } } as unknown as HTMLCanvasElement;
     const transforms: number[][] = [];
     const ctx = { setTransform: (...args: number[]) => { transforms.push(args); } } as unknown as CanvasRenderingContext2D;
     expect(fitCanvasToBox(canvas, ctx, 100.4, 50.2)).toBe(2);

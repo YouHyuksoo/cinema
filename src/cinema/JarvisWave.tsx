@@ -7,6 +7,7 @@ import { createReactorEggPlayback } from './reactorEasterEgg';
 import { reactorTriggerStyle } from './reactorTriggerLayout';
 import { createFilmThemeContext } from './filmThemeCanvas';
 import type { FilmThemeId } from './filmThemes';
+import { createFrameLoop, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './jarvisWave.module.css';
 
 export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisAudioFrame>; theme?: FilmThemeId }) {
@@ -16,17 +17,17 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
   const egg = useRef(createReactorEggPlayback());
   const [playing, setPlaying] = useState(false);
   const start = () => {
-    if (egg.current.start(window.matchMedia('(prefers-reduced-motion: reduce)').matches)) setPlaying(true);
+    if (egg.current.start(watchReducedMotion().reduced)) setPlaying(true);
   };
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d');
     if (!node || !ctx) return;
     const themed = createFilmThemeContext(ctx);
     palette.current = themed;
-    let frame = 0, previous = 0, level = 0, visualTime = 0, cssW = 1, cssH = 1, dpr = 1, lastPhase = '';
+    let previous = 0, level = 0, visualTime = 0, cssW = 1, cssH = 1, dpr = 1, lastPhase = '';
     const playback = egg.current;
     let samples = new Uint8Array(1024);
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const motion = watchReducedMotion();
     const resize = () => {
       const rect = node.getBoundingClientRect();
       dpr = Math.min(devicePixelRatio || 1, 2);
@@ -42,34 +43,34 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
       const { phase, analyser } = audio.current;
       const seconds = previous ? Math.min((now - previous) / 1000, .1) : 0;
       previous = now;
-      if (!motion.matches) visualTime += seconds;
+      if (!motion.reduced) visualTime += seconds;
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, node.width, node.height);
       const fit = voiceCoreCanvasTransform(cssW, cssH, dpr);
       ctx.setTransform(fit.scale, 0, 0, fit.scale, fit.x, fit.y);
       let target = 0;
-      if (!motion.matches && analyser && (phase === 'listening' || phase === 'speaking')) {
+      if (!motion.reduced && analyser && (phase === 'listening' || phase === 'speaking')) {
         if (samples.length !== analyser.fftSize) samples = new Uint8Array(analyser.fftSize);
         analyser.getByteTimeDomainData(samples);
         for (const sample of samples) target += ((sample - 128) / 128) ** 2;
         target = Math.min(1, Math.sqrt(target / samples.length) * 5);
       } else samples.fill(128);
       level = voiceCoreEnvelope(level, target, seconds);
-      const wasActive = playback.active, eggFrame = playback.advance(seconds, motion.matches);
+      const wasActive = playback.active, eggFrame = playback.advance(seconds, motion.reduced);
       if (wasActive && !playback.active) setPlaying(false);
       const eggPhase = eggFrame?.phase ?? 'idle';
       if (eggPhase !== lastPhase) { node.dataset.easterEgg = eggPhase; lastPhase = eggPhase; }
       const expression = eggFrame && eggFrame.anger > .98 ? 'angry' : 'calm';
       if (node.dataset.expression !== expression) node.dataset.expression = expression;
-      drawJarvisVoiceField(themed.ctx, { time: visualTime, phase, level, reduced: motion.matches, egg: eggFrame }, ctx);
-      frame = requestAnimationFrame(draw);
+      drawJarvisVoiceField(themed.ctx, { time: visualTime, phase, level, reduced: motion.reduced, egg: eggFrame }, ctx);
     };
-    const visibility = () => {
-      cancelAnimationFrame(frame); previous = 0;
-      if (document.hidden) { playback.cancel(); setPlaying(false); }
-      if (!document.hidden) frame = requestAnimationFrame(draw);
+    const loop = createFrameLoop(draw);
+    const visibility = (hidden: boolean) => {
+      loop.stop(); previous = 0;
+      if (hidden) { playback.cancel(); setPlaying(false); }
+      else loop.start();
     };
-    document.addEventListener('visibilitychange', visibility); visibility();
-    return () => { playback.cancel(); cancelAnimationFrame(frame); observer.disconnect(); document.removeEventListener('visibilitychange', visibility); };
+    const unwatch = watchPageVisibility(visibility); visibility(document.hidden);
+    return () => { playback.cancel(); loop.stop(); observer.disconnect(); unwatch(); motion.stop(); };
   }, [audio]);
   // Recolor the existing renderer, without cancelling a running Easter egg or resetting its clock.
   useEffect(() => { palette.current?.setTheme(theme); }, [theme, audio]);

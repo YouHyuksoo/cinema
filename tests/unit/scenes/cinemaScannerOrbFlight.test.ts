@@ -20,7 +20,8 @@ describe('scanner spheres free flight',()=>{
     expect(source).toContain('delete plane.dataset.flight');
     expect(source).toContain("event.key==='Escape'");
     expect(source).toContain('disabled={still||playing}');
-    expect(source).toContain("document.removeEventListener('visibilitychange',visibility)");
+    expect(source).toContain('watchPageVisibility(hidden=>{if(hidden)finish(true);})');
+    expect(source).toContain('return ()=>{clear();unwatch();');
   });
   it('takes off at the actual sphere and returns exactly to its moving dock',()=>{
     expect(pose(0)).toMatchObject({x:home.x,y:home.y,r:home.r,phase:'launch'});
