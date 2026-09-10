@@ -1,0 +1,61 @@
+/* HATCHERY boot gate: a cockpit-style HUD rig in five depth layers (CSS 3D), monochrome in the theme
+   accent on near-black. Layers fly in from depth on boot, breathe in place, and the whole rig passes
+   through the camera on --pass (0 .. 1) to reveal the interface behind it. The overlay sits outside
+   the film's theme scope, so the accent falls back to the default cyan. No images, no glass. */
+.stage { position: fixed; inset: 0; z-index: 8; overflow: hidden; --pass: 0;
+  --accent: var(--film-accent, #5fe3ff); --bg: #020509;
+  --ink: color-mix(in srgb, var(--accent) 88%, white); --line: color-mix(in srgb, var(--accent) 72%, transparent);
+  --hair: color-mix(in srgb, var(--accent) 34%, transparent); --wash: color-mix(in srgb, var(--accent) 5%, transparent);
+  perspective: 900px; perspective-origin: 50% 50%; font-family: var(--font-mono, monospace), monospace; }
+.stage:focus { outline: none; }
+.stage[data-gate-open="true"] { pointer-events: none; }
+:global(:root[data-hatchery-intro]) :global([data-cube-layer]) { z-index: 9 !important; }
+
+/* Dark veil that hides the HUD until the rig has passed; it thins with --pass. */
+.veil { position: absolute; inset: 0; opacity: calc(1 - var(--pass));
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, color-mix(in srgb, var(--accent) 7%, var(--bg)), var(--bg) 75%); }
+
+/* The rig travels toward the camera on --pass; nearer layers leave first because they sit closer already. */
+.rig { position: absolute; inset: 0; transform-style: preserve-3d;
+  transform: translateZ(calc(var(--pass) * 1100px)); opacity: calc(1 - var(--pass) * var(--pass)); }
+.breath { position: absolute; inset: 0; transform-style: preserve-3d; animation: breathe 7s ease-in-out infinite alternate; }
+
+.layer { position: absolute; inset: 0; width: 100%; height: 100%; transform: translateZ(var(--depth));
+  animation: boot .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--delay); fill: none; stroke-linecap: square; }
+.layer[data-hud-layer="depth"] { --depth: -420px; --delay: 0ms; }
+.layer[data-hud-layer="frame"] { --depth: -260px; --delay: 70ms; }
+.layer[data-hud-layer="wings"] { --depth: -140px; --delay: 140ms; }
+.layer[data-hud-layer="ring"] { --depth: -40px; --delay: 210ms; }
+.layer[data-hud-layer="labels"] { --depth: 60px; --delay: 280ms; }
+svg.layer path, svg.layer circle, svg.layer rect { vector-effect: non-scaling-stroke; }
+
+/* Stroke vocabulary, in the reference's monochrome weights. */
+.heavy { stroke: var(--ink); stroke-width: 9; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 50%, transparent)); }
+.line { stroke: var(--line); stroke-width: 2; }
+.hair { stroke: var(--hair); stroke-width: 1; }
+.dots { stroke: var(--hair); stroke-width: 2; stroke-dasharray: 2 10; }
+.speck { stroke: var(--ink); stroke-width: 3; opacity: .8; }
+.wash { fill: var(--wash); stroke: none; }
+.bar { fill: var(--ink); opacity: .92; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 45%, transparent)); }
+.bar:nth-of-type(5n) { opacity: .35; }
+
+.ringSoft { stroke: var(--hair); stroke-width: 1; }
+.ringTicks { stroke: var(--line); stroke-width: 12; stroke-dasharray: 1 5; opacity: .5; transform-origin: 800px 450px; animation: turn 24s linear infinite; }
+.ringArcs { stroke: var(--ink); stroke-width: 6; stroke-dasharray: 62 28; stroke-dashoffset: 31; transform-origin: 800px 450px; animation: turn 90s linear infinite reverse;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent)); }
+
+.label { position: absolute; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; white-space: nowrap;
+  color: color-mix(in srgb, var(--accent) 75%, white); opacity: .85; }
+.label[data-intro-state="standby"] { color: color-mix(in srgb, var(--accent) 55%, white); }
+.label[data-intro-state="online"] { color: var(--ink); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* Full-screen transparent skip control; keyboard users see a focus ring. */
+.skip { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; background: transparent; border: 0;
+  color: transparent; font-size: 0; cursor: pointer; }
+.skip:focus-visible { outline: 2px solid var(--accent); outline-offset: -6px; }
+
+@keyframes boot { from { transform: translateZ(-1400px); opacity: 0; } }
+@keyframes breathe { from { transform: translateZ(-14px); } to { transform: translateZ(14px); } }
+@keyframes turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .layer, .breath, .ringTicks, .ringArcs { animation: none; } }
+@media (max-width: 700px) { .label { font-size: 9px; letter-spacing: .16em; } }

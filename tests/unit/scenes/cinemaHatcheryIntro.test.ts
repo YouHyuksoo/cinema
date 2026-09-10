@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createIntroTimeline, INTRO_SESSION_KEY, INTRO_TIMING, shouldPlayIntro } from '@/cinema/hatcheryIntro';
+import { createIntroTimeline, INTRO_SESSION_KEY, INTRO_TIMING, shouldPlayIntro } from '@/cinema/hatcheryIntroTimeline';
 
 const memoryStorage = () => {
   const map = new Map<string, string>();
@@ -63,5 +63,14 @@ describe('intro timeline', () => {
     const a = createIntroTimeline(0), b = createIntroTimeline(0);
     for (const intro of [a, b]) { intro.ready(0); intro.solved(5900); }
     expect(a.at(6400)).toEqual(b.at(6400));
+  });
+});
+
+describe('intro timeline safety', () => {
+  it('opens after the cube timeout even when the HUD never reports ready', () => {
+    const intro = createIntroTimeline(0);
+    expect(intro.at(INTRO_TIMING.cubeTimeoutMs - 1).phase).toBe('closed');
+    expect(intro.at(INTRO_TIMING.cubeTimeoutMs).phase).toBe('opening');
+    expect(intro.at(INTRO_TIMING.cubeTimeoutMs + INTRO_TIMING.doorMs).phase).toBe('done');
   });
 });

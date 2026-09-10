@@ -27,8 +27,8 @@ export function createIntroTimeline(start: number) {
   const openingAt = (now: number) => {
     if (skippedAt !== null) return skippedAt;
     if (solvedAt !== null && readyAt !== null) return Math.max(solvedAt, readyAt);
-    // A cube that never reports (not mounted, crashed) must not keep the screen covered.
-    if (readyAt !== null && now - start >= INTRO_TIMING.cubeTimeoutMs) return start + INTRO_TIMING.cubeTimeoutMs;
+    // A cube or a readiness probe that never reports must not keep the screen covered.
+    if (now - start >= INTRO_TIMING.cubeTimeoutMs) return start + INTRO_TIMING.cubeTimeoutMs;
     return null;
   };
   return {
