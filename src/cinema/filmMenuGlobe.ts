@@ -469,6 +469,15 @@ function sphereTable(ctx: CanvasRenderingContext2D, size: number): SphereTable {
   return table;
 }
 
+/** Raster spin resolution: 0.5° steps. A 30 s revolution then rasters at most every other frame at 60 fps. */
+export const SPHERE_SPIN_STEPS = 720;
+/** Spin angle snapped to the raster grid; frames whose snapped angle is unchanged reuse the previous raster. */
+export function sphereSpinAngle(angleRadians: number, steps = SPHERE_SPIN_STEPS) {
+  if (!Number.isFinite(angleRadians)) return 0;
+  const step = TAU / steps;
+  return Math.round(angleRadians / step) * step % TAU;
+}
+
 /** Paint a lit sphere wrapped by inset panel outlines with gaps between cells. Spinning only shifts longitude. */
 export function drawSoccerSphere(canvas: HTMLCanvasElement, cssSize: number, angleRadians: number) {
   const size = Math.max(1, Math.round(finiteSize(cssSize)));

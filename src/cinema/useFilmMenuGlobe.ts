@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { clampGlobeCenter, drawSoccerSphere, globeDiameter, turbineOrbMetrics, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
-  globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, type MenuPose,
+  globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, sphereSpinAngle, type MenuPose,
   type Point } from './filmMenuGlobe';
 import { orbitPose, orbitRadius, ringPose, type MenuLayout } from './filmMenuRing';
 import { shockEnvelope, SHOCK_ATTRIBUTE } from './reactorMenuShock';
@@ -55,6 +55,8 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     let momentum = { x: 0, y: 0 };
     // Resting size: half when idle; hover, focus or drag grows to 70% of the layout diameter.
     let rest = 0, idleMs = 0, awake = false, dragDirty = false;
+    // Idle-cost guards: the sphere rasters only on a new snapped spin, orbit variables publish only on change.
+    let rasterSpin = -1, rasterSize = 0, publishedOrbitVars = '';
     const restScale = () => globeRestScale(rest);
     let pointer: null | { id: number; origin: Point; center: Point; lastCenter: Point;
       lastTime: number; dragged: boolean; velocity: Point } = null;
@@ -160,17 +162,23 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         face.style.transform = `translate(-50%,-50%) translate3d(${pose.x}px,${pose.y}px,${pose.z}px) rotateY(${pose.yaw}deg) rotateX(${pose.pitch ?? 0}deg) scale(${pose.scale})`;
         face.style.opacity = String(pose.opacity);
       });
-      if (nav) {
-        nav.style.setProperty('--orbit-cx', `${globeCenter.x}px`); nav.style.setProperty('--orbit-cy', `${globeCenter.y}px`);
-        nav.style.setProperty('--orbit-r', `${orbitRadius(diameter)}px`);
+      const orbitVars = `${globeCenter.x}px ${globeCenter.y}px ${orbitRadius(diameter)}px`;
+      if (nav && orbitVars !== publishedOrbitVars) {
+        publishedOrbitVars = orbitVars;
         // The dock's action hub (a sibling of this menu) centres itself on the same values.
-        for (const [name, value] of [['--orbit-cx', `${globeCenter.x}px`], ['--orbit-cy', `${globeCenter.y}px`], ['--orbit-r', `${orbitRadius(diameter)}px`]]) document.documentElement.style.setProperty(name, value);
+        for (const [name, value] of [['--orbit-cx', `${globeCenter.x}px`], ['--orbit-cy', `${globeCenter.y}px`], ['--orbit-r', `${orbitRadius(diameter)}px`]]) {
+          nav.style.setProperty(name, value); document.documentElement.style.setProperty(name, value);
+        }
       }
       if ((currentPhase === 'closed' || orbit) && ball.current) {
         // Raster the sphere at its full size and scale it with the same factor as the tiles, so both
         // shrink in lockstep and the per-frame raster cost does not change with the rest size.
         ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
-        drawSoccerSphere(ball.current, diameter, angle);
+        const spin = sphereSpinAngle(angle);
+        if (spin !== rasterSpin || diameter !== rasterSize) {
+          rasterSpin = spin; rasterSize = diameter;
+          drawSoccerSphere(ball.current, diameter, spin);
+        }
       }
       dragDirty = false;
       floating.style.transform = `translateY(${floatingY}px)`;
@@ -198,7 +206,8 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const frame = (time: number) => {
       raf = 0;
       const raw = previousTime === null ? 0 : time - previousTime, delta = Math.min(64, raw); previousTime = time;
-      rect = element.getBoundingClientRect();
+      // Only the ring morph positions tiles from the stage box; the folded globe and drags use viewport coordinates.
+      if (currentPhase === 'morphing') rect = element.getBoundingClientRect();
       if (pointer) {
         // Held or dragging: no spin, float or momentum. Grow to the hover size while pressed and
         // redraw once per frame instead of once per pointermove event.
