@@ -22,6 +22,19 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
     const initialBox=canvas.getBoundingClientRect();
     const homes=()=>sources.map(node=>{const rect=node.getBoundingClientRect();return {x:rect.left+rect.width/2,y:rect.top+rect.height/2,r:rect.width/2};});
     const launches=homes();
+    // Colour, label and detail only change with a sphere's connection state: resolve them per state, not per frame.
+    const looks=new Map<string,{color:string;label:string;status:string;detail:string}>();
+    const look=(index:number)=>{
+      const node=sources[index],state=node.dataset.state as ConnectionState,key=`${index}:${state}`;
+      let cached=looks.get(key);
+      if(!cached){
+        cached={color:getComputedStyle(node).getPropertyValue('--orb-color').trim()||'#8b9cab',
+          label:node.dataset.statusOrb?.toUpperCase()??'',status:CONNECTION_LABELS[state]??'미확인',
+          detail:node.title.split(' · ').slice(1).join(' · ')};
+        looks.set(key,cached);
+      }
+      return cached;
+    };
     // RAF timestamps can predate an effect's performance.now() within the same frame.
     let started:number|null=null;
     const clear=()=>{
@@ -49,10 +62,7 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
       const orbs:FlightSphere[]=dock.map((home,index)=>{
         const launch={x:launches[index].x*box.width/initialBox.width,y:launches[index].y*box.height/initialBox.height,r:launches[index].r*box.width/initialBox.width};
         const pose=scannerOrbFlight(elapsed,index,launch,home,reactor,{width:box.width,height:box.height})!;
-        const state=sources[index].dataset.state as ConnectionState;
-        return {...pose,color:getComputedStyle(sources[index]).getPropertyValue('--orb-color').trim()||'#8b9cab',
-          label:sources[index].dataset.statusOrb?.toUpperCase()??'',status:CONNECTION_LABELS[state]??'미확인',
-          detail:sources[index].title.split(' · ').slice(1).join(' · ')};
+        return {...pose,...look(index)};
       });
       try { drawScannerFlight(ctx,orbs,elapsed,SCANNER_ORB_FLIGHT_MS,reactor); }
       catch(error) { finish(true);console.error('Scanner flight rendering failed',error);return; }
