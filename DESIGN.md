@@ -1,5 +1,7 @@
 # CINEMA 시각 시스템
 
+- 메뉴 펼침 방식은 선택 즉시 브라우저의 cinema.menu.layout.v1에 저장하여 새로고침·화면 재진입 때 복원한다. SSR은 하단 링으로 일치시키고 useSyncExternalStore로 저장 선택을 복원하며 초기 렌더링은 저장값을 덮어쓰지 않는다. 잘못된 값은 하단 링, 저장 차단 시 현재 세션에서만 유지한다. 재생·장치 시작 상태는 저장하지 않는다. 영향: filmMenuPreference → useFilmPlayback → FilmControls / FilmChapterMenu. 검증: cinemaMenuPreference 및 선택 후 새로고침.
+
 - 메뉴 좌표 hydration 일치: 하단 링과 구체 둘레 링의 SSR/CSS 출력은 menuPoseStyle에서 좌표·각도·배율·투명도를 소수점 6자리 이내 문자열로 통일한다. 내부 삼각함수·공전 계산 정밀도는 유지하며 서버/브라우저 엔진의 마지막 비트 차이가 HTML 불일치를 만들지 않도록 출력 경계에서만 정규화한다. 경고 숨김(suppressHydrationWarning)은 쓰지 않는다. 영향: filmMenuRing.menuPoseStyle → FilmChapterMenu. 검증: cinemaMenuHydration의 두 레이아웃 정밀도 및 삼각함수 오차 주입 SSR 비교.
 
 - 메뉴 진입 안정성: 구체·큐브 본체와 클릭 영역은 서버 HTML/좌표 미설정 상태에서 숨기고 useLayoutEffect의 첫 측정·그리기가 끝난 뒤 함께 표시한다. 큐브는 상단 베이 공간을 예약한 다음 최종 스트립 중심을 측정하여 첫 프레임 재배치를 방지한다. 기존 위치·크기·생성 연출은 유지한다. 터빈 명령 실행 시 먼저 접고 초점을 허브로 옮기며, 이 초점 이동으로 즉시 다시 펼쳐지지 않게 한다. 포인터 이탈 후 재진입 또는 허브 직접 조작으로 다시 열 수 있다. 영향: FilmTurbineMenu / useFilmMenuGlobe / FilmMenuCubeView / filmMenuGlobe.module.css / filmMenuCube.module.css. 검증: cinemaMenuEntrance 및 연출→메인 실제 전환.

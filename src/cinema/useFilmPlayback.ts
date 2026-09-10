@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { drawSignalFilm } from './drawSignalFilm';
 import { createFilmTextureRenderer, DEFAULT_FILM_TEXTURE, type FilmTextureSettings, type FilmTextureStyle } from './filmTexture';
 import { advanceFilm, chapterAt, chapterStart, FILM_CHAPTERS, type FilmId, type PlaybackMode } from './filmProgram';
@@ -18,7 +18,8 @@ import { createSceneDataStore } from './sceneDataStore';
 import { browserStaticSceneDataOptions, loadStaticSceneData } from './staticSceneData';
 import { browserFeedPollingOptions, startFeedPolling, type FeedPollSummary } from './feedPolling';
 import { DEFAULT_MACHINE_SUBJECT, isMachineSubject, type MachineSubject } from './machinePresentation';
-import { isMenuLayout, type MenuLayout } from './filmMenuRing';
+import { type MenuLayout } from './filmMenuRing';
+import { menuLayoutPreference } from './filmMenuPreference';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -31,7 +32,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const [texture, setTexture] = useState<FilmTextureSettings>(DEFAULT_FILM_TEXTURE);
   const [charts, setCharts] = useState<FilmChartSettings>(DEFAULT_FILM_CHARTS);
   const [theme, setTheme] = useState<FilmThemeId>(DEFAULT_FILM_THEME);
-  const [menuLayout, setMenuLayout] = useState<MenuLayout>('dock');
+  const menuLayout = useSyncExternalStore(menuLayoutPreference.subscribe, menuLayoutPreference.getSnapshot, menuLayoutPreference.getServerSnapshot);
   const [store] = useState(() => createSceneDataStore());
   const [sceneData, setSceneData] = useState<FilmSceneData>(DEFAULT_FILM_SCENE_DATA);
   useEffect(() => store.subscribe(setSceneData), [store]);
@@ -140,7 +141,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   return {
     ready, playing, speed, mode, position, texture, charts, theme, factory, cctv, environment, sceneData, feedStatus, machineSubject, menuLayout,
     /** How the folded globe unfolds: bottom dock ring or a ring around the globe. */
-    changeMenuLayout(value: MenuLayout) { if (isMenuLayout(value)) setMenuLayout(value); },
+    changeMenuLayout(value: MenuLayout) { menuLayoutPreference.set(value); },
     changeMachineSubject(value: MachineSubject) {
       if (!isMachineSubject(value) || value === clock.current.machineSubject) return;
       clock.current.machineSubject = value; setMachineSubject(value);

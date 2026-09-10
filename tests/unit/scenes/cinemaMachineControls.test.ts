@@ -15,6 +15,7 @@ vi.mock('react', async importOriginal => ({
   useState: <T>(value: T | (() => T)) => [typeof value === 'function' ? (value as () => T)() : value, vi.fn()],
   useRef: <T>(value: T) => { const ref = { current: value }; hooks.refs.push(ref); return ref; },
   useEffect: vi.fn(),
+  useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
 }));
 vi.mock('@/cinema/useSmtFactoryInteraction', () => ({ useSmtFactoryInteraction: () => ({ clear: vi.fn(), readState: () => null }) }));
 vi.mock('@/cinema/useCctvInteraction', () => ({ useCctvInteraction: () => ({ clear: vi.fn(), readState: () => null, manual: false }) }));
