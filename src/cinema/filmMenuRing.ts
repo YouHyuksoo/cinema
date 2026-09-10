@@ -41,3 +41,13 @@ export function orbitPose(index: number, turn: number, count: number, radius: nu
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, z: 0, yaw: 0, angle,
     scale: 1.02 + front * .3, opacity: .82 + front * .18 };
 }
+
+/** Quantize only the CSS boundary: JS engines may differ in the final bits of sin/cos. */
+export function menuPoseStyle(pose:ReturnType<typeof ringPose>|ReturnType<typeof orbitPose>) {
+  const cssNumber=(value:number)=>String(Number(value.toFixed(6)));
+  const appearance={'--ring-scale':cssNumber(pose.scale),'--ring-opacity':cssNumber(pose.opacity)};
+  return 'angle' in pose
+    ? {...appearance,'--orbit-angle':`${cssNumber(pose.angle)}rad`}
+    : {...appearance,'--ring-x':`${cssNumber(pose.x)}px`,'--ring-y':`${cssNumber(pose.y)}px`,
+      '--ring-z':`${cssNumber(pose.z)}px`,'--ring-yaw':`${cssNumber(pose.yaw)}deg`};
+}

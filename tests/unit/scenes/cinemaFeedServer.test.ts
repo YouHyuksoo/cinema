@@ -23,7 +23,7 @@ const rows = [{ ID: '01', LABEL: 'S01', VALUE: 860, TARGET: 1150, UNIT: 'EA' }, 
 const request = (method: string, body?: unknown) => new Request('http://localhost:3000/api/cinema/x', { method, headers: { origin: 'http://localhost:3000', 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
 
 let dir = '';
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'hatchery-')); vi.stubEnv('HATCHERY_CONFIG_PATH', join(dir, 'sources.json')); vi.clearAllMocks(); delete globalThis.hatcheryFeedService; });
+beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'hatchery-')); vi.stubEnv('HATCHERY_CONFIG_PATH', join(dir, 'sources.json')); vi.clearAllMocks(); delete globalThis.hatcheryFeedService; delete globalThis.hatcheryDatabaseHealth; });
 afterEach(() => { vi.unstubAllEnvs(); rmSync(dir, { recursive: true, force: true }); });
 
 describe('configuration file', () => {
@@ -114,7 +114,10 @@ describe('admin and feed routes', () => {
     const unsaved = await (await preview(request('POST', { mapping: { ...config.feeds[0], sql: 'SELECT 2 FROM DUAL' } }))).json();
     expect(unsaved.ok).toBe(true);
     expect(oracle.queryOracle).toHaveBeenLastCalledWith(expect.anything(), 'SELECT 2 FROM DUAL', 50);
+    oracle.testOracleSource.mockResolvedValueOnce({ok:true,elapsedMs:2,version:'19.0'});
     const polled = await (await pollFeeds(request('GET'))).json();
+    expect(polled.database).toMatchObject({total:1,connected:1});
+    expect(JSON.stringify(polled.database)).not.toMatch(/secret|reader|PDB/);
     expect(polled.documents[0]).toMatchObject({ scene: 'bars' });
     expect(polled.feeds[0]).toMatchObject({ feed: 'production', ok: true });
     expect(polled.nextInSeconds).toBeGreaterThan(0);

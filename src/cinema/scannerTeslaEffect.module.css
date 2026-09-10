@@ -1,0 +1,6 @@
+.trigger { position:absolute; inset:0; z-index:5; border:0; padding:0; background:transparent; cursor:pointer; pointer-events:auto; border-radius:12px; }
+.trigger:focus-visible { outline:1px solid #8bc8ff; outline-offset:-4px; }
+.trigger:disabled { cursor:default; }
+.arcs { position:absolute; inset:0; width:100%; height:100%; z-index:6; pointer-events:none; }
+.flyby { position:fixed; inset:0; width:100vw; height:100dvh; z-index:120; pointer-events:none; }
+@media(prefers-reduced-motion:reduce) { .arcs,.flyby { visibility:hidden; } }

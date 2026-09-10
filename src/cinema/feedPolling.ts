@@ -1,8 +1,9 @@
 import type { SceneDataStore } from './sceneDataStore';
 import { CINEMA_BASE_PATH } from './cinemaApi';
+import type { DatabaseHealth } from './scannerConnectionStatus';
 
 export interface FeedPollStatus { feed: string; enabled: boolean; ok: boolean; at?: string; error?: string; issues: string[]; counts: Record<string, { rows: number; kept: number }>; nextAt?: string }
-export interface FeedPollSummary { mode: 'server' | 'static' | 'error'; feeds: FeedPollStatus[]; applied: number; rejected: string[]; error?: string; at: string }
+export interface FeedPollSummary { mode: 'server' | 'static' | 'error'; feeds: FeedPollStatus[]; applied: number; rejected: string[]; error?: string; at: string; database?:DatabaseHealth }
 export interface FeedPollingOptions {
   fetch: typeof globalThis.fetch | undefined;
   basePath: string;
@@ -30,7 +31,7 @@ export function startFeedPolling(store: SceneDataStore, options: FeedPollingOpti
   async function tick() {
     if (stopped || !options.fetch) return;
     const at = new Date().toISOString();
-    let body: { documents?: unknown[]; feeds?: FeedPollStatus[]; nextInSeconds?: number; error?: string };
+    let body: { documents?: unknown[]; feeds?: FeedPollStatus[]; nextInSeconds?: number; error?: string; database?:DatabaseHealth };
     try {
       const response = await options.fetch(`${options.basePath}${FEED_POLL_PATH}`, { cache: 'no-store' });
       if (response.status === 404 || !(response.headers.get('content-type') ?? '').includes('application/json')) {
@@ -47,7 +48,7 @@ export function startFeedPolling(store: SceneDataStore, options: FeedPollingOpti
       const result = store.replace(document);
       if (result.ok) applied++; else rejected.push(result.reason);
     }
-    report({ mode: 'server', feeds: body.feeds ?? [], applied, rejected, error: body.error, at });
+    report({ mode: 'server', feeds: body.feeds ?? [], applied, rejected, error: body.error, at, database:body.database });
     next(Number.isFinite(body.nextInSeconds) ? Number(body.nextInSeconds) : 30);
   }
   void tick();

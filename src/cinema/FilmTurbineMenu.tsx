@@ -9,11 +9,12 @@ export function FilmTurbineMenu({ ready, playing, voiceActive, onCommand }: {
 }) {
   const [open, setOpen] = useState(false);
   const hub = useRef<HTMLButtonElement>(null);
+  const suppressOpen = useRef(false);
   const controls = useId();
   return <nav className={styles.menu} data-turbine-open={open} aria-label="터빈 명령 메뉴"
-    onPointerEnter={event => { if (event.pointerType !== 'touch') setOpen(true); }}
-    onPointerLeave={event => { if (event.pointerType !== 'touch') setOpen(false); }}
-    onFocusCapture={event => { if (event.target.matches(':focus-visible')) setOpen(true); }}
+    onPointerEnter={event => { if (event.pointerType !== 'touch' && !suppressOpen.current) setOpen(true); }}
+    onPointerLeave={event => { if (event.pointerType !== 'touch') { suppressOpen.current=false;setOpen(false); } }}
+    onFocusCapture={event => { if (!suppressOpen.current && event.target.matches(':focus-visible')) setOpen(true); }}
     onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
     onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); hub.current?.focus(); setOpen(false); } }}>
     <span className={styles.hoverTarget} aria-hidden="true"/>
@@ -29,13 +30,17 @@ export function FilmTurbineMenu({ ready, playing, voiceActive, onCommand }: {
             aria-label={command.label} title={command.id === 'conversation' ? 'AI 음성 대화 시작 · 마이크 사용' : command.label}
             disabled={!ready || (command.id === 'conversation' && voiceActive)}
             aria-pressed={command.id === 'play' ? playing : command.id === 'pause' ? !playing : command.id === 'conversation' ? voiceActive : undefined}
-            onClick={() => { onCommand(command.id); }}>
+            onClick={() => {
+              suppressOpen.current=true;setOpen(false);
+              hub.current?.focus({preventScroll:true});
+              onCommand(command.id);
+            }}>
             <TurbineBlade/>
             <span className={styles.legend}><TurbineCommandIcon command={command.id}/><span>{command.label}</span></span>
           </button></div>)}
         </div>
         <button ref={hub} data-turbine-hub className={styles.hub} type="button" aria-label="터빈 메뉴 펼치기/접기" aria-expanded={open} aria-controls={controls}
-          onClick={() => setOpen(value => !value)}><span/><i aria-hidden="true"/></button>
+          onClick={() => { suppressOpen.current=false;setOpen(value => !value); }}><span/><i aria-hidden="true"/></button>
         </div>
       </div>
       </div>

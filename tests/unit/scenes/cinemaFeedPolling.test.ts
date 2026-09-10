@@ -15,6 +15,14 @@ function harness() {
 }
 
 describe('feed polling adapter', () => {
+  it('carries database evidence through the existing polling channel', async () => {
+    const h=harness();
+    const database={checkedAt:new Date().toISOString(),total:1,connected:1};
+    const stop=startFeedPolling(createSceneDataStore(), { fetch:async()=>json({database,documents:[],feeds:[]}),basePath:'',schedule:h.schedule,onStatus:h.onStatus });
+    await flush();
+    expect(h.statuses[0]).toMatchObject({database});
+    stop();
+  });
   it('applies polled documents, reports status and schedules the next poll from the server hint', async () => {
     const store = createSceneDataStore();
     const h = harness();

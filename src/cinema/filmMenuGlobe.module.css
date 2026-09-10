@@ -1,5 +1,6 @@
 /* Palette is inherited from the shared menu so ring and globe stay identical. */
 .shell { }
+.layer:not([data-positioned=true]),.expand:not([data-positioned=true]) { visibility:hidden; }
 .layer {
   position:fixed;
   inset:0;

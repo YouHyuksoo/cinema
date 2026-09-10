@@ -27,9 +27,10 @@ import type { MachineSubject } from './machinePresentation';
 import type { HatcheryActions } from './hatcheryTargets';
 import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
+import type { FeedPollSummary } from './feedPolling';
 
 const overview = jarvisOverview();
-interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean }
+interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null }
 export function JarvisMain(props: JarvisMainProps) {
   return props.voice ? <JarvisMainContent {...props} voice={props.voice}/> : <ConnectedJarvisMain {...props}/>;
 }
@@ -37,13 +38,13 @@ function ConnectedJarvisMain(props: JarvisMainProps) {
   const voice = useJarvisVoice(props.onChapter, props.actions);
   return <JarvisMainContent {...props} voice={voice}/>;
 }
-function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', voice, externalBriefing = false }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
+function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
   const [input, setInput] = useState('');
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
   return <section className={styles.main} data-external-briefing={externalBriefing} aria-label="HATCHERY 메인 메뉴">
-    <JarvisMainHeader />
+    <JarvisMainHeader feedStatus={feedStatus} />
     <div className={styles.body}>
     <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15}>
     {sceneSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="연출 설정">

@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react';
 import { jarvisMainMetrics } from './jarvisMainData';
 import { JarvisCubeBayFrame, JarvisMetricFrame } from './JarvisMetricFrame';
+import { JarvisSignalScanner } from './JarvisSignalScanner';
 import { JarvisMetricInstrument } from './JarvisMetricInstruments';
 import { useDriftScroll } from './useDriftScroll';
 import styles from './jarvisMetricCards.module.css';
@@ -12,6 +13,10 @@ export function JarvisMetricCards({feedStatus}:{feedStatus?:FeedPollSummary|null
   const { hostRef: stripRef, viewportRef, paused, toggle } = useDriftScroll({ axis: 'x', speed: 20, resumeMs: 1000, initialHoldMs: 1500 });
   return <div ref={stripRef} className={styles.strip} role="region" aria-label="상단 주요 지표" data-metric-strip="true">
     <JarvisCubeBayFrame />
+    <div className={styles.signalBay} data-signal-bay="true">
+      <JarvisCubeBayFrame />
+      <JarvisSignalScanner feedStatus={feedStatus} />
+    </div>
     <div className={styles.stripBar}>
       <span>LIVE METRICS / {jarvisMainMetrics.length} · DEMO</span>
       <button type="button" onClick={toggle} aria-pressed={paused}

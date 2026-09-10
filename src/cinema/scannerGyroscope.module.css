@@ -1,0 +1,25 @@
+.gyro { position:absolute; left:50%; top:1%; width:70%; aspect-ratio:1; transform:translateX(-50%) rotateX(12deg) rotateZ(-16deg); transform-style:preserve-3d; }
+.definitions { position:absolute; pointer-events:none; }
+.axis { position:absolute; inset:0; transform-style:preserve-3d; }
+.yaw { animation:gyroYaw 18s linear infinite; transform:rotateY(-24deg); }
+.pitch { inset:12%; animation:gyroPitch 13s linear infinite; animation-delay:-3s; transform:rotateX(62deg); }
+.roll { inset:13%; animation:gyroRoll 9s linear infinite reverse; animation-delay:-1s; transform:rotateZ(32deg); }
+.face { position:absolute; inset:0; width:100%; height:100%; overflow:visible; backface-visibility:visible; }
+.front { transform:translateZ(3px); }
+.back { transform:translateZ(-3px); }
+.wall { position:absolute; inset:1%; border-radius:50%; border:5px solid #526a77; box-shadow:inset 0 0 0 1px #101f28; transform:translateZ(var(--wall-depth)); }
+.inlay { fill:none; stroke:var(--film-accent); stroke-width:3.5; stroke-dasharray:38 3 16 3 23 4; filter:drop-shadow(0 0 1.5px var(--film-accent)); }
+.rail { fill:none; stroke:#e1edf2; stroke-width:.7; opacity:.9; }
+.innerRail { fill:none; stroke:var(--film-accent-soft); stroke-width:1; }
+.tick { stroke:#f0fbff; stroke-width:.8; }
+.clamps { fill:none; stroke:#203641; stroke-width:10; stroke-dasharray:5 64.115; }
+.bearing { position:absolute; top:calc(50% - 3px); width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 32% 25%,#f1fbff,#6f8793 40%,#14252e 65%); box-shadow:0 0 0 1px #99afba; transform:translateZ(4px); }
+.bearingLeft { left:1%; }
+.bearingRight { right:1%; }
+.sensor { position:absolute; left:50%; top:50%; width:12px; height:12px; margin:-6px; border:1px solid var(--film-accent); border-radius:50%; background:radial-gradient(circle,#eafcff 5%,var(--film-accent) 26%,#122a36 65%); box-shadow:0 0 8px color-mix(in srgb,var(--film-accent) 65%,transparent); }
+.sensor i { position:absolute; inset:-4px; border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent); border-radius:50%; }
+@keyframes gyroYaw { from { transform:rotateY(0turn); } to { transform:rotateY(1turn); } }
+@keyframes gyroPitch { from { transform:rotateX(0turn); } to { transform:rotateX(1turn); } }
+@keyframes gyroRoll { from { transform:rotateZ(0turn); } to { transform:rotateZ(1turn); } }
+@media(prefers-reduced-motion:reduce) { .axis { animation:none; } }
+.gyro[data-still=true] .axis { animation:none; }

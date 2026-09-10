@@ -7,6 +7,13 @@
 :global(:root[data-cube-docked="true"]) .strip::before { display:block; }
 .bayFrame { display:none; position:absolute; left:0; top:0; width:var(--hatchery-cube-bay,0px); height:100%; z-index:-1; pointer-events:none; overflow:visible; color:var(--film-accent); filter:drop-shadow(0 0 3px color-mix(in srgb,var(--film-accent) 25%,transparent)); }
 :global(:root[data-cube-docked="true"]) .bayFrame { display:block; }
+/* Right bay: the signal scanner mirrors the cube bay (same width, mirrored frame) and takes that width from the card rail. */
+.signalBay { display:none; position:absolute; right:0; top:0; bottom:0; width:var(--hatchery-cube-bay,0px); z-index:0; isolation:isolate; }
+.signalBay::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(-155deg,color-mix(in srgb,var(--film-accent) 10%,transparent),color-mix(in srgb,var(--film-bg) 40%,transparent) 55%,color-mix(in srgb,var(--film-accent) 5%,transparent)); clip-path:polygon(16.25% 0,100% 0,100% 83.75%,83.75% 100%,0 100%,0 16.25%); }
+.signalBay .bayFrame { display:block; left:auto; right:0; transform:scaleX(-1); }
+:global(:root[data-cube-docked="true"]) .signalBay { display:block; }
+:global(:root[data-cube-docked="true"]) .strip { padding-right:calc(var(--hatchery-cube-bay,0px) + 36px); }
+:global(:root[data-cube-docked="true"]) .strip::after { right:calc(var(--hatchery-cube-bay,0px) + 36px); }
 .strip::after { left:var(--hatchery-cube-space,0px); right:0; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
 .stripBar { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:26px; padding-left:16px; }
 .stripBar>span { font:7px var(--font-mono),monospace; color:var(--film-muted); }
@@ -53,6 +60,10 @@
   /* Only a sliver between the cube bay and the card rail; the desktop 36px breathing room is too much here. */
   .strip { padding-left:calc(var(--hatchery-cube-bay,0px) + 8px); }
   .strip::after { left:calc(var(--hatchery-cube-bay,0px) + 8px); }
+  /* No room for the scanner bay on phones: the card rail keeps the right edge. */
+  :global(:root[data-cube-docked="true"]) .signalBay { display:none; }
+  :global(:root[data-cube-docked="true"]) .strip { padding-right:0; }
+  :global(:root[data-cube-docked="true"]) .strip::after { right:0; }
   .cards>.card { flex-basis:clamp(150px,72%,220px); }
   .card { padding:5px 8px 7px; }
   .card .reading strong { font-size:20px; }

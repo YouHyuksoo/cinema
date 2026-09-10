@@ -1,0 +1,52 @@
+/* Four status spheres orbit above the existing metal scanner pedestal. */
+.scanner { position:absolute; inset:0; display:flex; flex-direction:column; padding:6px 8px 12px; color:var(--film-accent); pointer-events:none; overflow:hidden; }
+.label { font:7px var(--font-mono),monospace; letter-spacing:.08em; color:var(--film-accent-soft); }
+.stage { position:relative; flex:1; min-height:0; container-type:size; }
+.instrument { position:absolute; left:50%; top:50%; width:min(100%,100cqh); aspect-ratio:1; transform:translate(-50%,-50%); perspective:420px; transform-style:preserve-3d; }
+
+/* Pedestal drum. */
+.pedestal { position:absolute; left:50%; bottom:-1%; width:110%; height:auto; transform:translateX(-50%); overflow:visible; }
+/* The drum floats: it bobs up and down while its ground shadow shrinks and fades in step. */
+.drum { animation:signalFloat 4.2s ease-in-out infinite alternate; }
+.shadow { fill:#000; opacity:.75; transform-box:fill-box; transform-origin:center; animation:signalShadow 4.2s ease-in-out infinite alternate; }
+@keyframes signalFloat { from { transform:translateY(0); } to { transform:translateY(-6px); } }
+@keyframes signalShadow { from { transform:scale(1); opacity:.75; } to { transform:scale(.86); opacity:.4; } }
+/* The drum turns: the seam band and light strip slide around the wall while the plate ticks rotate on top (SMIL). */
+.seamRing { fill:none; stroke:#03070a; stroke-width:9; stroke-dasharray:2 34; opacity:.9; animation:signalWall 14s linear infinite; }
+@keyframes signalWall { to { stroke-dashoffset:-360; } }
+.plateTicks line { stroke:var(--film-accent); stroke-width:1.4; opacity:.85; }
+.discSpokes { fill:none; stroke:color-mix(in srgb,var(--film-accent) 30%,transparent); stroke-width:.6; }
+.wall { fill:url(#hatchery-scan-wall); stroke:#0a1218; stroke-width:.6; }
+.wallPanel { fill:#172e3b; fill-opacity:.8; stroke:#a5b8c3; stroke-opacity:.65; stroke-width:.8; stroke-linejoin:bevel; }
+.bolt { fill:#101d26; stroke:#c5d4dc; stroke-width:.5; }
+.wallBase { fill:none; stroke:#03070a; stroke-width:5; opacity:.9; }
+.wallEdge { fill:none; stroke:#5c717d; stroke-width:.8; opacity:.6; }
+.wallStrip { fill:none; stroke:#0b151c; stroke-width:4; opacity:.9; }
+.wallLights { fill:none; stroke:var(--film-accent); stroke-width:2; stroke-dasharray:26 4 12 4; opacity:.95; filter:drop-shadow(0 0 2px var(--film-accent)); animation:signalStrip 14s linear infinite; }
+@keyframes signalStrip { to { stroke-dashoffset:-395; } }
+.rim { fill:url(#hatchery-scan-rim); stroke:#dbe6ec; stroke-width:.9; }
+.rimHighlight { fill:none; stroke:#f2f8fa; stroke-width:.7; opacity:.5; stroke-dasharray:70 40 30 100; }
+.lip { fill:url(#hatchery-scan-lip); stroke:#0a1218; stroke-width:1; }
+.groove { fill:#0b1319; stroke:color-mix(in srgb,var(--film-accent) 55%,transparent); stroke-width:1; filter:drop-shadow(0 0 2px var(--film-accent)); }
+.discWell { fill:#020609; }
+.disc { fill:url(#hatchery-scan-disc); stroke:color-mix(in srgb,var(--film-accent) 75%,white); stroke-width:1.2; }
+.discRing { fill:none; stroke:color-mix(in srgb,var(--film-accent) 55%,transparent); stroke-width:1; }
+.discGrid { fill:none; stroke:color-mix(in srgb,var(--film-accent) 35%,transparent); stroke-width:.6; stroke-dasharray:2 3; }
+.sweep { fill:url(#hatchery-scan-wedge); }
+.core { fill:#eafeff; filter:drop-shadow(0 0 5px var(--film-accent)); }
+.coreHalo { fill:none; stroke:var(--film-accent-soft); stroke-width:1; opacity:.6; }
+.reflection { fill:#fff; opacity:.08; }
+/* Detection: a ping wave expands from the blip and the blip flashes when the sweep passes. */
+.ping { fill:none; stroke:var(--film-accent-soft); stroke-width:1.5; opacity:0; transform-box:fill-box; transform-origin:center; animation:signalPing 6.4s ease-out both; }
+.blip { fill:var(--film-accent-soft); opacity:.15; animation:signalBlip 6.4s ease-out both; }
+@keyframes signalPing { 0%,6% { opacity:0; transform:scale(.2); } 8% { opacity:.9; } 30%,100% { opacity:0; transform:scale(2.6); } }
+@keyframes signalBlip { 0%,6% { opacity:.15; } 8% { opacity:1; } 40%,100% { opacity:.15; } }
+/* A soft light column between disc and ring. */
+.beam { position:absolute; left:50%; bottom:30%; width:20%; height:48%; transform:translateX(-50%); background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--film-accent) 12%,transparent) 55%,color-mix(in srgb,var(--film-accent) 24%,transparent)); clip-path:polygon(30% 0,70% 0,100% 100%,0 100%); opacity:.5; animation:signalBeam 3.2s ease-in-out infinite alternate; }
+@keyframes signalBeam { from { opacity:.3; } to { opacity:.65; } }
+
+@media(prefers-reduced-motion:reduce) { .ping,.blip,.beam,.wallLights,.seamRing,.drum,.shadow { animation:none; } .blip { opacity:.8; } }
+.scanner[data-still=true] :is(.ping,.blip,.beam,.wallLights,.seamRing,.drum,.shadow) { animation:none; }
+.scanner[data-signal-active=false] :is(.ping,.blip) { animation:none; opacity:0; }
+.scanner[data-signal-active=false] .beam { animation:none; opacity:.1; }
+.scanner[data-signal-active=false] .sweep { opacity:.12; }

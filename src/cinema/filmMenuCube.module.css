@@ -1,4 +1,5 @@
 .shell { }
+.layer:not([data-positioned=true]),.control:not([data-positioned=true]) { visibility:hidden; }
 .layer {
   --film-accent:#ff79c6;
   --film-accent-soft:#ffc2e5;

@@ -100,11 +100,13 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     const measure = () => {
       viewport = { width: window.innerWidth, height: window.innerHeight };
       size = cubeSize(viewport.width, viewport.height);
+      // Reserve the bay first, so the first measured center uses the final strip layout.
+      document.documentElement.style.setProperty(STRIP_SPACE_PROPERTY, `${cubeStripSpace(size)}px`);
+      document.documentElement.style.setProperty(BAY_WIDTH_PROPERTY, `${cubeBayWidth(size)}px`);
+      document.documentElement.dataset.cubeDocked = 'true';
       // Dock to the top metric strip when the main screen shows one; the strip leaves the space free.
       const strip = document.querySelector<HTMLElement>('[data-metric-strip]')?.getBoundingClientRect();
       center = cubeDockCenter(strip && strip.width > 0 ? { left: strip.left, top: strip.top, height: strip.height } : null, viewport, size);
-      document.documentElement.style.setProperty(STRIP_SPACE_PROPERTY, `${cubeStripSpace(size)}px`);
-      document.documentElement.style.setProperty(BAY_WIDTH_PROPERTY, `${cubeBayWidth(size)}px`);
       const panel = menu.current;
       if (panel) {
         const origin = cubeMenuOrigin(center, size, viewport);
@@ -112,7 +114,6 @@ export function FilmMenuCube({ onSelect, links = {} }: {
         panel.style.setProperty('--tile', `${cubeMenuTileSize(size)}px`);
         panel.style.setProperty('--cube-cx', `${center.x}px`); panel.style.setProperty('--cube-cy', `${center.y}px`);
       }
-      document.documentElement.dataset.cubeDocked = 'true';
       overlay.style.setProperty('--cube-size', `${size}px`);
       button.style.width = `${size}px`; button.style.height = `${size}px`;
     };
@@ -235,12 +236,14 @@ export function FilmMenuCube({ onSelect, links = {} }: {
       schedule();
     };
     measure(); draw();
+    overlay.dataset.positioned='true';button.dataset.positioned='true';
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); schedule();
     button.addEventListener('pointerenter', enter); button.addEventListener('pointerleave', leave);
     root?.addEventListener('pointerdown',cancelOnInteraction,true); root?.addEventListener('keydown',cancelOnInteraction,true);
     return () => {
       stopFrame(); document.documentElement.style.removeProperty(STRIP_SPACE_PROPERTY); document.documentElement.style.removeProperty(BAY_WIDTH_PROPERTY); delete document.documentElement.dataset.cubeDocked;
+      delete overlay.dataset.positioned;delete button.dataset.positioned;
       button.removeEventListener('pointerenter', enter); button.removeEventListener('pointerleave', leave);
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);
       reduced.removeEventListener('change', preference);

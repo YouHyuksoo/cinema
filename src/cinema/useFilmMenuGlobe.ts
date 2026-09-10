@@ -353,6 +353,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     measure(); cacheRing(); current = input.menuOpen ? targetRing() : globe();
     perspective = input.menuOpen ? ringPerspective() : { ...globeCenter };
     draw(); overlay.dataset.phase = currentPhase; button.dataset.phase = currentPhase; setDragging(false);
+    overlay.dataset.positioned='true';button.dataset.positioned='true';
     const observer = new ResizeObserver(resize); observer.observe(element);
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); short.addEventListener('change', resize); schedule();
@@ -360,6 +361,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     button.addEventListener('focus', wake); button.addEventListener('blur', sleep);
     return () => {
       stopFrame(); releaseActivePointer(); observer.disconnect(); update.current = null; actions.current = null;
+      delete overlay.dataset.positioned;delete button.dataset.positioned;
       button.removeEventListener('pointerenter', wake); button.removeEventListener('pointerleave', sleep);
       button.removeEventListener('focus', wake); button.removeEventListener('blur', sleep);
       window.removeEventListener('resize', resize); document.removeEventListener('visibilitychange', visibility);

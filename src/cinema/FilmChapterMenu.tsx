@@ -3,7 +3,7 @@ import { FilmChapterIcon } from './FilmChapterIcon';
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import styles from './film.module.css';
 import ringStyles from './filmMenuRing.module.css';
-import { orbitPose, ringIndex, ringPose, type MenuLayout } from './filmMenuRing';
+import { menuPoseStyle, orbitPose, ringIndex, ringPose, type MenuLayout } from './filmMenuRing';
 import { useFilmMenuRing } from './useFilmMenuRing';
 import { FilmMenuGlobe } from './FilmMenuGlobeView';
 import { useFilmMenuGlobe } from './useFilmMenuGlobe';
@@ -50,9 +50,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
       <div className={ringStyles.orbit} aria-hidden="true" />
       {FILM_CHAPTERS.map((chapter, index) => {
         const pose = layout === 'orbit' ? orbitPose(index, turn, FILM_CHAPTERS.length, 1) : ringPose(index, turn, FILM_CHAPTERS.length, Math.max(40, Math.min(430, width / 2 - 36)));
-        const placement = layout === 'orbit'
-          ? { '--orbit-angle': `${(pose as ReturnType<typeof orbitPose>).angle}rad`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity }
-          : { '--ring-x': `${pose.x}px`, '--ring-y': `${pose.y}px`, '--ring-z': `${pose.z}px`, '--ring-yaw': `${pose.yaw}deg`, '--ring-scale': pose.scale, '--ring-opacity': pose.opacity };
+        const placement = menuPoseStyle(pose);
         return <button key={chapter.id} ref={element => { buttons.current[index] = element; }}
           type="button" className={`${styles.chapterButton} ${ringStyles.tile}`} data-front={index === front}
           tabIndex={index === front ? 0 : -1} aria-describedby="film-ring-hint"

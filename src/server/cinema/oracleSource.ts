@@ -31,8 +31,9 @@ export async function testOracleSource(source: DataSourceConfig): Promise<{ ok: 
   try {
     const oracledb = await driver();
     const started = Date.now();
-    const connection = await oracledb.getConnection({ user: source.user, password: source.password, connectString: dsn(source) });
+    const connection = await oracledb.getConnection({ user: source.user, password: source.password, connectString: dsn(source), connectTimeout:5, transportConnectTimeout:5, retryCount:0 });
     try {
+      connection.callTimeout=5000;
       await connection.execute('SELECT 1 FROM DUAL');
       return { ok: true, elapsedMs: Date.now() - started, version: connection.oracleServerVersionString };
     } finally { await connection.close(); }
