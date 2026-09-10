@@ -68,19 +68,19 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
       <div className={mobileStyles.panel} data-dock-actions="true" inert={!menuOpen} aria-hidden={!menuOpen}>
       <div id="film-dock-content" className={mobileStyles.content}>
       {expanded && !camera.preview && (
-        <section className={styles.dockSettings} id="film-playback-settings" aria-label="연출 설정">
+        <section className={styles.dockSettings} id="film-playback-settings" aria-label="연출 설정" data-dock-settings="true">
           <FilmControls player={player} camera={camera} />
         </section>
       )}
       {!expanded && camera.error && <p className={styles.cameraDockError} role="alert">{camera.error}</p>}
-      <div className={styles.dockBar}>
-        <div className={styles.dockStatus}>
+      <div className={styles.dockBar} data-dock-bar="true">
+        <div className={styles.dockStatus} data-dock-status="true">
           <span className={styles.dockStatusLight} aria-hidden="true" />
           <span>{camera.preview ? 'HATCHERY 메인 메뉴' : chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject].title : chapter.title}</span>
           <span className={styles.dockTime}>{camera.preview ? 'VOICE / CONTROL CENTER'
             : player.factory.manual && chapter.id === 'visor' ? '직접 탐색' : `${localTime.toFixed(1)} / ${chapter.duration}초`}</span>
         </div>
-        <div className={styles.dockActions}>
+        <div className={styles.dockActions} data-dock-buttons="true">
           {!expanded && <button type="button" className={styles.dockAction} disabled={!player.ready}
             onClick={() => { camera.openPreview(); setExpanded(false); }}>
             메인 메뉴

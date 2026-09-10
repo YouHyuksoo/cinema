@@ -13,6 +13,7 @@ import { useFilmCamera } from './useFilmCamera';
 import { JarvisMain } from './JarvisMain';
 import { SmtFactoryExplorer } from './SmtFactoryExplorer';
 import { EnvironmentZoneInteraction } from './EnvironmentZoneInteraction';
+import { CctvExplorer } from './CctvExplorer';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
 
@@ -26,7 +27,7 @@ export function SignalFilm() {
   const description = player.position.chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject] : player.position.chapter;
   const cameraMode = {
     ...camera, preview,
-    openPreview() { if (player.factory.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
+    openPreview() { if (player.factory.manual || player.cctv.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
     closePreview() { turbine.voice.stop(); camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
     enable() { player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
   };
@@ -57,7 +58,9 @@ export function SignalFilm() {
           && <SmtFactoryExplorer canvas={canvas} controller={player.factory} onAuto={player.resumeTour} />}
         {!preview && player.ready && player.position.chapter.id === 'wave'
           && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} />}
-        {!preview && !['visor', 'wave'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
+        {!preview && player.ready && player.position.chapter.id === 'cctv'
+          && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
+        {!preview && !['visor', 'wave', 'cctv'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
           aria-label={player.playing ? '연출 화면 일시정지' : '연출 화면 재생'}
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}

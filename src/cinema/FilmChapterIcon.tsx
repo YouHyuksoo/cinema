@@ -85,6 +85,12 @@ const CHAPTER_ICONS: Record<FilmId, ReactNode> = {
     <circle cx="18" cy="3" r="2" />
     <path d="M3 29h26M6 28v-5h4v5m4 0V18h4v10m4 0v-8h4v8" />
   </>,
+  cctv: <>
+    <path d="M3 10c9-6 17-6 26 0" opacity=".45" /><path d="M3 24c9 6 17 6 26 0" opacity=".45" />
+    <rect x="10" y="11" width="12" height="9" /><circle cx="16" cy="15.5" r="2.2" />
+    <path d="M4 13h4v6H4Zm20 0h4v6h-4ZM16 20v4m-3 0h6" />
+    <path d="M24 12.5h1.5" strokeWidth="2" />
+  </>,
 };
 
 export function FilmChapterIcon({ id, className }: { id: FilmId; className?: string }) {

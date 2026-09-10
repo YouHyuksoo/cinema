@@ -13,6 +13,8 @@ import { drawProcessNetworkFilm } from './drawProcessNetworkFilm';
 import { drawEnergyCoreFilm } from './drawEnergyCoreFilm';
 import { drawProductInspectionFilm } from './drawProductInspectionFilm';
 import { drawSpcFilm } from './drawSpcFilm';
+import { drawCctvFilm } from './drawCctvFilm';
+import type { CctvFrameInput } from './cctvScene';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './drawGearTrain';
 import { chapterAt, FILM_CHAPTER_BOUNDARIES, FILM_SECONDS, type FilmId } from './filmProgram';
 import type { FilmViewportInsets } from './filmViewport';
@@ -27,7 +29,7 @@ import { pad2 } from './filmMath';
 
 export { FILM_SECONDS } from './filmProgram';
 export interface MachineRenderOptions { subject?: MachineSubject; provenance?: SceneDataProvenance }
-type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions) => void;
+type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions, cctv: CctvFrameInput | null) => void;
 const renderers: Record<FilmId, Renderer> = {
   wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment, data) => drawWaveFilm(ctx, width, height, time, fonts, insets, data.environment, environment),
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
@@ -43,6 +45,7 @@ const renderers: Record<FilmId, Renderer> = {
   energy: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawEnergyCoreFilm(ctx, width, height, time, fonts, insets, data.energy),
   product: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProductInspectionFilm(ctx, width, height, time, fonts, insets, data.product),
   spc: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawSpcFilm(ctx, width, height, time, fonts, insets, data.spc),
+  cctv: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, _data, _machine, cctv) => drawCctvFilm(ctx, width, height, time, fonts, insets, cctv),
 };
 
 /** Paint a fresh frame independently of the preceding scene's fades and light effects. */
@@ -60,11 +63,11 @@ function resetFilmPaint(ctx: CanvasRenderingContext2D) {
 }
 
 /** Each renderer receives local scene time; playback and progress stay continuous. */
-export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null, data: FilmSceneData = DEFAULT_FILM_SCENE_DATA, machine: MachineRenderOptions = {}) {
+export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, charts: FilmChartSettings = DEFAULT_FILM_CHARTS, factory: FactoryInteraction | null = null, environment: ZoneEnvironmentState | null = null, data: FilmSceneData = DEFAULT_FILM_SCENE_DATA, machine: MachineRenderOptions = {}, cctv: CctvFrameInput | null = null) {
   ctx.save();
   try {
     resetFilmPaint(ctx);
-    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment, data, machine);
+    drawFilmChapter(ctx, width, height, t, fonts, insets, charts, factory, environment, data, machine, cctv);
   } finally {
     // Keep scene paint changes out of subsequent frames and the texture pass.
     ctx.restore();
@@ -72,14 +75,14 @@ export function drawSignalFilm(ctx: CanvasRenderingContext2D, width: number, hei
 }
 
 function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: number, t: number, fonts: FilmFonts,
-  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions) {
+  insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions, cctv: CctvFrameInput | null = null) {
   const { chapter, index, start, localTime } = chapterAt(t);
-  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment, data, machine);
+  renderers[chapter.id](ctx, width, height, localTime, fonts, insets, charts, factory, environment, data, machine, cctv);
 
   // Chapter fades and navigation marks must not inherit an object's local opacity.
   resetFilmPaint(ctx);
   ctx.save();
-  const visible = chapter.id === 'visor' && factory ? 1
+  const visible = (chapter.id === 'visor' && factory) || (chapter.id === 'cctv' && cctv) ? 1
     : smooth(0, .4, localTime) * (1 - smooth(chapter.duration - .4, chapter.duration, localTime));
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = `rgba(4,11,16,${1 - visible})`; ctx.fillRect(0, 0, width, height);

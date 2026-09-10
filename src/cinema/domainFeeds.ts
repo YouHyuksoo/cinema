@@ -65,7 +65,7 @@ export const DOMAIN_FEEDS: readonly DomainFeed[] = [
       number('temperature', '공정 온도', { unit: '°C', decimals: 1, optional: true, patchable: true, aliases: /온도/ }),
       number('fan', '냉각 팬', { unit: '%', min: 0, max: 100, decimals: 0, optional: true, patchable: true, aliases: /팬|냉각/ }),
     ] }],
-    scenes: ['visor', 'visorPan', 'scan', 'gears', 'console'], status: 'planned',
+    scenes: ['visor', 'visorPan', 'scan', 'gears', 'console', 'cctv'], status: 'planned',
     note: '바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다.',
     example: () => ({ lines: 5, stations: Array.from({ length: 5 }, (_, line) => SMT_LINE.map((station, order) => ({
       id: `L${line + 1}-${station.id}`, label: `L${line + 1} ${station.label}`, english: station.english, line: line + 1, order: order + 1,

@@ -163,6 +163,8 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       if (nav) {
         nav.style.setProperty('--orbit-cx', `${globeCenter.x}px`); nav.style.setProperty('--orbit-cy', `${globeCenter.y}px`);
         nav.style.setProperty('--orbit-r', `${orbitRadius(diameter)}px`);
+        // The dock's action hub (a sibling of this menu) centres itself on the same values.
+        for (const [name, value] of [['--orbit-cx', `${globeCenter.x}px`], ['--orbit-cy', `${globeCenter.y}px`], ['--orbit-r', `${orbitRadius(diameter)}px`]]) document.documentElement.style.setProperty(name, value);
       }
       if ((currentPhase === 'closed' || orbit) && ball.current) {
         // Raster the sphere at its full size and scale it with the same factor as the tiles, so both

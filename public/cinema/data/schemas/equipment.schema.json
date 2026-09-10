@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "hatchery/feeds/equipment",
   "title": "설비 마스터 · 상태 (equipment)",
-  "description": "바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다. 갱신: 5~10초 폴링 또는 상태 변경 푸시. 장면: visor, visorPan, scan, gears, console.",
+  "description": "바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다. 갱신: 5~10초 폴링 또는 상태 변경 푸시. 장면: visor, visorPan, scan, gears, console, cctv.",
   "type": "object",
   "properties": {
     "lines": {

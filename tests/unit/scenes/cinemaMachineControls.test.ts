@@ -17,6 +17,7 @@ vi.mock('react', async importOriginal => ({
   useEffect: vi.fn(),
 }));
 vi.mock('@/cinema/useSmtFactoryInteraction', () => ({ useSmtFactoryInteraction: () => ({ clear: vi.fn(), readState: () => null }) }));
+vi.mock('@/cinema/useCctvInteraction', () => ({ useCctvInteraction: () => ({ clear: vi.fn(), readState: () => null, manual: false }) }));
 vi.mock('@/cinema/useEnvironmentSelection', () => ({ useEnvironmentSelection: () => ({ clear: vi.fn(), update: () => null }) }));
 beforeEach(() => { hooks.refs = []; });
 
@@ -35,7 +36,7 @@ describe('manual machine subject selection', () => {
     expect(clock.time).toBe(9);
     player.changeMachineSubject('bad' as never);
     expect(clock.machineSubject).toBe('pcb');
-    expect(FILM_CHAPTERS).toHaveLength(16); expect(FILM_SECONDS).toBe(538);
+    expect(FILM_CHAPTERS).toHaveLength(17); expect(FILM_SECONDS).toBe(594);
   });
   it('exposes an explicit selector without automatic car switching', () => {
     const html = renderToStaticMarkup(createElement(FilmMachineControls, { subject: 'pcb', disabled: false, onChange: vi.fn() }));

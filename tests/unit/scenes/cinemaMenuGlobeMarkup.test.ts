@@ -49,7 +49,7 @@ describe('collapsed chapter globe accessibility', () => {
 
   it('retains the existing chapter buttons and default open ring behavior', () => {
     const html = render(true);
-    expect(html.match(/aria-describedby="film-ring-hint"/g)).toHaveLength(16);
+    expect(html.match(/aria-describedby="film-ring-hint"/g)).toHaveLength(17);
     expect(html).toContain('aria-label="이전 메뉴로 회전"');
     expect(html).toContain('aria-label="다음 메뉴로 회전"');
     expect(html).toMatch(/data-ring-controls="true"[^>]*aria-hidden="false"/);

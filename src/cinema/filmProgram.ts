@@ -7,10 +7,11 @@ import { PRODUCT_INSPECTION_SECONDS } from './productInspection';
 import { ENVIRONMENT_FILM_SECONDS } from './zoneEnvironment';
 import { SPC_FILM_SECONDS } from './spcScene';
 import { TRACE_LOOP, TRACE_TIMING } from './workOrderTraceTiming';
+import { CCTV_FILM_SECONDS } from './cctvScene';
 
 export const FILM_DURATIONS = { wave: ENVIRONMENT_FILM_SECONDS, gears: 28, scan: 22, unfold: 32, trace: TRACE_TIMING.endAt, console: 28, visor: SMT_FACTORY_SECONDS, visorPan: 32,
   bars: 28, pie: 28, corners: CORNER_FILM_SECONDS, machine: RACE_CAR_SECONDS,
-  network: PROCESS_NETWORK_SECONDS, energy: ENERGY_CORE_SECONDS, product: PRODUCT_INSPECTION_SECONDS, spc: SPC_FILM_SECONDS } as const;
+  network: PROCESS_NETWORK_SECONDS, energy: ENERGY_CORE_SECONDS, product: PRODUCT_INSPECTION_SECONDS, spc: SPC_FILM_SECONDS, cctv: CCTV_FILM_SECONDS } as const;
 
 export const FILM_CHAPTERS = [
   { id: 'wave', title: '온습도 모니터링', subtitle: '구역별 온습도 · 24시간 이력 · 온도 히트맵', duration: FILM_DURATIONS.wave, previewAt: 30 },
@@ -29,6 +30,7 @@ export const FILM_CHAPTERS = [
   { id: 'energy', title: '에너지 파동', subtitle: '전력 · 생산량 · 효율', duration: FILM_DURATIONS.energy, previewAt: 15 },
   { id: 'product', title: '제품 내부 검사', subtitle: '부품 치수 · 오차 · 공차 판정', duration: FILM_DURATIONS.product, previewAt: 17 },
   { id: 'spc', title: 'SPC 분석', subtitle: 'X̄–R 관리도 · 히스토그램 · 공정능력', duration: FILM_DURATIONS.spc, previewAt: 30 },
+  { id: 'cctv', title: 'CCTV 감시', subtitle: '카메라 9대 · 오목 벽 순찰 · 좌우로 넘겨 보기', duration: FILM_DURATIONS.cctv, previewAt: 20 },
 ] as const;
 
 export type FilmChapter = (typeof FILM_CHAPTERS)[number];

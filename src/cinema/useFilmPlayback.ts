@@ -11,6 +11,7 @@ import { drawJarvisBackdrop } from './drawJarvisBackdrop';
 import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
+import { useCctvInteraction } from './useCctvInteraction';
 import { useEnvironmentSelection } from './useEnvironmentSelection';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData, type FilmSceneDataKey } from './filmSceneData';
 import { createSceneDataStore } from './sceneDataStore';
@@ -49,6 +50,9 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   const factory = useSmtFactoryInteraction(() => chapterAt(clock.current.time).localTime,
     () => { clock.current.paused = true; setPlaying(false); });
   const readFactoryState = factory.readState;
+  const cctv = useCctvInteraction(() => chapterAt(clock.current.time).localTime,
+    () => { clock.current.paused = true; setPlaying(false); });
+  const readCctvState = cctv.readState;
   const environment = useEnvironmentSelection();
   const updateEnvironment = environment.update;
 
@@ -106,8 +110,10 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       else {
         cameraTime = 3;
+        // Manual CCTV browsing pauses the film clock but the feeds keep running on wall-clock time.
+        const cctvState = readCctvState();
         drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, store.get(),
-          { subject: current.machineSubject, provenance: store.provenance('pcb') });
+          { subject: current.machineSubject, provenance: store.provenance('pcb') }, cctvState ? { ...cctvState, live: now / 1000 } : null);
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {
@@ -129,10 +135,10 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     };
     frame = requestAnimationFrame(render);
     return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); };
-  }, [canvasRef, cameraRef, cameraView, readFactoryState, updateEnvironment, store]);
+  }, [canvasRef, cameraRef, cameraView, readFactoryState, readCctvState, updateEnvironment, store]);
 
   return {
-    ready, playing, speed, mode, position, texture, charts, theme, factory, environment, sceneData, feedStatus, machineSubject, menuLayout,
+    ready, playing, speed, mode, position, texture, charts, theme, factory, cctv, environment, sceneData, feedStatus, machineSubject, menuLayout,
     /** How the folded globe unfolds: bottom dock ring or a ring around the globe. */
     changeMenuLayout(value: MenuLayout) { if (isMenuLayout(value)) setMenuLayout(value); },
     changeMachineSubject(value: MachineSubject) {
@@ -142,7 +148,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         clock.current.time = chapterStart('machine'); setPosition(chapterAt(clock.current.time));
       }
     },
-    resumeTour() { factory.clear(); clock.current.paused = false; setPlaying(true); },
+    resumeTour() { factory.clear(); cctv.clear(); clock.current.paused = false; setPlaying(true); },
     /** Scene data contract entry points: full replacement documents and object patches (see docs/standards/scene-data-contract.md). */
     applySceneDocument: (input: unknown) => store.replace(input),
     applySceneObjects: (input: unknown) => store.patch(input),
@@ -170,24 +176,24 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     },
     changeSpeed(value: number) { clock.current.speed = value; setSpeed(value); },
     changeMode(value: PlaybackMode) { clock.current.mode = value; setMode(value); },
-    pause() { factory.clear(); clock.current.paused = true; setPlaying(false); },
-    play() { factory.clear(); clock.current.paused = false; setPlaying(true); },
-    togglePlay() { factory.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },
+    pause() { factory.clear(); cctv.clear(); clock.current.paused = true; setPlaying(false); },
+    play() { factory.clear(); cctv.clear(); clock.current.paused = false; setPlaying(true); },
+    togglePlay() { factory.clear(); cctv.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },
     selectChapter(id: FilmId) {
-      factory.clear();
+      factory.clear(); cctv.clear();
       environment.clear();
       clock.current.time = chapterStart(id); clock.current.paused = false;
       setPosition(chapterAt(clock.current.time)); setPlaying(true);
     },
     seek(value: number) {
-      factory.clear();
+      factory.clear(); cctv.clear();
       const active = chapterAt(clock.current.time);
       clock.current.time = active.start + Math.max(0, Math.min(active.chapter.duration - .001, value));
       environment.update(active.chapter.id === 'wave' ? chapterAt(clock.current.time).localTime : null);
       setPosition(chapterAt(clock.current.time));
     },
     restart() {
-      factory.clear();
+      factory.clear(); cctv.clear();
       environment.clear();
       clock.current.time = clock.current.mode === 'chapter' ? chapterAt(clock.current.time).start : 0;
       clock.current.paused = false; setPlaying(true); setPosition(chapterAt(clock.current.time));

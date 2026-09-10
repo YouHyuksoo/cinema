@@ -24,7 +24,7 @@ export function resolveJarvisCommand(input: string): JarvisReply | null {
     if (carRequested && pcbRequested) return { source: 'local', reply: 'PCB 불량 분석과 자동차 중 어느 대상을 열까요?' };
     const machineSubject: MachineSubject | undefined = carRequested ? 'car' : pcbRequested ? 'pcb' : undefined;
     if (machineSubject) return { reply: `${MACHINE_PRESENTATIONS[machineSubject].title} 연출을 엽니다.`, source: 'local', chapter: 'machine', machineSubject };
-    const aliases: [RegExp, FilmId][] = [[/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'],
+    const aliases: [RegExp, FilmId][] = [[/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'], [/cctv|씨씨티비|감시\s*카메라|감시/, 'cctv'],
       [/기어/, 'gears'], [/분해/i, 'machine'], [/에너지/, 'energy'],
       [/코너/, 'corners'], [/막대/, 'bars'], [/파이/, 'pie'], [/바이저.*평면/, 'visorPan'], [/바이저/, 'visor']];
     const id = aliases.find(([pattern]) => pattern.test(targetText))?.[1]

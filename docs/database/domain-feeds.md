@@ -3,7 +3,7 @@ sources:
   - src/cinema/domainFeeds.ts
   - src/cinema/sceneFields.ts
   - src/cinema/productionLineFields.ts
-verifiedCommit: b119b8e
+verifiedCommit: ac3956a
 ---
 
 # 도메인 피드 — DB가 보내야 하는 기대값
@@ -17,7 +17,7 @@ verifiedCommit: b119b8e
 | 피드 | 이름 | 갱신 | 상태 | 컬렉션 | 소비 장면 |
 | --- | --- | --- | --- | --- | --- |
 | `production` | 라인 생산 실적 | 보통 폴링 (10~30초 폴링) | 연결됨 | `lines` | bars, pie, corners, unfold |
-| `equipment` | 설비 마스터 · 상태 | 빠른 폴링 (5~10초 폴링 또는 상태 변경 푸시) | 이관 예정 | `stations` | visor, visorPan, scan, gears, console |
+| `equipment` | 설비 마스터 · 상태 | 빠른 폴링 (5~10초 폴링 또는 상태 변경 푸시) | 이관 예정 | `stations` | visor, visorPan, scan, gears, console, cctv |
 | `process` | 공정 처리능력 · 대기 | 보통 폴링 (10~30초 폴링) | 일부 연결 | `nodes`, `links` | network, corners, unfold |
 | `environment` | 환경 구역 온습도 | 빠른 폴링 (30~60초 폴링 또는 센서 푸시) | 연결됨 | `zones` | wave |
 | `quality` | 품질 SPC 측정 | 이벤트 (부분군 완성 시 이벤트, 또는 1~5분 폴링) | 일부 연결 | `subgroups` | spc, corners, unfold |
