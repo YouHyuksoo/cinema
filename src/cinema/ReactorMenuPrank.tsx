@@ -22,7 +22,7 @@ export function ReactorMenuPrank() {
     if (!node || !ctx || !root) return;
     let timer = 0, previous: ShockTarget | null = null;
     let victim: HTMLElement | null = null, source: HTMLElement | null = null;
-    let started = 0;
+    let started = 0, accent = '#5fe3ff';
     const clear = () => {
       loop.stop();
       victim?.removeAttribute(SHOCK_ATTRIBUTE); source?.removeAttribute(SHOCK_ATTRIBUTE);
@@ -43,7 +43,6 @@ export function ReactorMenuPrank() {
       const width = innerWidth, height = innerHeight;
       fitCanvasToBox(node, ctx, width, height); ctx.clearRect(0,0,width,height);
       const a = center(source), b = center(victim), power = shockEnvelope(elapsed);
-      const accent = getComputedStyle(root).getPropertyValue('--film-accent').trim() || '#5fe3ff';
       // One sustained short discharge, then residual arcs on the victim; no full-screen flashes.
       if (elapsed < 800) {
         const points = shockLightning(a,b,elapsed);
@@ -85,6 +84,8 @@ export function ReactorMenuPrank() {
       const target = chooseShockTarget(available, previous, Math.random());
       if (!target) { schedule(); return; }
       victim = root.querySelector<HTMLElement>(targets[target]); source = reactor;
+      // The theme cannot change mid-discharge: resolve the accent once per shock, not per frame.
+      accent = getComputedStyle(root).getPropertyValue('--film-accent').trim() || '#5fe3ff';
       started = performance.now(); previous = target;
       victim?.setAttribute(SHOCK_ATTRIBUTE, String(started)); source.setAttribute(SHOCK_ATTRIBUTE, String(started));
       node.dataset.shockTarget = target; loop.start();
