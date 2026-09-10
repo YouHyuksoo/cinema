@@ -35,7 +35,7 @@
 - HUD 형식: 스티커는 루빅 색을 42% 섞은 반투명 패널에 시안 와이어 엣지, 큐비 몸체는 유리질 반투명, 주변에 40초/90초 주기로 도는 분절 조준 링과 코너 브래킷 4개.
 - 동작: 고정 기울기(rotateX −26°)로 16초에 한 바퀴 돌면서 0.8초 뒤 8수 섞기(고정 시드 11) → 역순 풀기(수당 320ms + 40ms 간격) → solved 통지. 하단 문구 "HATCHERY 로딩중"(점멸 점 3개)은 출발 시 "준비 완료"로 바뀐다(role=status).
 - 관통 대신 도킹 비행: return/snap 큐에서 실제 큐브 버튼([data-cube-control])의 위치·크기를 재서 그 자리로 날아가 겹치고(cubeIntroFlight, 회전은 도킹 자세 rotateX −24° rotateY 32°로 수렴), docked 통지 후 무대가 사라진다. 배경 페이드(--pass)는 별도 .veil 층에 둔다: 3D 큐브 조상에 opacity 애니메이션을 걸면 preserve-3d가 평면화된다.
-- 첫 페인트 보장: 무대는 서버 HTML에 포함되고, layout.tsx의 인라인 스크립트가 세션 플래그·동작 줄이기를 페인트 전에 판정해 :root[data-hatchery-intro-seen]로 숨긴다. 은 강제 재생.
+- 첫 페인트 보장: 무대는 서버 HTML에 포함되고, layout.tsx의 인라인 스크립트가 세션 플래그·동작 줄이기를 페인트 전에 판정해 :root[data-hatchery-intro-seen]로 숨긴다. `?intro=1`은 강제 재생.
 - 실제 큐브(FilmMenuCubeView)는 수정하지 않는다. 인수인계는 위치 일치로만 이루어진다.
 
 ## 구조
@@ -44,11 +44,11 @@
 
 | 파일 | 책임 |
 | --- | --- |
-| `src/cinema/hatcheryIntro.ts` (신규, 순수) | 상수·타임라인·상태 기계·세션 플래그 판정. DOM 없음. |
+| `src/cinema/hatcheryIntroTimeline.ts` (신규, 순수) | 상수·타임라인·상태 기계·세션 플래그 판정. DOM 없음. (컴포넌트와 대소문자만 다른 이름 충돌을 피해 개명) |
 | `src/cinema/cubeIntroFlight.ts` (신규, 순수) | 중앙→도킹 비행 자세(`x, y, scale, bank, yaw, done`)와 스냅. |
 | `src/cinema/HatcheryIntro.tsx` + `hatcheryIntro.module.css` (신규) | 문 오버레이 렌더, 준비 판정, 큐브와의 신호 교환, 세션 플래그 기록, 건너뛰기 입력. |
 | `src/app/cinema/page.tsx` (수정) | `<HatcheryIntro/>`를 SignalFilm 형제로 마운트. 공유 파일(SignalFilm, JarvisMain)은 건드리지 않는다. |
-| `src/cinema/FilmMenuCubeView.tsx` (수정, 최소) | 루트 속성을 읽어 무대 배치·섞기·풀기·비행을 수행하고 이벤트로 통지. |
+| `src/cinema/FilmMenuCubeView.tsx` | 수정하지 않음(최종안). 인트로 큐브가 실제 큐브 버튼 위치·크기로 날아가 겹치는 것으로 인수인계한다. |
 
 ### 신호 계약
 
