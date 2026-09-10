@@ -8,6 +8,7 @@ import { DEFAULT_FILM_CHARTS, normalizeChartPresentation, type ChartKind, type C
 import { DEFAULT_FILM_THEME, getFilmTheme, type FilmThemeId } from './filmThemes';
 import { createFilmThemeContext } from './filmThemeCanvas';
 import { drawJarvisBackdrop } from './drawJarvisBackdrop';
+import { filmFrameChanged, type FilmFrameKey } from './filmFrameGate';
 import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
@@ -66,6 +67,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     let previous = performance.now();
     let lastPublished = -Infinity;
     let cameraTime = 3;
+    let lastKey: FilmFrameKey | null = null;
     const current = clock.current;
     const themed = createFilmThemeContext(ctx, current.theme);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -102,9 +104,18 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         else current.time = advanceFilm(current.time, elapsed, current.mode);
       }
       previous = now;
-      themed.setTheme(current.theme);
       const active = chapterAt(current.time);
-      const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, store.get().environment);
+      const data = store.get();
+      const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, data.environment);
+      const factoryState = readFactoryState(), cctvState = readCctvState();
+      // Identical inputs paint an identical frame: a paused scene or backdrop costs nothing until something moves.
+      const key: FilmFrameKey = { camera: cameraView.current, time: cameraView.current ? cameraTime : current.time,
+        width: node.width, height: node.height, inset: viewport.bottomInset, theme: current.theme, texture: current.texture,
+        charts: current.charts, subject: current.machineSubject, factory: factoryState, cctvManual: !!cctvState,
+        selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb') };
+      if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }
+      lastKey = key;
+      themed.setTheme(current.theme);
       if (cameraView.current) {
         const view = beginFilmViewport(themed.ctx, node.width, node.height, viewport);
         drawJarvisBackdrop(themed.ctx, view, cameraTime);
@@ -112,8 +123,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       else {
         cameraTime = 3;
         // Manual CCTV browsing pauses the film clock but the feeds keep running on wall-clock time.
-        const cctvState = readCctvState();
-        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, readFactoryState(), environmentFrame, store.get(),
+        drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, factoryState, environmentFrame, data,
           { subject: current.machineSubject, provenance: store.provenance('pcb') }, cctvState ? { ...cctvState, live: now / 1000 } : null);
       }
       let drawTexture = textureRenderers.get(current.theme);
