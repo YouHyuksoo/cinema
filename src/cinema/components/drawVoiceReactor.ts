@@ -46,8 +46,9 @@ export function drawArcReactor(ctx: CanvasRenderingContext2D, state: VoiceCoreSt
   const backZ = REACTOR_HALF, frontZ = -REACTOR_HALF;
   const back = Array.from({ length: 65 }, (_, i) => disc(i / 64 * TAU, 106, backZ));
   const rearFacing = Math.cos(yaw) * Math.cos(pitch) < 0;
-  // Raised rear hardware remains visible beyond the body silhouette before a full rear turn.
-  if (!rearFacing) drawReactorRear(ctx, state);
+  // Raised rear hardware remains visible beyond the body silhouette before a full rear turn; the
+  // opaque body disc painted next covers everything else, so those faces are not painted at all.
+  if (!rearFacing) drawReactorRear(ctx, state, true);
   ctx.globalAlpha = 1; fill(back, '#09131e');
   // Opaque, shaded side wall: this is the visible thickness of the reactor.
   const sides = Array.from({ length: 48 }, (_, i) => {

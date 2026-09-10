@@ -12,12 +12,12 @@ function surfaceColor(face: ProjectedRearFace) {
 }
 
 /** Opaque, depth-sorted mechanical surfaces; scoped canvas state also survives paint errors. */
-export function drawReactorRear(ctx: CanvasRenderingContext2D, state: VoiceCoreState) {
+export function drawReactorRear(ctx: CanvasRenderingContext2D, state: VoiceCoreState, occludedByBody = false) {
   ctx.save();
   try {
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    for (const face of projectReactorRear(state)) {
+    for (const face of projectReactorRear(state, occludedByBody)) {
       ctx.beginPath();
       face.vertices.forEach((vertex, index) => {
         if (index) ctx.lineTo(vertex.x, vertex.y); else ctx.moveTo(vertex.x, vertex.y);

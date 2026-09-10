@@ -17,7 +17,7 @@ const point = (radius: number, angle: number, z: number): ReactorPoint => ({ x: 
 
 /** A band is a real surface between two radius/depth pairs, including vertical walls. */
 function band(outer: number, inner: number, zOuter: number, zInner: number, start: number, end: number,
-  material: RearMaterial, role: FaceRole, steps = 40): RawFace[] {
+  material: RearMaterial, role: FaceRole, steps = 20): RawFace[] {
   const count = Math.max(2, Math.ceil((end - start) / TAU * steps));
   return Array.from({ length: count }, (_, index) => {
     const a = start + (end - start) * index / count, b = start + (end - start) * (index + 1) / count;
@@ -82,7 +82,7 @@ function armor(index: number): RawPart[] {
 
 /** Three curved copper coolant feeds have an eight-sided, 9px diameter tube. */
 function pipe(index: number): RawPart {
-  const angle = index * TAU / 3 + .02, segments = 12, sides = 8, radius = 4.5;
+  const angle = index * TAU / 3 + .02, segments = 6, sides = 6, radius = 4.5;
   const centers = Array.from({ length: segments + 1 }, (_, step) => {
     const t = step / segments;
     return point(38 + 49 * t, angle + Math.sin(t * Math.PI) * .22, BACK + 19 + Math.sin(t * Math.PI) * 6);
@@ -142,10 +142,40 @@ const MESH = pool(buildMesh());
 export function reactorRearMesh(): readonly RearPart[] { return MESH; }
 export function reactorRearVertexPool(): readonly ReactorPoint[] { return POOL; }
 
-export function projectReactorRear(state: Pick<VoiceCoreState, 'rotation' | 'gazeYaw' | 'pitch'>): ProjectedRearFace[] {
+/** Slightly inside the 106 body disc: a vertex must sit behind this smaller disc to count as covered. */
+const COVER_RADIUS = 104;
+
+/**
+ * Which pooled vertices the opaque body disc (radius 106 at z = BACK) hides from the lens eye, computed
+ * in the reactor's own frame: undo the pitch tilt and the body rotation on the eye, then intersect each
+ * eye-to-vertex ray with the disc plane. Rigid rotations keep rays straight, so this matches the screen.
+ */
+function coveredByBody(state: Pick<VoiceCoreState, 'rotation' | 'gazeYaw' | 'pitch'>) {
+  const pitch = Number.isFinite(state.pitch) ? state.pitch : .27;
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const cr = Math.cos(state.rotation), sr = Math.sin(state.rotation), cy = Math.cos(state.gazeYaw), sy = Math.sin(state.gazeYaw);
+  // The lens eye is 900 units in front of the screen plane on the view axis (see filmLens lensScale).
+  const ty = 0, tz = -900;
+  const ry = ty * cp + tz * sp, rz = -ty * sp + tz * cp, rx = 0;
+  const x1 = rx * cy - rz * sy, ez = rx * sy + rz * cy;
+  const ex = x1 * cr + ry * sr, ey = -x1 * sr + ry * cr;
+  const covered = new Uint8Array(POOL.length);
+  if (ez >= BACK) return covered;
+  for (let i = 0; i < POOL.length; i++) {
+    const p = POOL[i], t = (BACK - ez) / (p.z - ez);
+    if (t <= 0 || t >= 1) continue;
+    const qx = ex + (p.x - ex) * t, qy = ey + (p.y - ey) * t;
+    if (qx * qx + qy * qy < COVER_RADIUS * COVER_RADIUS) covered[i] = 1;
+  }
+  return covered;
+}
+/** Projected, lit, depth-sorted faces; with `occludedByBody` the faces the opaque body disc fully covers are left out. */
+export function projectReactorRear(state: Pick<VoiceCoreState, 'rotation' | 'gazeYaw' | 'pitch'>, occludedByBody = false): ProjectedRearFace[] {
   const rotate = reactorRotator(state.rotation, state.gazeYaw), project = reactorProjector(state.pitch);
   const screen = POOL.map(p => project(rotate(p)));
-  const faces = MESH.flatMap(part => part.faces.map(face => {
+  const covered = occludedByBody ? coveredByBody(state) : null;
+  const faces = MESH.flatMap(part => part.faces.flatMap(face => {
+    if (covered && face.indices.every(index => covered[index])) return [];
     const vertices = face.indices.map(index => screen[index]);
     const [a, b, c] = vertices;
     const u = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
@@ -153,7 +183,7 @@ export function projectReactorRear(state: Pick<VoiceCoreState, 'rotation' | 'gaz
     const normal = { x: u.y * v.z - u.z * v.y, y: u.z * v.x - u.x * v.z, z: u.x * v.y - u.y * v.x };
     const length = Math.hypot(normal.x, normal.y, normal.z) || 1;
     const light = .45 + .55 * Math.abs((normal.x * -.35 + normal.y * -.6 + normal.z * -.72) / length);
-    return { ...face, vertices, partId: part.id, depth: vertices.reduce((sum, p) => sum + p.z, 0) / vertices.length, light };
+    return [{ ...face, vertices, partId: part.id, depth: vertices.reduce((sum, p) => sum + p.z, 0) / vertices.length, light }];
   }));
   return faces.sort((a, b) => b.depth - a.depth);
 }
