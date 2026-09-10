@@ -1,11 +1,14 @@
 import type { VoiceCoreState } from './jarvisVoiceCore';
-import { projectReactor, REACTOR_HALF, rotateReactorPoint, type ReactorPoint } from './voiceReactorGeometry';
+import { reactorProjector, reactorRotator, REACTOR_HALF, type ReactorPoint } from './voiceReactorGeometry';
 
 type RearKind = 'housing' | 'bearing' | 'shaft' | 'armor' | 'cooling-slot' | 'pipe' | 'fastener' | 'indicator';
 type RearMaterial = 'gunmetal' | 'silver' | 'copper' | 'recess' | 'cyan';
 type FaceRole = 'cap' | 'bevel' | 'wall';
-export interface RearFace { vertices: ReactorPoint[]; material: RearMaterial; role: FaceRole }
+export interface RearFace { vertices: ReactorPoint[]; indices: number[]; material: RearMaterial; role: FaceRole }
 export interface RearPart { id: string; kind: RearKind; faces: RearFace[] }
+/** Faces as the builders emit them; the shared vertex pool assigns `indices` afterwards. */
+type RawFace = Omit<RearFace, 'indices'>;
+type RawPart = Omit<RearPart, 'faces'> & { faces: RawFace[] };
 export interface ProjectedRearFace extends RearFace { partId: string; depth: number; light: number }
 
 const TAU = Math.PI * 2;
@@ -14,7 +17,7 @@ const point = (radius: number, angle: number, z: number): ReactorPoint => ({ x: 
 
 /** A band is a real surface between two radius/depth pairs, including vertical walls. */
 function band(outer: number, inner: number, zOuter: number, zInner: number, start: number, end: number,
-  material: RearMaterial, role: FaceRole, steps = 40): RearFace[] {
+  material: RearMaterial, role: FaceRole, steps = 40): RawFace[] {
   const count = Math.max(2, Math.ceil((end - start) / TAU * steps));
   return Array.from({ length: count }, (_, index) => {
     const a = start + (end - start) * index / count, b = start + (end - start) * (index + 1) / count;
@@ -22,7 +25,7 @@ function band(outer: number, inner: number, zOuter: number, zInner: number, star
   });
 }
 
-function bearing(id: string, outer: number, inner: number, bottom: number, top: number): RearPart {
+function bearing(id: string, outer: number, inner: number, bottom: number, top: number): RawPart {
   return { id, kind: 'bearing', faces: [
     ...band(outer, outer, bottom, top - 2, 0, TAU, 'gunmetal', 'wall'),
     ...band(outer, outer - 2, top - 2, top, 0, TAU, 'silver', 'bevel'),
@@ -32,14 +35,14 @@ function bearing(id: string, outer: number, inner: number, bottom: number, top: 
   ] };
 }
 
-function hexagon(id: string, kind: 'shaft' | 'fastener', x: number, y: number, radius: number, bottom: number, top: number): RearPart {
+function hexagon(id: string, kind: 'shaft' | 'fastener', x: number, y: number, radius: number, bottom: number, top: number): RawPart {
   const loop = (r: number, z: number) => Array.from({ length: 6 }, (_, i) => {
     const p = point(r, i / 6 * TAU + Math.PI / 6, z);
     return { x: x + p.x, y: y + p.y, z };
   });
   const bevel = kind === 'shaft' ? 3 : 1.1;
   const lower = loop(radius, bottom), upper = loop(radius, top - bevel), cap = loop(radius - bevel, top);
-  const faces: RearFace[] = [{ vertices: cap, material: 'silver', role: 'cap' }];
+  const faces: RawFace[] = [{ vertices: cap, material: 'silver', role: 'cap' }];
   for (let i = 0; i < 6; i++) {
     const j = (i + 1) % 6;
     faces.push({ vertices: [lower[i], lower[j], upper[j], upper[i]], material: 'gunmetal', role: 'wall' });
@@ -50,10 +53,10 @@ function hexagon(id: string, kind: 'shaft' | 'fastener', x: number, y: number, r
   return { id, kind, faces };
 }
 
-function armor(index: number): RearPart[] {
+function armor(index: number): RawPart[] {
   const start = index * TAU / 6 + .07, end = (index + 1) * TAU / 6 - .07;
   const bottom = BACK + 2, top = BACK + (index % 2 ? 18 : 14);
-  const faces: RearFace[] = [
+  const faces: RawFace[] = [
     ...band(95, 95, bottom, top - 2, start, end, 'gunmetal', 'wall'),
     ...band(95, 92, top - 2, top, start, end, 'silver', 'bevel'),
     ...band(50, 47, top, top - 3, start, end, 'silver', 'bevel'),
@@ -67,7 +70,7 @@ function armor(index: number): RearPart[] {
     point(47, angle, bottom), point(95, angle, bottom), point(95, angle, top - 2),
     point(92, angle, top), point(50, angle, top), point(47, angle, top - 3),
   ] });
-  const slots = [60, 69, 78].map((inner, slot): RearPart => ({
+  const slots = [60, 69, 78].map((inner, slot): RawPart => ({
     id: `slot-${index}-${slot}`, kind: 'cooling-slot', faces: [
       ...band(inner + 4, inner, top - 3, top - 3, start, end, 'recess', 'cap'),
       ...band(inner + 4, inner + 4, top, top - 3, start, end, 'recess', 'wall'),
@@ -78,7 +81,7 @@ function armor(index: number): RearPart[] {
 }
 
 /** Three curved copper coolant feeds have an eight-sided, 9px diameter tube. */
-function pipe(index: number): RearPart {
+function pipe(index: number): RawPart {
   const angle = index * TAU / 3 + .02, segments = 12, sides = 8, radius = 4.5;
   const centers = Array.from({ length: segments + 1 }, (_, step) => {
     const t = step / segments;
@@ -93,7 +96,7 @@ function pipe(index: number): RearPart {
         y: center.y + dx / planar * Math.cos(a) * radius, z: center.z + Math.sin(a) * radius };
     });
   });
-  const faces: RearFace[] = [];
+  const faces: RawFace[] = [];
   for (let segment = 0; segment < segments; segment++) for (let side = 0; side < sides; side++) {
     const next = (side + 1) % sides;
     faces.push({ material: 'copper', role: 'wall', vertices: [loops[segment][side], loops[segment][next], loops[segment + 1][next], loops[segment + 1][side]] });
@@ -102,8 +105,8 @@ function pipe(index: number): RearPart {
   return { id: `pipe-${index}`, kind: 'pipe', faces };
 }
 
-function buildMesh(): RearPart[] {
-  const parts: RearPart[] = [{ id: 'housing', kind: 'housing', faces: [
+function buildMesh(): RawPart[] {
+  const parts: RawPart[] = [{ id: 'housing', kind: 'housing', faces: [
     ...band(106, 0, BACK + .1, BACK + .1, 0, TAU, 'recess', 'cap'),
     ...band(106, 106, BACK, BACK + 4, 0, TAU, 'gunmetal', 'wall'),
     ...band(106, 103, BACK + 4, BACK + 6, 0, TAU, 'silver', 'bevel'),
@@ -123,13 +126,27 @@ function buildMesh(): RearPart[] {
   return parts;
 }
 
+// Adjacent faces meet at the same points; pool them so a frame projects each vertex once.
+const POOL: ReactorPoint[] = [];
+function pool(parts: RawPart[]): RearPart[] {
+  const known = new Map<string, number>();
+  return parts.map(part => ({ ...part, faces: part.faces.map(face => ({ ...face, indices: face.vertices.map(p => {
+    const key = `${p.x},${p.y},${p.z}`;
+    let index = known.get(key);
+    if (index === undefined) { index = POOL.length; POOL.push(p); known.set(key, index); }
+    return index;
+  }) })) }));
+}
 // The rear is manufactured geometry: no audio scaling, random detail or independent spin.
-const MESH = buildMesh();
+const MESH = pool(buildMesh());
 export function reactorRearMesh(): readonly RearPart[] { return MESH; }
+export function reactorRearVertexPool(): readonly ReactorPoint[] { return POOL; }
 
 export function projectReactorRear(state: Pick<VoiceCoreState, 'rotation' | 'gazeYaw' | 'pitch'>): ProjectedRearFace[] {
+  const rotate = reactorRotator(state.rotation, state.gazeYaw), project = reactorProjector(state.pitch);
+  const screen = POOL.map(p => project(rotate(p)));
   const faces = MESH.flatMap(part => part.faces.map(face => {
-    const vertices = face.vertices.map(p => projectReactor(rotateReactorPoint(p, state.rotation, state.gazeYaw), state.pitch));
+    const vertices = face.indices.map(index => screen[index]);
     const [a, b, c] = vertices;
     const u = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
     const v = { x: c.x - a.x, y: c.y - a.y, z: c.z - a.z };

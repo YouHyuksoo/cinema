@@ -4,18 +4,28 @@ import { createLensProjection } from './filmLens';
 export interface ReactorPoint { x: number; y: number; z: number }
 const TAU = Math.PI * 2;
 
-export function projectReactor(p: ReactorPoint, pitch = .27) {
+/** One pose's projector: the lens trig is computed once, then applied to any number of points. */
+export function reactorProjector(pitch = .27) {
   const tilt = Number.isFinite(pitch) ? pitch : .27;
-  const view = createLensProjection({ lens: 900, pitch: tilt, centerX: VOICE_CORE_VIEW.x, centerY: VOICE_CORE_VIEW.y })(p.x, p.y, p.z);
-  return { x: view.x, y: view.y, z: view.depth };
+  const view = createLensProjection({ lens: 900, pitch: tilt, centerX: VOICE_CORE_VIEW.x, centerY: VOICE_CORE_VIEW.y });
+  return (p: ReactorPoint): ReactorPoint => { const s = view(p.x, p.y, p.z); return { x: s.x, y: s.y, z: s.depth }; };
+}
+export function projectReactor(p: ReactorPoint, pitch = .27) {
+  return reactorProjector(pitch)(p);
 }
 
+/** One pose's rotator: the rotation and yaw trig is computed once, then applied to any number of points. */
+export function reactorRotator(rotation: number, yaw = -.36) {
+  const cosR = Math.cos(rotation), sinR = Math.sin(rotation), cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+  return (p: ReactorPoint): ReactorPoint => {
+    const x = p.x * cosR - p.y * sinR;
+    const y = p.x * sinR + p.y * cosR;
+    return { x: x * cosY + p.z * sinY, y, z: p.z * cosY - x * sinY };
+  };
+}
 /** The entire solid reactor turns around its tilted axis, including attached sparks. */
 export function rotateReactorPoint(p: ReactorPoint, rotation: number, yaw = -.36): ReactorPoint {
-  const x = p.x * Math.cos(rotation) - p.y * Math.sin(rotation);
-  const y = p.x * Math.sin(rotation) + p.y * Math.cos(rotation);
-  return { x: x * Math.cos(yaw) + p.z * Math.sin(yaw), y,
-    z: p.z * Math.cos(yaw) - x * Math.sin(yaw) };
+  return reactorRotator(rotation, yaw)(p);
 }
 
 export function reactorDiscPoint(angle: number, radius: number, depth: number, rotation = 0, yaw = -.36): ReactorPoint {
