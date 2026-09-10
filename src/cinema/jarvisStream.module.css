@@ -76,5 +76,5 @@
 @keyframes ringOrbit { to { transform:rotate(360deg); } }
 @keyframes panelScan { from { top:4%; } to { top:96%; } }
 @media(prefers-reduced-motion:reduce) { .stream *, .miniOrbit,.content>section::after { animation:none; }.content>section { transform:none; } }
-@media(max-width:900px) { .stream { height:430px; }.stream:last-child { grid-column:1/-1; } }
-@media(max-width:600px) { .stream { height:390px; }.stream:first-of-type { grid-row:4; } }
+/* Small screens: the stream fills the grid cell the main body gives it (jarvis.module.css) and scrolls inside. */
+@media(max-width:900px) { .stream { height:100%; }.stream>footer { display:none; } }

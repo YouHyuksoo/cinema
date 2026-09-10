@@ -1,6 +1,7 @@
-.main { position:absolute; z-index:1; inset:max(12px,env(safe-area-inset-top)) clamp(20px,4vw,72px) calc(var(--film-content-inset, var(--film-dock-space)) + 8px); overflow:clip; display:flex; flex-direction:column; gap:12px; color:var(--film-ink); font-size:12px; line-height:1.4; }
+.main { position:absolute; z-index:1; inset:max(12px,env(safe-area-inset-top)) clamp(20px,3vw,56px) calc(var(--film-content-inset, var(--film-dock-space)) + 8px); overflow:clip; display:flex; flex-direction:column; gap:12px; color:var(--film-ink); font-size:12px; line-height:1.4; }
 .main[data-external-briefing=true] .center { grid-template-areas:"stage" "input"; grid-template-rows:minmax(120px,1fr) auto; }
-.body { flex:1; min-height:0; display:grid; grid-template-columns:minmax(140px,200px) minmax(480px,1fr) minmax(140px,200px); grid-template-rows:minmax(0,1fr); gap:clamp(12px,2vw,24px); overflow:auto; scrollbar-width:thin; scrollbar-color:var(--film-line) transparent; isolation:isolate; }
+/* Side streams grow with the screen (18vw, 200–440px) so a maximised window widens them instead of only the centre. */
+.body { flex:1; min-height:0; display:grid; grid-template-columns:minmax(140px,clamp(200px,18vw,440px)) minmax(480px,1fr) minmax(140px,clamp(200px,18vw,440px)); grid-template-rows:minmax(0,1fr); gap:clamp(12px,2vw,24px); overflow:auto; scrollbar-width:thin; scrollbar-color:var(--film-line) transparent; isolation:isolate; }
 .body > :not(.center) { opacity:1; filter:none; }
 .body > :not(.center) .notice { opacity:1; }
 .main button { color:var(--film-accent-soft); background:color-mix(in srgb,var(--film-accent) 4%,transparent); border:1px solid var(--film-line); padding:8px 12px; font:inherit; font-size:12px; cursor:pointer; }
@@ -74,7 +75,14 @@
 .dialogue small span { float:right; font:9px var(--font-label),sans-serif; color:var(--film-muted); }
 .dialogue p { font-size:11px; line-height:1.6; margin:3px 0 0; min-height:6.4em; overflow-wrap:anywhere; white-space:pre-wrap; }
 .input { display:flex; gap:8px; margin:0; }
-.input input { min-width:0; flex:1; border:1px solid var(--film-line); background:#0003; padding:10px 12px; color:var(--film-ink); font:12px inherit; }
+/* The empty input breathes slowly in the accent so it reads as the place to type; focus or typed text holds it steady. */
+.input input { min-width:0; flex:1; border:1px solid color-mix(in srgb,var(--film-accent) 45%,var(--film-line)); background:#0003; padding:10px 12px; color:var(--film-ink); font:12px inherit; animation:inputGlow 2.8s ease-in-out infinite; }
+.input input:focus-visible,.input input:not(:placeholder-shown) { animation:none; border-color:var(--film-accent); box-shadow:0 0 12px color-mix(in srgb,var(--film-accent) 35%,transparent); }
+@keyframes inputGlow {
+  0%,100% { border-color:color-mix(in srgb,var(--film-accent) 30%,var(--film-line)); box-shadow:0 0 0 color-mix(in srgb,var(--film-accent) 0%,transparent); }
+  50% { border-color:var(--film-accent); box-shadow:0 0 14px color-mix(in srgb,var(--film-accent) 45%,transparent),inset 0 0 10px color-mix(in srgb,var(--film-accent) 8%,transparent); }
+}
+@media(prefers-reduced-motion:reduce) { .input input { animation:none; border-color:var(--film-accent); } }
 .input input::placeholder { color:var(--film-muted); opacity:.65; }.input button { white-space:nowrap; }
 .quick { display:flex; flex-wrap:wrap; gap:6px; }.quick button { padding:5px 8px; font-size:10px; }
 .notice { color:var(--film-muted); opacity:.75; font-size:9px; line-height:1.7; margin:12px 0 0; }
@@ -91,4 +99,13 @@
 @media(max-width:600px) { .main { grid-template-columns:1fr; gap:14px; inset-inline:16px; }.identity { grid-row:1; }.metrics { grid-column:1; grid-row:2; }.center { grid-row:3; }.left { grid-row:4; }.right { grid-column:1; grid-template-columns:repeat(2,1fr); }.camera { max-width:210px; }.left>button { max-width:210px; }.wave { height:160px; } }
 @media(max-width:900px) { .main { grid-template-rows:auto auto auto; }.right { display:block; }.temperatureAlert { max-width:320px; } }
 @media(max-width:1100px) { .body { grid-template-columns:minmax(120px,170px) minmax(480px,1fr) minmax(120px,170px); gap:12px; } }
-@media(max-width:900px) { .body { display:flex; flex-direction:column; gap:18px; }.body>.center { order:-1; flex:none; height:480px; overflow:clip; }.body>.center .wave { height:100%; }.body>aside { flex:none; } }
+/* Phones and tablets: nothing scrolls as a page. The header above stays put, the centre keeps a bounded stage
+   height so the chat input is always on screen, and the two streams share the remaining height side by side,
+   each scrolling inside its own viewport. */
+@media(max-width:900px) {
+  .body { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:12px; overflow:hidden; }
+  .body>.center { grid-column:1/-1; grid-row:1; height:auto; overflow:clip; grid-template-rows:clamp(140px,24dvh,260px) minmax(5em,.3fr) auto; }
+  .main[data-external-briefing=true] .body>.center { grid-template-rows:clamp(140px,24dvh,260px) auto; }
+  .body>.center .wave { height:100%; }
+  .body>aside { min-height:0; }
+}

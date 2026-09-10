@@ -49,3 +49,28 @@ describe('five-blade turbine commands', () => {
     }
   });
 });
+
+describe('turbine placement on small screens', () => {
+  it('moves the desktop anchor left while retaining the safe-area inset', () => {
+    const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');
+    expect(css.split('@media')[0]).toContain('left:max(0px,env(safe-area-inset-left));');
+    expect(css.split('@media')[0]).toContain('transform:translateX(-56px);');
+    expect(css).toContain('transform:translateX(12px); pointer-events:auto;');
+    expect(css).toContain('transition:transform .45s cubic-bezier(.22,.8,.2,1);');
+  });
+  it('sits in the bottom-left corner at the globe diameter, mirroring the globe instead of a fixed zoom', () => {
+    const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');
+    const mobile = css.slice(css.indexOf('@media(max-width:680px),(max-height:480px)'));
+    expect(mobile).not.toContain('zoom:');
+    expect(mobile).toContain('.menu,.menu[data-turbine-open=true] { transform:none; }');
+    expect(mobile).toContain('width:var(--orb); height:var(--orb);');
+    expect(mobile).toContain('--orb:var(--hatchery-orb-diameter,120px);');
+    // Tucked into the corner: 6px from the left edge, 10px from the bottom (the globe keeps its own 16px edge).
+    expect(mobile).toContain('left:max(6px,env(safe-area-inset-left));');
+    expect(mobile).toContain('bottom:max(10px,env(safe-area-inset-bottom));');
+    expect(mobile).toContain('transform:scale(var(--hatchery-orb-scale,.4));');
+    expect(mobile).toContain('.menu[data-turbine-open=true] .art { transform:scale(var(--hatchery-orb-open-scale,.5)); }');
+    const hook = readFileSync('src/cinema/useFilmMenuGlobe.ts', 'utf8');
+    for (const name of ['--hatchery-orb-diameter', '--hatchery-orb-scale', '--hatchery-orb-open-scale']) expect(hook).toContain(name);
+  });
+});

@@ -1,7 +1,9 @@
 @property --film-dock-space { syntax: '<length>'; inherits: true; initial-value: 208px; }
 @property --film-content-inset { syntax:'<length>'; inherits:true; initial-value:220px; }
 .page { --film-briefing-height:clamp(132px,18dvh,168px); --film-briefing-offset:var(--film-dock-space); --film-content-inset:calc(var(--film-briefing-offset) + var(--film-briefing-height) + 28px); }
-@media(max-width:760px) { .page { --film-briefing-offset:max(228px,var(--film-dock-space)); --film-briefing-height:124px; } }
+/* Small screens: with the ring collapsed the briefing sits in the bottom band between the corner turbine and globe
+   (filmBriefing.module.css), so it only keeps the 8px bottom margin; the open ring still pushes it up by the dock space. */
+@media(max-width:760px) { .page { --film-briefing-offset:max(8px,var(--film-dock-space)); --film-briefing-height:124px; } }
 @media(max-height:500px) { .page { --film-briefing-height:96px; } }
 .page { --film-safe-extra: max(0px, calc(env(safe-area-inset-bottom) - 10px)); --film-dock-space: calc(208px + var(--film-safe-extra)); --film-accent: #5fe3ff; --film-accent-soft: #b6f6ff; --film-ink: #b1cdd4; --film-muted: #9eb7bd; --film-dim: #67818a; --film-bg: #040b10; --film-panel: #071319; --film-line: #28434d; position: relative; height: 100dvh; display: block; overflow: hidden; isolation: isolate; background: var(--film-bg); font-family: var(--font-label), var(--font-korean), sans-serif; }
 .footer { width: 100%; max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--film-muted); font-size: 12px; letter-spacing: .12em; }

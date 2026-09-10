@@ -32,9 +32,10 @@ describe('floating menu globe geometry', () => {
   });
   it.each([
     { width: 1200, height: 805, expected: { x: 1064, y: 637 } },
-    { width: 390, height: 845, expected: { x: 274, y: 737 } },
-    { width: 843, height: 390, expected: { x: 727, y: 282 } },
-  ])('docks at bottom right with caption clearance in $width x $height', ({ width, height, expected }) => {
+    // Desktop keeps the 16px edge and 28px bottom clearance; small screens (≤680 wide or ≤480 tall) tuck 6px into the corner.
+    { width: 390, height: 845, expected: { x: 324, y: 775 } },
+    { width: 843, height: 390, expected: { x: 777, y: 320 } },
+  ])('docks at bottom right with edge clearance in $width x $height', ({ width, height, expected }) => {
     expect(globeRestingCenter({ width, height }, globeDiameter(width, height))).toEqual(expected);
   });
 
@@ -62,11 +63,13 @@ describe('floating menu globe geometry', () => {
 
   it('clamps remembered centers with edge, float, and caption clearance', () => {
     expect(clampGlobeCenter({ x: -20, y: 900 }, { width: 400, height: 700 }, 240))
+      .toEqual({ x: 126, y: 570 });
+    expect(clampGlobeCenter({ x: -20, y: 900 }, { width: 1000, height: 700 }, 240))
       .toEqual({ x: 136, y: 532 });
     expect(clampGlobeCenter({ x: 200, y: 455 }, { width: 400, height: 700 }, 240))
       .toEqual({ x: 200, y: 455 });
-    expect(clampGlobeCenter({ x: 0, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(116);
-    expect(clampGlobeCenter({ x: 999, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(244);
+    expect(clampGlobeCenter({ x: 0, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(96);
+    expect(clampGlobeCenter({ x: 999, y: 350 }, { width: 360, height: 700 }, 180).x).toBe(264);
   });
 
   it('requires about seven pixels before a pointer gesture suppresses click', () => {
@@ -262,5 +265,23 @@ describe('soccer ball globe lattice', () => {
     });
     expect(soccerSeamPoses(0, 0).every(seam => seam.length === 0)).toBe(true);
     expect(soccerHexPoses(NaN, 1).every(pose => pose.opacity === 0)).toBe(true);
+  });
+});
+
+describe('turbine mirrors the globe on small screens', () => {
+  it('folds the turbine to the globe diameter and opens it only as far as the left edge allows', async () => {
+    const { turbineOrbMetrics, TURBINE_ART_SIZE, TURBINE_FOLDED_EXTENT, TURBINE_CORNER_INSET, GLOBE_REST_SCALE } = await import('@/cinema/filmMenuGlobe');
+    // Phone: layout diameter 120 → the globe rests at 60px; the folded rotor (¾ of its plate) matches that visually.
+    const phone = turbineOrbMetrics(globeDiameter(390, 844));
+    expect(phone.diameter).toBe(120 * GLOBE_REST_SCALE);
+    expect(phone.scale).toBeCloseTo(60 / (TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT));
+    expect(phone.scale * TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT).toBeCloseTo(60);
+    // Tucked 6px into the corner the hub is only 36px from the edge, so opening cannot grow the rotor; it only unfurls.
+    expect(phone.openScale).toBe(phone.scale);
+    const tablet = turbineOrbMetrics(globeDiameter(680, 900));
+    expect(tablet.diameter).toBe(177 * GLOBE_REST_SCALE);
+    expect(tablet.openScale).toBeGreaterThanOrEqual(tablet.scale);
+    expect(tablet.openScale).toBeLessThanOrEqual(Math.max(tablet.scale, (TURBINE_CORNER_INSET + tablet.diameter / 2) / (TURBINE_ART_SIZE / 2)) + 1e-9);
+    expect(turbineOrbMetrics(Number.NaN)).toEqual({ diameter: 0, scale: 0, openScale: 0 });
   });
 });

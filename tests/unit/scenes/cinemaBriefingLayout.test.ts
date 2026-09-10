@@ -10,6 +10,16 @@ describe('persistent lower-center briefing', () => {
     expect(html).toContain('aria-label="텍스트 브리핑"');
     expect(html).toContain('브리핑 대기 중');
   });
+  it('shows one header line: the title left and the state right, with the dialogue heading hidden', () => {
+    const waiting = renderToStaticMarkup(createElement(FilmBriefing, { text: '', source: '' }));
+    expect(waiting).toContain('<header><span>TEXT / BRIEFING</span><span data-briefing-status');
+    expect(waiting).toContain('role="status">브리핑 대기</span></header>');
+    expect(waiting).not.toContain('<span>텍스트 브리핑</span>');
+    const summary = renderToStaticMarkup(createElement(FilmBriefing, { text: '라인 정상.', source: '현장 요약' }));
+    expect(summary).toContain('role="status">현장 요약</span>');
+    const css = readFileSync('src/cinema/filmBriefing.module.css', 'utf8');
+    expect(css).toContain('.panel small { display:none; }');
+  });
   it('reuses the paged reply without generating or fetching content', () => {
     const html = renderToStaticMarkup(createElement(FilmBriefing, { text: '현장 분석 '.repeat(70), source: '현장 요약' }));
     expect(html).toContain('현장 분석');

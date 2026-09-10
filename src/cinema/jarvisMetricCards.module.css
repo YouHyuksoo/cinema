@@ -2,8 +2,11 @@
 .strip { position:relative; isolation:isolate; display:flex; flex-direction:column; min-width:0; width:100%; box-sizing:border-box; padding-left:var(--hatchery-cube-space,0px); }
 /* Two framed regions: the menu bay on the left and the flowing card rail on the right. */
 .strip::before,.strip::after { content:''; position:absolute; top:0; bottom:0; z-index:-1; pointer-events:none; border:1px solid var(--film-line); box-shadow:inset 0 0 18px color-mix(in srgb,var(--film-accent) 5%,transparent); }
-.strip::before { display:none; left:0; width:var(--hatchery-cube-bay,0px); background:color-mix(in srgb,var(--film-accent) 4%,transparent); clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px)); }
+/* The bay's fill only; its frame is the JarvisCubeBayFrame SVG below (same cut corners: top-right and bottom-left). */
+.strip::before { display:none; left:0; width:var(--hatchery-cube-bay,0px); border:0; box-shadow:none; background:linear-gradient(155deg,color-mix(in srgb,var(--film-accent) 10%,transparent),color-mix(in srgb,var(--film-bg) 40%,transparent) 55%,color-mix(in srgb,var(--film-accent) 5%,transparent)); clip-path:polygon(0 0,83.75% 0,100% 16.25%,100% 100%,16.25% 100%,0 83.75%); }
 :global(:root[data-cube-docked="true"]) .strip::before { display:block; }
+.bayFrame { display:none; position:absolute; left:0; top:0; width:var(--hatchery-cube-bay,0px); height:100%; z-index:-1; pointer-events:none; overflow:visible; color:var(--film-accent); filter:drop-shadow(0 0 3px color-mix(in srgb,var(--film-accent) 25%,transparent)); }
+:global(:root[data-cube-docked="true"]) .bayFrame { display:block; }
 .strip::after { left:var(--hatchery-cube-space,0px); right:0; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
 .stripBar { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:26px; padding-left:16px; }
 .stripBar>span { font:7px var(--font-mono),monospace; color:var(--film-muted); }
@@ -15,7 +18,7 @@
 .card { min-width:0; position:relative; isolation:isolate; color:var(--film-accent); padding:7px 13px 9px; border:0; border-radius:0; animation:instrumentFloat var(--card-period) ease-in-out var(--card-delay) infinite alternate; transform-origin:center bottom; }
 .card::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; clip-path:polygon(9.33% 1.88%,99% 1.88%,99% 81.88%,90.33% 98.13%,1% 98.13%,1% 17.5%); background:linear-gradient(155deg,color-mix(in srgb,currentColor 9%,transparent),color-mix(in srgb,var(--film-bg) 40%,transparent) 70%); }
 .card .frame { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:-1; filter:drop-shadow(0 0 3px color-mix(in srgb,currentColor 25%,transparent)); }
-.frame path { vector-effect:non-scaling-stroke; stroke-linejoin:miter; }
+.frame path,.bayFrame path { vector-effect:non-scaling-stroke; stroke-linejoin:miter; }
 .frameOutline { fill:none; stroke:currentColor; stroke-width:1; opacity:.85; }
 .frameInset { fill:none; stroke:currentColor; stroke-width:.6; opacity:.24; }
 .framePlate { fill:currentColor; opacity:.95; }
@@ -47,6 +50,9 @@
 @media(prefers-reduced-motion:reduce) { .card,.card * { animation:none; transform:none; } }
 @media(max-width:1100px) { .card { padding:7px 8px 9px; }.card h2 { font-size:6px; }.card .reading strong { font-size:24px; }.card footer { font-size:7px; } }
 @media(max-width:680px) {
+  /* Only a sliver between the cube bay and the card rail; the desktop 36px breathing room is too much here. */
+  .strip { padding-left:calc(var(--hatchery-cube-bay,0px) + 8px); }
+  .strip::after { left:calc(var(--hatchery-cube-bay,0px) + 8px); }
   .cards>.card { flex-basis:clamp(150px,72%,220px); }
   .card { padding:5px 8px 7px; }
   .card .reading strong { font-size:20px; }

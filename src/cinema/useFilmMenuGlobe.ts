@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
-import { clampGlobeCenter, drawSoccerSphere, globeDiameter, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
+import { clampGlobeCenter, drawSoccerSphere, globeDiameter, turbineOrbMetrics, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
   globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, type MenuPose,
   type Point } from './filmMenuGlobe';
 import { orbitPose, orbitRadius, ringPose, type MenuLayout } from './filmMenuRing';
@@ -97,6 +97,11 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       }
       button.style.width = `${diameter}px`; button.style.height = `${diameter}px`;
       if (ball.current) { ball.current.style.width = `${diameter}px`; ball.current.style.height = `${diameter}px`; }
+      // Publish the orb size so the turbine in the opposite corner can match it on small screens (filmTurbineMenu.module.css).
+      const orb = turbineOrbMetrics(diameter), root = document.documentElement.style;
+      root.setProperty('--hatchery-orb-diameter', `${orb.diameter}px`);
+      root.setProperty('--hatchery-orb-scale', orb.scale.toFixed(4));
+      root.setProperty('--hatchery-orb-open-scale', orb.openScale.toFixed(4));
     };
     const globe = () => {
       const sized = restScale();

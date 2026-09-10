@@ -13,8 +13,8 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const DEGREES = 180 / Math.PI;
 export const GLOBE_EDGE_PADDING = 16;
 export const GLOBE_FLOAT_AMPLITUDE = 4;
+/** Bottom clearance under the sphere; the turbine's small-screen bottom offset mirrors it (filmTurbineMenu.module.css). */
 export const GLOBE_CAPTION_CLEARANCE = 28;
-export const GLOBE_CAPTION_MAX_WIDTH = 200;
 export const GLOBE_DRAG_THRESHOLD = 7;
 
 export type Point = { x: number; y: number };
@@ -35,17 +35,50 @@ export function globeDiameter(viewportWidth: number, viewportHeight: number) {
   return Math.max(0, Math.min(preferred, horizontalFit, verticalFit));
 }
 
+/** The turbine art is drawn on a 300px plate; folded it shows at .72 of that (filmTurbineMenu.module.css). */
+export const TURBINE_ART_SIZE = 300;
+export const TURBINE_FOLDED_SCALE = .72;
+/**
+ * The folded rotor (five furled blades around the hub, tilted 40°) fills about three quarters of its plate
+ * (measured 182×145 on a 216px plate), so matching the globe by plate size makes it look too small.
+ */
+export const TURBINE_FOLDED_EXTENT = .75;
+/** Small screens tuck the turbine into the corner: its box sits this far from the left edge (filmTurbineMenu.module.css). */
+export const TURBINE_CORNER_INSET = 6;
+
+/**
+ * Small screens: the folded turbine's visible rotor takes the globe's resting size (half the layout
+ * diameter) so the two corners read alike, and the open turbine grows toward the globe's awake size
+ * (70%) but never past the point where its blades would leave the left edge (the hub sits
+ * TURBINE_CORNER_INSET + radius from it). `diameter` is the layout diameter from globeDiameter().
+ */
+export function turbineOrbMetrics(diameter: number) {
+  const resting = finiteSize(diameter) * GLOBE_REST_SCALE;
+  const visiblePlate = TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT;
+  const scale = resting / visiblePlate;
+  const awake = finiteSize(diameter) * GLOBE_AWAKE_SCALE / visiblePlate;
+  const edgeLimit = (TURBINE_CORNER_INSET + resting / 2) / (TURBINE_ART_SIZE / 2);
+  return { diameter: resting, scale, openScale: Math.max(scale, Math.min(awake, edgeLimit)) };
+}
+
+/** Small screens (the turbine's media query: width ≤ 680 or height ≤ 480) tuck both orbs into their corners. */
+export const GLOBE_TIGHT_MAX_WIDTH = 680;
+export const GLOBE_TIGHT_MAX_HEIGHT = 480;
+export const GLOBE_TIGHT_INSET = 6;
+export const isTightViewport = (viewport: Viewport) => viewport.width <= GLOBE_TIGHT_MAX_WIDTH || viewport.height <= GLOBE_TIGHT_MAX_HEIGHT;
+
 export function clampGlobeCenter(center: Point, viewport: Viewport, diameter: number): Point {
   const width = finiteSize(viewport.width), height = finiteSize(viewport.height);
   const radius = finiteSize(diameter) / 2;
-  const captionRadius = Math.min(GLOBE_CAPTION_MAX_WIDTH / 2,
-    Math.max(0, width - GLOBE_EDGE_PADDING * 2) / 2);
-  const horizontalRadius = Math.max(radius, captionRadius);
-  const minX = horizontalRadius + GLOBE_EDGE_PADDING;
-  const maxX = Math.max(minX, width - horizontalRadius - GLOBE_EDGE_PADDING);
-  const minY = radius + GLOBE_EDGE_PADDING + GLOBE_FLOAT_AMPLITUDE;
-  const maxY = Math.max(minY, height - radius - GLOBE_EDGE_PADDING
-    - GLOBE_FLOAT_AMPLITUDE - GLOBE_CAPTION_CLEARANCE);
+  // No caption hangs off the globe any more, so only the sphere itself keeps the edge. Desktop keeps the
+  // 16px edge and 28px bottom clearance; small screens sit 6px from the right and bottom (plus the float).
+  const tight = isTightViewport({ width, height });
+  const edge = tight ? GLOBE_TIGHT_INSET : GLOBE_EDGE_PADDING;
+  const bottom = tight ? GLOBE_TIGHT_INSET : GLOBE_EDGE_PADDING + GLOBE_CAPTION_CLEARANCE;
+  const minX = radius + edge;
+  const maxX = Math.max(minX, width - radius - edge);
+  const minY = radius + edge + GLOBE_FLOAT_AMPLITUDE;
+  const maxY = Math.max(minY, height - radius - bottom - GLOBE_FLOAT_AMPLITUDE);
   const x = Number.isFinite(center.x) ? center.x : width / 2;
   const y = Number.isFinite(center.y) ? center.y : height * .65;
   return { x: Math.max(minX, Math.min(maxX, x)), y: Math.max(minY, Math.min(maxY, y)) };
