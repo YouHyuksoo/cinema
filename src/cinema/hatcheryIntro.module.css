@@ -1,13 +1,19 @@
-/* HATCHERY boot gate: a cockpit-style HUD rig in five depth layers (CSS 3D), monochrome in the theme
-   accent on near-black. Layers fly in from depth on boot, breathe in place, and the whole rig passes
-   through the camera on --pass (0 .. 1) to reveal the interface behind it. The overlay sits outside
-   the film's theme scope, so the accent falls back to the default cyan. No images, no glass. */
-.stage { position: fixed; inset: 0; z-index: 8; overflow: hidden; --pass: 0;
+/* HATCHERY boot gate: a cockpit HUD rig built from real 3D objects (CSS 3D), monochrome in the theme
+   accent on near-black. World unit --u is 1/100 of a 16:9 stage fitted to the viewport. Floor and
+   ceiling grids recede to the horizon, wing panels angle inward like a canopy, the frame and reticle
+   are extruded from stacked slices, and two gyro rings turn at right angles to the reticle. The camera
+   drifts on a Lissajous path, dollies, and follows the pointer; the rig passes through the camera on
+   --pass (0 .. 1). Outside the film's theme scope, the accent falls back to the default cyan. */
+.stage { position: fixed; inset: 0; z-index: 8; overflow: hidden; --pass: 0; --px: 0; --py: 0;
+  --u: min(1vw, 1.777vh);
   --accent: var(--film-accent, #5fe3ff); --bg: #020509;
   --ink: color-mix(in srgb, var(--accent) 88%, white); --line: color-mix(in srgb, var(--accent) 72%, transparent);
   --hair: color-mix(in srgb, var(--accent) 34%, transparent); --wash: color-mix(in srgb, var(--accent) 5%, transparent);
-  perspective: 900px; perspective-origin: 50% 50%; font-family: var(--font-mono, monospace), monospace; }
+  perspective: calc(var(--u) * 70); perspective-origin: calc(50% + var(--px) * 14%) calc(50% + var(--py) * 14%);
+  font-family: var(--font-mono, monospace), monospace; }
 .stage:focus { outline: none; }
+/* Marked before paint by the layout's inline script: this session already saw the gate. */
+:global(:root[data-hatchery-intro-seen]) .stage { display: none; }
 .stage[data-gate-open="true"] { pointer-events: none; }
 :global(:root[data-hatchery-intro]) :global([data-cube-layer]) { z-index: 9 !important; }
 
@@ -15,36 +21,75 @@
 .veil { position: absolute; inset: 0; opacity: calc(1 - var(--pass));
   background: radial-gradient(ellipse 70% 60% at 50% 50%, color-mix(in srgb, var(--accent) 7%, var(--bg)), var(--bg) 75%); }
 
-/* The rig travels toward the camera on --pass; nearer layers leave first because they sit closer already. */
+/* The rig travels toward the camera on --pass. */
 .rig { position: absolute; inset: 0; transform-style: preserve-3d;
-  transform: translateZ(calc(var(--pass) * 1100px)); opacity: calc(1 - var(--pass) * var(--pass)); }
-.breath { position: absolute; inset: 0; transform-style: preserve-3d; animation: breathe 7s ease-in-out infinite alternate; }
+  transform: translateZ(calc(var(--pass) * var(--u) * 90)); opacity: calc(1 - var(--pass) * var(--pass)); }
+/* Camera motion, one axis per wrapper so the animations and the pointer transform never fight. */
+.cameraYaw, .cameraPitch, .cameraDolly, .cameraPointer, .world { position: absolute; inset: 0; transform-style: preserve-3d; }
+.cameraYaw { animation: yawDrift 13s ease-in-out infinite alternate; }
+.cameraPitch { animation: pitchDrift 8.5s ease-in-out infinite alternate; }
+.cameraDolly { animation: dolly 11s ease-in-out infinite alternate; }
+.cameraPointer { transform: rotateY(calc(var(--px) * 16deg)) rotateX(calc(var(--py) * -12deg)); transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
 
-.layer { position: absolute; inset: 0; width: 100%; height: 100%; transform: translateZ(var(--depth));
-  animation: boot .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--delay); fill: none; stroke-linecap: square; }
-.layer[data-hud-layer="depth"] { --depth: -420px; --delay: 0ms; }
-.layer[data-hud-layer="frame"] { --depth: -260px; --delay: 70ms; }
-.layer[data-hud-layer="wings"] { --depth: -140px; --delay: 140ms; }
-.layer[data-hud-layer="ring"] { --depth: -40px; --delay: 210ms; }
-.layer[data-hud-layer="labels"] { --depth: 60px; --delay: 280ms; }
-svg.layer path, svg.layer circle, svg.layer rect { vector-effect: non-scaling-stroke; }
+/* Objects are centred on the world origin, then placed in 3D. The body inside carries boot and drift. */
+.object { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; }
+.body { position: absolute; inset: 0; transform-style: preserve-3d;
+  animation: boot 1.2s cubic-bezier(.2, .8, .2, 1) both var(--delay, 0ms), drift var(--drift-ms, 10s) ease-in-out 1.2s infinite alternate; }
+
+/* Grids are drawn at half size and scaled up, so their textures stay small for the compositor. */
+.object[data-hud-object="floor"], .object[data-hud-object="ceiling"] { width: calc(var(--u) * 70); height: calc(var(--u) * 45); --delay: 0ms; --drift-ms: 12s; }
+.object[data-hud-object="floor"] { transform: translate(-50%, -50%) translateY(calc(var(--u) * 33)) rotateX(76deg) scale(2); }
+.object[data-hud-object="ceiling"] { transform: translate(-50%, -50%) translateY(calc(var(--u) * -33)) rotateX(-76deg) scale(2); }
+.grid { position: absolute; inset: 0;
+  background-image: linear-gradient(var(--hair) 1px, transparent 1px), linear-gradient(90deg, var(--hair) 1px, transparent 1px);
+  background-size: calc(var(--u) * 4.5) calc(var(--u) * 4.5); background-position: center; }
+.grid[data-plane="floor"] { mask-image: linear-gradient(to top, rgba(0, 0, 0, .95) 10%, transparent 82%); }
+.grid[data-plane="ceiling"] { mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .6) 10%, transparent 82%); }
+
+.object[data-hud-object="wing-left"], .object[data-hud-object="wing-right"] { width: calc(var(--u) * 30); height: calc(var(--u) * 19.6); --delay: 180ms; --drift-ms: 9s; }
+.object[data-hud-object="wing-left"] { transform: translate(-50%, -50%) translateX(calc(var(--u) * -38)) translateZ(calc(var(--u) * -6)) rotateY(44deg); }
+.object[data-hud-object="wing-right"] { transform: translate(-50%, -50%) translateX(calc(var(--u) * 38)) translateZ(calc(var(--u) * -6)) rotateY(-44deg); }
+
+.object[data-hud-object="frame"] { width: calc(var(--u) * 100); height: calc(var(--u) * 56); --delay: 90ms; --drift-ms: 15s;
+  transform: translate(-50%, -50%) translateZ(calc(var(--u) * -14)); }
+/* Extrusion: three slices stacked along z, dimmer toward the back, so tilting the camera reveals thickness. */
+.slice { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-linecap: square;
+  transform: translateZ(calc((1 - var(--i)) * var(--u) * 1.6)); opacity: calc(1 - var(--i) * .28); }
+
+.object[data-hud-object="ring"] { width: calc(var(--u) * 30); height: calc(var(--u) * 30); --delay: 270ms; --drift-ms: 7s;
+  transform: translate(-50%, -50%) translateZ(calc(var(--u) * 4)); }
+/* Each slice spins as a whole element (composited); nothing animates inside the SVG, so it rasterises once. */
+.ringSlice { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-linecap: square; --z: calc((1 - var(--i)) * var(--u) * 1.3);
+  transform: translateZ(var(--z)); opacity: calc(1 - var(--i) * .28); animation: spin 24s linear infinite; }
+/* Gyro rings turn at right angles to the reticle: the clearest sign that the reticle is a solid. */
+.gyroA, .gyroB { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-linecap: square; opacity: .55; }
+.gyroA { animation: gyroA 14s linear infinite; }
+.gyroB { animation: gyroB 19s linear infinite; }
+
+.object[data-hud-object="labels"] { width: calc(var(--u) * 78); height: calc(var(--u) * 46); --delay: 360ms; --drift-ms: 13s;
+  transform: translate(-50%, -50%) translateZ(calc(var(--u) * 8)); }
+.labels { position: absolute; inset: 0; animation: flicker 7s steps(1) infinite; }
+
+.plate { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke-linecap: square; }
+/* Strokes scale with perspective on purpose: nearer edges read thicker, and the plates rasterise once
+   instead of every frame (non-scaling strokes would force a re-raster under every camera move). */
+.cameraYaw, .cameraPitch, .cameraDolly, .cameraPointer { will-change: transform; }
 
 /* Stroke vocabulary, in the reference's monochrome weights. */
-.heavy { stroke: var(--ink); stroke-width: 9; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 50%, transparent)); }
+.heavy { stroke: var(--ink); stroke-width: 9; }
 .line { stroke: var(--line); stroke-width: 2; }
 .hair { stroke: var(--hair); stroke-width: 1; }
 .dots { stroke: var(--hair); stroke-width: 2; stroke-dasharray: 2 10; }
 .speck { stroke: var(--ink); stroke-width: 3; opacity: .8; }
 .wash { fill: var(--wash); stroke: none; }
-.bar { fill: var(--ink); opacity: .92; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 45%, transparent)); }
+.bar { fill: var(--ink); opacity: .92; }
 .bar:nth-of-type(5n) { opacity: .35; }
 
 .ringSoft { stroke: var(--hair); stroke-width: 1; }
-.ringTicks { stroke: var(--line); stroke-width: 12; stroke-dasharray: 1 5; opacity: .5; transform-origin: 800px 450px; animation: turn 24s linear infinite; }
-.ringArcs { stroke: var(--ink); stroke-width: 6; stroke-dasharray: 62 28; stroke-dashoffset: 31; transform-origin: 800px 450px; animation: turn 90s linear infinite reverse;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent)); }
+.ringTicks { stroke: var(--line); stroke-width: 12; stroke-dasharray: 1 5; opacity: .5; }
+.ringArcs { stroke: var(--ink); stroke-width: 6; stroke-dasharray: 62 28; stroke-dashoffset: 31; }
 
-.label { position: absolute; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; white-space: nowrap;
+.label { position: absolute; font-size: calc(var(--u) * .8); letter-spacing: .22em; text-transform: uppercase; white-space: nowrap;
   color: color-mix(in srgb, var(--accent) 75%, white); opacity: .85; }
 .label[data-intro-state="standby"] { color: color-mix(in srgb, var(--accent) 55%, white); }
 .label[data-intro-state="online"] { color: var(--ink); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
@@ -54,8 +99,13 @@ svg.layer path, svg.layer circle, svg.layer rect { vector-effect: non-scaling-st
   color: transparent; font-size: 0; cursor: pointer; }
 .skip:focus-visible { outline: 2px solid var(--accent); outline-offset: -6px; }
 
-@keyframes boot { from { transform: translateZ(-1400px); opacity: 0; } }
-@keyframes breathe { from { transform: translateZ(-14px); } to { transform: translateZ(14px); } }
-@keyframes turn { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .layer, .breath, .ringTicks, .ringArcs { animation: none; } }
-@media (max-width: 700px) { .label { font-size: 9px; letter-spacing: .16em; } }
+@keyframes boot { from { transform: translateZ(calc(var(--u) * -160)) rotateX(18deg); opacity: 0; } }
+@keyframes drift { from { transform: translateZ(0); } to { transform: translateZ(calc(var(--u) * 2.5)); } }
+@keyframes yawDrift { from { transform: rotateY(-9deg); } to { transform: rotateY(9deg); } }
+@keyframes pitchDrift { from { transform: rotateX(6deg); } to { transform: rotateX(-6deg); } }
+@keyframes dolly { from { transform: translateZ(calc(var(--u) * -6)); } to { transform: translateZ(calc(var(--u) * 6)); } }
+@keyframes gyroA { from { transform: rotateX(72deg) rotateZ(0deg); } to { transform: rotateX(72deg) rotateZ(360deg); } }
+@keyframes gyroB { from { transform: rotateY(72deg) rotateZ(360deg); } to { transform: rotateY(72deg) rotateZ(0deg); } }
+@keyframes flicker { 0%, 88%, 100% { opacity: 1; } 89% { opacity: .35; } 90% { opacity: 1; } 93% { opacity: .5; } 94% { opacity: 1; } }
+@keyframes spin { from { transform: translateZ(var(--z)) rotate(0deg); } to { transform: translateZ(var(--z)) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .body, .labels, .cameraYaw, .cameraPitch, .cameraDolly, .ringSlice, .gyroA, .gyroB { animation: none; } .cameraPointer { transform: none; } }
