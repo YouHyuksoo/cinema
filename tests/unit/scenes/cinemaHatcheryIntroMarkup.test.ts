@@ -18,13 +18,17 @@ describe('boot stage markup', () => {
     for (const color of ['#c41e3a', '#0051ba', '#009e60', '#ff6a00', '#f3f3f3', '#ffd500']) expect(html).toContain(color);
     expect(html).toContain('--pass:0');
     expect(html).toContain('data-online="false"');
-    // No copy on the stage itself: the only text is the hidden skip control.
-    expect(html.replace(/<[^>]+>/g, '').trim()).toBe('건너뛰기');
+    // The only copy is the loading caption (plus the hidden skip control).
+    expect(html).toContain('data-intro-caption');
+    expect(html).toContain('role="status"');
+    expect(html.replace(/<[^>]+>/g, '').trim()).toBe('HATCHERY로딩중건너뛰기');
   });
   it('flags the stage online and skipped as the cube leaves', () => {
     const html = gate(.2, true);
     expect(html).toContain('data-online="true"');
     expect(html).toContain('data-skipped="true"');
+    expect(html).toContain('준비 완료');
+    expect(html).not.toContain('로딩중');
   });
   it('is CSS 3D and gradients only: tumble, cubie cells, six sticker axes, no images', () => {
     const css = readFileSync('src/cinema/hatcheryIntro.module.css', 'utf8');

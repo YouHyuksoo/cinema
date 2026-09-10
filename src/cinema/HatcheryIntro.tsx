@@ -109,6 +109,11 @@ export function HatcheryIntroGate({ pass, skipped, cue, onSkip, onSolved, onDock
     </svg>
     {(["tl", "tr", "bl", "br"] as const).map(corner => <i key={corner} className={styles.bracket} data-corner={corner} aria-hidden="true" />)}
     <IntroCube cue={cue} onSolved={onSolved} onDocked={onDocked} />
+    <p className={styles.caption} data-intro-caption role="status" aria-live="polite">
+      <span className={styles.captionBrand}>HATCHERY</span>
+      <span className={styles.captionState}>{pass > 0 ? '준비 완료' : '로딩중'}</span>
+      {pass > 0 ? null : <span className={styles.captionDots} aria-hidden="true"><i /><i /><i /></span>}
+    </p>
     <button type="button" className={styles.skip} data-intro-skip onClick={onSkip}>건너뛰기</button>
   </div>;
 }
