@@ -4,6 +4,12 @@ import { createAmbientTextureRenderer } from './filmAmbientTexture';
 
 export type FilmTextureStyle = 'none' | 'glass' | 'film' | 'hologram' | 'underwater' | 'space';
 
+/** Per-call rendering switches; the settings object stays the user's persisted choice. */
+export interface FilmTextureOptions {
+  /** Screen-space bloom (a blurred 320x180 copy of the frame). Off for the main backdrop, whose star field gains nothing from it. */
+  bloom?: boolean;
+}
+
 export interface FilmTextureSettings {
   style: FilmTextureStyle;
   intensity: number;
@@ -149,7 +155,7 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
   const patterns = new WeakMap<CanvasRenderingContext2D, { grain: CanvasPattern | null; scan: CanvasPattern | null }>();
 
   return function drawFilmTexture(ctx: CanvasRenderingContext2D, width: number, height: number,
-    time: number, settings: FilmTextureSettings): void {
+    time: number, settings: FilmTextureSettings, options?: FilmTextureOptions): void {
     const intensity = Number.isFinite(settings.intensity) ? Math.max(0, Math.min(1, settings.intensity)) : 0;
     if (settings.style === 'none' || intensity === 0 || !Number.isFinite(width) || !Number.isFinite(height)
       || width <= 0 || height <= 0) return;
@@ -179,7 +185,7 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
       return;
     }
 
-    if (bloomContext) {
+    if (bloomContext && options?.bloom !== false) {
       bloomContext.clearRect(0, 0, 320, 180);
       bloomContext.filter = 'blur(3px)';
       bloomContext.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, 320, 180);

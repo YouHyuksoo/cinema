@@ -131,7 +131,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         drawTexture = createFilmTextureRenderer(current.theme);
         textureRenderers.set(current.theme, drawTexture);
       }
-      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture);
+      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture, { bloom: !cameraView.current });
       // Publish the position to React only when the readout would change; the preview freezes film
       // time, and the dock's time display has 0.1s resolution, so identical frames must not re-render.
       if (now - lastPublished > 180 && !cameraView.current) {
