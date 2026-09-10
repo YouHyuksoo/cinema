@@ -6,13 +6,14 @@ import { CUBE_CUBIES, CUBE_FACES, CUBE_HUD_HOLD_MS, CUBE_IDENTITY, CUBE_MOVE_MS,
   CUBE_MENU_GAP, CUBE_SHOWCASE_TURN_MS, CUBE_TWIST_DELAY_MS, cubeApplyMove, cubeBayWidth,
   cubeComposeTurn, cubeCubieStickers, cubeCubieTransform, cubeDockCenter, cubeInLayer, cubeInvertSequence, cubeMenuOrigin,
   cubeMenuSlots, cubeMenuTileSize, cubeScramble, cubeShowcaseFace, cubeSize, cubeStickerDelay, cubeStripSpace,
-  type CubeMove } from './filmMenuCube';
+  type CubeAxis, type CubeMove } from './filmMenuCube';
 
 export type CubeMenuId = (typeof CUBE_FACES)[number]['id'];
 const MENU_SLOTS = cubeMenuSlots();
 import styles from './filmMenuCube.module.css';
 import { SHOCK_ATTRIBUTE } from './reactorMenuShock';
 import { cubeReactorFlight, CUBE_FLIGHT_PERSPECTIVE } from './cubeReactorFlight';
+import { cubeClockFaces, cubeStickerCharacter } from './cubeClock';
 
 const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
   admin: <>
@@ -85,11 +86,27 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     const root = overlay.closest('main');
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     const cubieNodes = [...body.querySelectorAll<HTMLElement>('[data-cube-cubie]')];
+    // Clock characters live on whichever sticker currently occupies each cell, so twists carry them along
+    // and the faces read correctly again once the cube is solved. Re-assigned every second and after each turn.
+    const stickerNodes = cubieNodes.map(node => [...node.querySelectorAll<HTMLElement>('[data-cube-sticker]')]
+      .map(tile => ({ text: tile.querySelector<HTMLElement>('[data-cube-clock]'), axis: tile.dataset.cubeSticker as CubeAxis })));
+    const applyClock = (now = new Date()) => {
+      const faces = cubeClockFaces(now);
+      cubieNodes.forEach((_, index) => {
+        for (const sticker of stickerNodes[index]) {
+          if (!sticker.text) continue;
+          const character = cubeStickerCharacter(faces, orients[index], CUBE_CUBIES[index], sticker.axis);
+          if (sticker.text.textContent !== character) sticker.text.textContent = character;
+        }
+      });
+    };
+    const clockTimer = window.setInterval(() => applyClock(), 1000);
 
     const resetCube = () => {
       orients = CUBE_CUBIES.map(() => CUBE_IDENTITY);
       queue = []; applied = []; turning = null; phase = 'idle'; cycled = false; shockMix = false;
       flightElapsed = null; flightPending = false; flightPose = null;
+      applyClock();
     };
     const startMix = () => {
       queue = cubeScramble();
@@ -151,6 +168,7 @@ export function FilmMenuCube({ onSelect, links = {} }: {
         if (phase === 'mix') applied.push(turning.move);
       }
       turning = null;
+      applyClock();
     };
     const hudFace = (axis: string, on: boolean) => {
       for (const tile of body.querySelectorAll<HTMLElement>(`[data-cube-axis="${axis}"]`)) tile.dataset.hud = String(on);
@@ -217,6 +235,7 @@ export function FilmMenuCube({ onSelect, links = {} }: {
       draw(); schedule();
     };
 
+    applyClock();
     const resize = () => { measure(); draw(); };
     const cancelFlight = () => { flightPending = false; flightElapsed = null; flightPose = null; measure(); draw(); };
     const cancelOnInteraction = (event:Event) => {
@@ -242,6 +261,7 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     button.addEventListener('pointerenter', enter); button.addEventListener('pointerleave', leave);
     root?.addEventListener('pointerdown',cancelOnInteraction,true); root?.addEventListener('keydown',cancelOnInteraction,true);
     return () => {
+      window.clearInterval(clockTimer);
       stopFrame(); document.documentElement.style.removeProperty(STRIP_SPACE_PROPERTY); document.documentElement.style.removeProperty(BAY_WIDTH_PROPERTY); delete document.documentElement.dataset.cubeDocked;
       delete overlay.dataset.positioned;delete button.dataset.positioned;
       button.removeEventListener('pointerenter', enter); button.removeEventListener('pointerleave', leave);
@@ -289,6 +309,7 @@ export function FilmMenuCube({ onSelect, links = {} }: {
               const center = Math.abs(home.x) + Math.abs(home.y) + Math.abs(home.z) === 1;
               return <span key={axis} data-cube-face={face.id} data-cube-axis={axis} data-cube-sticker={axis}
                 className={styles.tile} style={{ '--sticker-delay': `${cubeStickerDelay(home)}ms` } as CSSProperties}>
+                <span className={styles.clockChar} data-cube-clock="true" />
                 {center ? <svg className={styles.faceIcon} data-cube-icon={face.id}
                   viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7"
                   strokeLinecap="round" strokeLinejoin="round" aria-label={face.label} focusable="false">
