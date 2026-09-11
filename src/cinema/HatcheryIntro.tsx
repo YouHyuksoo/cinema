@@ -6,6 +6,7 @@ import { CUBE_CUBIES, CUBE_FACES, CUBE_IDENTITY, CUBE_MOVE_MS, cubeApplyMove, cu
   cubeInLayer, cubeInvertSequence, cubeScramble, type CubeMove } from './filmMenuCube';
 import { createFrameLoop, watchReducedMotion } from './filmMotion';
 import styles from './hatcheryIntro.module.css';
+import { cubeStickerCharacter } from './cubeClock';
 
 /** Root dataset key (`data-hatchery-intro`) other views may read for the intro cue. */
 const INTRO_DATASET_KEY = 'hatcheryIntro';
@@ -28,6 +29,8 @@ function IntroCube({ cue, onSolved, onDocked, ready, entering, onEnter }: {
 }) {
   const flight = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const letters = ready ? ['E', 'N', 'T', 'E', 'R', '', '', '', ''] : ['L', 'O', 'A', 'D', 'I', 'N', '', 'G', ''];
+  const faces = { front: letters, right: letters, back: letters, left: letters };
 
   // Layer moves: hold, scramble, solve, then report.
   useEffect(() => {
@@ -109,13 +112,12 @@ function IntroCube({ cue, onSolved, onDocked, ready, entering, onEnter }: {
       <div ref={body} className={styles.cube}>
         {CUBE_CUBIES.map(home => <span key={`${home.x},${home.y},${home.z}`} className={styles.cubie} data-intro-cubie
           style={{ '--cx': home.x, '--cy': home.y, '--cz': home.z } as CSSProperties}>
-          {cubeCubieStickers(home).map(axis => <i key={axis} className={styles.tile} data-intro-sticker={axis} style={{ '--sticker': STICKER[axis] } as CSSProperties} />)}
+          {cubeCubieStickers(home).map(axis => <i key={axis} className={styles.tile} data-intro-sticker={axis} style={{ '--sticker': STICKER[axis] } as CSSProperties}>
+            {!entering && <span className={styles.tileChar} data-intro-character aria-hidden="true">
+              {cubeStickerCharacter(faces, CUBE_IDENTITY, home, axis)}
+            </span>}
+          </i>)}
         </span>)}
-        {!entering && ['front', 'right', 'back', 'left'].map(face => <div key={face} className={styles.faceMessage} data-message-face={face} aria-hidden="true">
-          <strong>HATCHERY</strong>
-          <span>{ready ? '준비 완료' : '로딩 중'}</span>
-          <small>{ready ? '클릭해서 진입' : '잠시 기다려주세요'}</small>
-        </div>)}
       </div>
     </div></div>
   </div>;

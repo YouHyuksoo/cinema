@@ -19,7 +19,8 @@ describe('boot stage markup', () => {
     expect(html).toContain('--pass:0');
     expect(html).toContain('data-online="false"');
     // The only copy is the loading caption (plus the hidden skip control).
-    expect(html).toContain('data-message-face="front"');
+    expect(html).toContain('data-intro-character');
+    expect(html).not.toContain('data-message-face');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('START');
     expect(html).toContain('aria-disabled="true"');
