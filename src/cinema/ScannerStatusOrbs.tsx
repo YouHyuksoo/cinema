@@ -8,7 +8,7 @@ export function ScannerStatusOrbs({ connections, still }: { connections:ScannerC
     {connections.map((item,index)=><div key={item.id} className={styles.orbit} style={{ '--phase':`${-2-index*4}s` } as CSSProperties}>
       <div className={styles.carrier}>
         <div className={styles.satellite} data-status-orb={item.id} data-connection={item.id} data-state={item.state}
-          title={`${item.label} ${CONNECTION_LABELS[item.state]} · ${item.detail}`}>
+          data-connection-detail={item.detail} aria-label={`${item.label} ${CONNECTION_LABELS[item.state]} · ${item.detail}`}>
           <div className={styles.sphere}><i className={styles.equator}/><i className={styles.light}/></div>
           <span className={styles.caption}>{item.label}<small>{CONNECTION_LABELS[item.state]}</small></span>
         </div>

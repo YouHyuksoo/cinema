@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FilmControls } from './FilmControls';
 import { FilmChapterMenu } from './FilmChapterMenu';
 import { FilmMenuCube } from './FilmMenuCubeView';
@@ -7,6 +7,11 @@ import type { FilmCameraMode } from './FilmCameraControls';
 import styles from './film.module.css';
 import mobileStyles from './filmDock.module.css';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
+
+const dockIcon = (name: string, paths: ReactNode) => (
+  <svg className={mobileStyles.actionIcon} data-dock-icon={name} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths}</svg>
+);
 
 export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   player: FilmPlayback; camera: FilmCameraMode; menuOpen: boolean; onMenuOpenChange: (open: boolean) => void;
@@ -81,17 +86,19 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
             : player.factory.manual && chapter.id === 'visor' ? '직접 탐색' : `${localTime.toFixed(1)} / ${chapter.duration}초`}</span>
         </div>
         <div className={styles.dockActions} data-dock-buttons="true">
-          {!expanded && <button type="button" className={styles.dockAction} disabled={!player.ready}
-            onClick={() => { camera.openPreview(); setExpanded(false); }}>
-            메인 메뉴
-          </button>}
-          {!expanded && !camera.preview && <button type="button" className={styles.dockAction} disabled={!player.ready} onClick={player.togglePlay}>
-            {player.playing ? '일시정지' : '재생'}
+          {!expanded && !camera.preview && <button type="button" className={styles.dockAction} disabled={!player.ready}
+            aria-label={player.playing ? '일시정지' : '재생'} onClick={player.togglePlay}>
+            {player.playing
+              ? dockIcon('pause', <><path d="M8 5v14M16 5v14" /></>)
+              : dockIcon('play', <path d="M8 5v14l12-7Z" />)}
+            <span className={mobileStyles.actionLabel}>{player.playing ? '일시정지' : '재생'}</span>
           </button>}
           {!camera.preview && <button ref={settingsToggle} type="button" className={styles.dockAction}
-            aria-expanded={expanded} aria-controls="film-playback-settings"
-            onClick={() => setExpanded(!expanded)}>{expanded ? '설정 닫기' : '연출 설정'}</button>}
-          <button type="button" className={styles.dockAction} onClick={collapseMenu}>메뉴 축소</button>
+            aria-label={expanded ? '설정 닫기' : '연출 설정'} aria-expanded={expanded} aria-controls="film-playback-settings"
+            onClick={() => setExpanded(!expanded)}>
+            {dockIcon('settings', <><path d="M5 7h14M5 12h14M5 17h14" /><circle cx="9" cy="7" r="1.6" fill="currentColor" /><circle cx="15" cy="12" r="1.6" fill="currentColor" /><circle cx="11" cy="17" r="1.6" fill="currentColor" /></>)}
+            <span className={mobileStyles.actionLabel}>{expanded ? '설정 닫기' : '연출 설정'}</span>
+          </button>}
         </div>
       </div>
       </div>

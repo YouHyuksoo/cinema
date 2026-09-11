@@ -42,7 +42,6 @@ describe('auto-collapsing scene dock', () => {
     if (menuOpen) {
       expect(actions).toContain('aria-hidden="false"');
       expect(actions).not.toContain('inert=""');
-      expect(html).toContain('메뉴 축소');
     } else {
       expect(globe).toContain('aria-expanded="false"');
       expect(actions).toContain('aria-hidden="true"');
@@ -50,17 +49,18 @@ describe('auto-collapsing scene dock', () => {
       expect(globe).not.toContain('inert=""');
     }
     expect(html).toContain('연출 장면 선택');
-    expect(html).toContain('메인 메뉴');
+    expect(html).not.toContain('aria-label="메뉴 축소"');
+    if (preview) expect(html).toContain('HATCHERY 메인 메뉴');
     if (preview) expect(html).not.toContain('연출 설정');
     else expect(html).toContain('연출 설정');
     for (const chapter of FILM_CHAPTERS) expect(html).toContain(chapter.title);
   });
 
-  it('offers a collapse action instead of the old rectangular anchor', () => {
+  it('folds by choosing a scene or Escape instead of a dedicated collapse control', () => {
     const html = renderDock(false, true);
-    expect(html).toContain('메뉴 축소');
-    expect(html).toContain('aria-expanded="true"');
+    expect(html).not.toContain('aria-label="메뉴 축소"');
     expect(html).not.toContain('하단 메뉴 닫기');
+    expect(html).toContain('aria-expanded="true"');
   });
 
   it('registers one resolvable dock length for open, closed, mobile, short, and safe-area layouts', () => {

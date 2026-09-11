@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { chooseShockTarget, shockEnvelope, shockLightning, shockLightningBranches, shockWaitMs, SHOCK_ATTRIBUTE, SHOCK_DURATION_MS, type ShockTarget } from './reactorMenuShock';
+import { shockEnvelope, shockLightning, shockLightningBranches, SHOCK_ATTRIBUTE, SHOCK_DURATION_MS, type ShockTarget } from './reactorMenuShock';
 import { createFrameLoop, fitCanvasToBox, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './reactorMenuPrank.module.css';
+import { easterEggSequence } from './easterEggSequence';
 
 const targets: Record<ShockTarget, string> = {
   globe: '[data-globe-control]', turbine: '[data-turbine-hub]', cube: '[data-cube-control]',
@@ -14,32 +15,32 @@ const visible = (node: HTMLElement | null): node is HTMLElement => {
   return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
 };
 
-/** One local scheduler; the existing menu renderers own their reactions and command state. */
+/** Reactor clicks select a single reaction; menu renderers retain their own state. */
 export function ReactorMenuPrank() {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d'), root = node?.closest('main');
     if (!node || !ctx || !root) return;
-    let timer = 0, previous: ShockTarget | null = null;
+    let finished: (() => void) | null = null;
     let victim: HTMLElement | null = null, source: HTMLElement | null = null;
     let started = 0, accent = '#5fe3ff';
     const clear = () => {
-      loop.stop();
+      loop.stop(); finished?.(); finished = null;
       victim?.removeAttribute(SHOCK_ATTRIBUTE); source?.removeAttribute(SHOCK_ATTRIBUTE);
       victim = null; source = null;
       node.removeAttribute('data-shock-target');
       ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,node.width,node.height);
     };
-    const schedule = (first = false) => {
-      clearTimeout(timer);
-      if (!motion.reduced && !document.hidden) timer = window.setTimeout(start, first ? 6500 + Math.random() * 3500 : shockWaitMs(Math.random()));
-    };
     const draw = (now: number) => {
       if (!visible(victim) || !visible(source) || source.getAttribute('aria-disabled') === 'true' || document.hidden || motion.reduced) {
-        clear(); schedule(); return;
+        clear(); return;
       }
       const elapsed = now - started;
-      if (elapsed >= SHOCK_DURATION_MS) { clear(); schedule(); return; }
+      if (elapsed >= SHOCK_DURATION_MS) {
+        ctx.clearRect(0,0,node.width,node.height);
+        if (node.dataset.shockTarget === 'cube' && (root.querySelector('[data-cube-flight]') || root.querySelector('[data-cube-layer]')?.getAttribute('data-twisting') === 'true')) return;
+        clear(); return;
+      }
       const width = innerWidth, height = innerHeight;
       fitCanvasToBox(node, ctx, width, height); ctx.clearRect(0,0,width,height);
       const a = center(source), b = center(victim), power = shockEnvelope(elapsed);
@@ -71,9 +72,9 @@ export function ReactorMenuPrank() {
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     };
     const loop = createFrameLoop(draw);
-    const start = () => {
+    const start = (target: ShockTarget, done: () => void) => {
       const reactor = root.querySelector<HTMLElement>('[data-reactor-trigger]');
-      if (!visible(reactor) || reactor.getAttribute('aria-disabled') === 'true' || root.querySelector('[data-cube-flight]') || motion.reduced || document.hidden) { schedule(); return; }
+      if (!visible(reactor) || reactor.getAttribute('aria-disabled') === 'true' || root.querySelector('[data-cube-flight]') || motion.reduced || document.hidden) { return false; }
       const available = (Object.keys(targets) as ShockTarget[]).filter(key => {
         const target = root.querySelector<HTMLElement>(targets[key]);
         if (!visible(target) || target.getAttribute('aria-expanded') === 'true' || target.matches(':hover,:focus-visible')) return false;
@@ -81,22 +82,24 @@ export function ReactorMenuPrank() {
         if (key === 'cube' && root.querySelector('[data-cube-layer]')?.getAttribute('data-twisting') === 'true') return false;
         return true;
       });
-      const target = chooseShockTarget(available, previous, Math.random());
-      if (!target) { schedule(); return; }
+      if (!available.includes(target)) return false;
       victim = root.querySelector<HTMLElement>(targets[target]); source = reactor;
       // The theme cannot change mid-discharge: resolve the accent once per shock, not per frame.
       accent = getComputedStyle(root).getPropertyValue('--film-accent').trim() || '#5fe3ff';
-      started = performance.now(); previous = target;
+      started = performance.now(); finished = done;
       victim?.setAttribute(SHOCK_ATTRIBUTE, String(started)); source.setAttribute(SHOCK_ATTRIBUTE, String(started));
-      node.dataset.shockTarget = target; loop.start();
+      node.dataset.shockTarget = target; loop.start(); return true;
     };
-    const cancel = () => { clear(); schedule(); };
-    const motion = watchReducedMotion(cancel);
-    const unwatch = watchPageVisibility(cancel);
+    const cancel = (event?: Event) => {
+      if (event?.target instanceof Element && event.target.closest('[data-reactor-trigger]') && !(event instanceof KeyboardEvent && event.key === 'Escape')) return;
+      clear();
+    };
+    const motion = watchReducedMotion(() => cancel());
+    const unwatch = watchPageVisibility(() => cancel());
     root.addEventListener('pointerdown', cancel, true); root.addEventListener('keydown', cancel, true);
-    schedule(true);
+    const unregister = (Object.keys(targets) as ShockTarget[]).map(target => easterEggSequence(root).register(target, done => start(target, done)));
     return () => {
-      clearTimeout(timer); clear(); root.removeEventListener('pointerdown', cancel, true); root.removeEventListener('keydown', cancel, true);
+      unregister.forEach(remove => remove()); clear(); root.removeEventListener('pointerdown', cancel, true); root.removeEventListener('keydown', cancel, true);
       unwatch(); motion.stop();
     };
   }, []);

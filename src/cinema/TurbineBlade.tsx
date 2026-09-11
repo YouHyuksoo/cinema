@@ -31,8 +31,9 @@ export function TurbineCommandIcon({ command }: { command: TurbineCommand }) {
   const paths: Record<TurbineCommand, string> = {
     home: 'M3 11 12 3l9 8M6 10v11h5v-7h3v7h4V10',
     briefing: 'M6 3h13v19H6zM9 8h7M9 12h7M9 16h5',
-    pause: 'M6 5h13v15H6z', play: 'm7 3 14 9-14 9z',
+    settings: 'M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6',
+    logout: 'M10 4H4v16h6M9 12h12m-4-4 4 4-4 4',
     conversation: 'M21 11c0 5-4 8-9 8H7l-5 3 2-6a8 8 0 0 1-2-5c0-5 4-8 10-8s9 3 9 8ZM7 10v3m5-5v7m5-5v3',
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill={command === 'pause' || command === 'play' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round"><path d={paths[command]}/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round"><path d={paths[command]}/></svg>;
 }

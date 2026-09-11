@@ -1,4 +1,8 @@
 .shell { }
+/* Keep the landing target measurable, but show only the travelling cube until hand-off. */
+:global(:root[data-hatchery-intro]) .shell { visibility:hidden; }
+:global(:root[data-hatchery-intro]) .float,
+:global(:root[data-hatchery-intro]) .hit { animation:none; }
 .layer:not([data-positioned=true]),.control:not([data-positioned=true]) { visibility:hidden; }
 .layer {
   --film-accent:#ff79c6;
@@ -16,7 +20,14 @@
   perspective:900px;
   transform-style:preserve-3d;
 }
+.hit { position:fixed; inset:0; z-index:5; pointer-events:none; }
+.hit .control { pointer-events:auto; }
 .float { position:absolute; inset:0; transform-style:preserve-3d; }
+.hit,.float { animation:cubeFloat 4.8s ease-in-out infinite; }
+@keyframes cubeFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+.layer[data-cube-flight] .float,.shell:has([data-cube-flight]) .hit { animation:none; }
+.shell:has([data-reactor-shock]) .float,.shell:has([data-reactor-shock]) .hit { animation:cubeJolt .085s linear infinite; }
+@keyframes cubeJolt { 0%,100% { transform:translate(0,0); } 25% { transform:translate(2px,-2px); } 50% { transform:translate(-2px,1px); } 75% { transform:translate(1px,2px); } }
 .cube {
   position:absolute;
   top:0;
@@ -172,7 +183,7 @@
 /* Fold tile: sits in the cube's own slot and only pops up in place. */
 .fold { place-items:center; background:color-mix(in srgb,var(--cube-plastic) 70%,var(--film-accent) 30%); border-style:dashed; }
 .foldIcon { width:56%; height:56%; color:var(--film-accent-soft); filter:drop-shadow(0 0 6px color-mix(in srgb,var(--film-accent) 55%,transparent)); }
-@media(prefers-reduced-motion:reduce) { .faceIcon,.tile,.panel,.float { transition:none; } }
+@media(prefers-reduced-motion:reduce) { .faceIcon,.tile,.panel,.float { transition:none; } .hit,.float { animation:none; } .shell:has([data-reactor-shock]) .float,.shell:has([data-reactor-shock]) .hit { animation:none; } }
 @media(max-height:500px) {
   .layer { --cube-size:58px; }
   .control { width:58px; height:58px; }

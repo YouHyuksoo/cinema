@@ -1,0 +1,14 @@
+.fieldset { min-width:0; margin:16px 0; padding:0; border:0; }
+.fieldset legend { padding:0; margin-bottom:10px; color:var(--film-accent-soft); font-size:13px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); gap:12px; }
+.card { min-width:0; padding:0; overflow:hidden; text-align:left; border:1px solid var(--film-line); border-radius:9px;
+  background:var(--film-bg,#040b10); color:var(--film-ink); cursor:pointer; }
+.card:hover { border-color:var(--film-accent); }
+.card[aria-pressed=true] { border-color:var(--film-accent); box-shadow:0 0 0 1px var(--film-accent); }
+.card:focus-visible { outline:2px solid var(--film-accent-soft); outline-offset:4px; }
+.preview { position:relative; display:block; aspect-ratio:16/10; overflow:hidden; isolation:isolate; background:#031018; color:var(--film-accent,#5fe3ff); pointer-events:none; }
+.preview>svg { display:block; width:100%; height:100%; }
+.preview *, .preview *::before, .preview *::after { animation:none!important; }
+.caption { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:10px; font:12px var(--font-korean),sans-serif; }
+.selected { color:var(--film-muted); font-size:10px; white-space:nowrap; }
+.card[aria-pressed=true] .selected { color:var(--film-accent-soft); }

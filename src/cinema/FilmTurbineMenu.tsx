@@ -4,13 +4,15 @@ import { TURBINE_COMMANDS, type TurbineCommand } from './turbineCommands';
 import { TurbineBlade, TurbineCommandIcon } from './TurbineBlade';
 import styles from './filmTurbineMenu.module.css';
 
-export function FilmTurbineMenu({ ready, playing, voiceActive, onCommand }: {
+export function FilmTurbineMenu({ ready, voiceActive, onCommand }: {
   ready: boolean; playing: boolean; voiceActive: boolean; onCommand(command: TurbineCommand): void;
 }) {
   const [open, setOpen] = useState(false);
   const hub = useRef<HTMLButtonElement>(null);
   const suppressOpen = useRef(false);
   const controls = useId();
+  // The other corner instruments need client-side placement before their first paint.
+  if (!ready) return null;
   return <nav className={styles.menu} data-turbine-open={open} aria-label="터빈 명령 메뉴"
     onPointerEnter={event => { if (event.pointerType !== 'touch' && !suppressOpen.current) setOpen(true); }}
     onPointerLeave={event => { if (event.pointerType !== 'touch') { suppressOpen.current=false;setOpen(false); } }}
@@ -29,7 +31,7 @@ export function FilmTurbineMenu({ ready, playing, voiceActive, onCommand }: {
             <button type="button" data-turbine-command={command.id} className={styles.blade}
             aria-label={command.label} title={command.id === 'conversation' ? 'AI 음성 대화 시작 · 마이크 사용' : command.label}
             disabled={!ready || (command.id === 'conversation' && voiceActive)}
-            aria-pressed={command.id === 'play' ? playing : command.id === 'pause' ? !playing : command.id === 'conversation' ? voiceActive : undefined}
+            aria-pressed={command.id === 'conversation' ? voiceActive : undefined}
             onClick={() => {
               suppressOpen.current=true;setOpen(false);
               hub.current?.focus({preventScroll:true});

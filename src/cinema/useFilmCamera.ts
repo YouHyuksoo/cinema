@@ -9,6 +9,18 @@ export function useFilmCamera() {
   const frameRef = useRef(session.frame);
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const [tracking, setTracking] = useState<{ status: CameraTrackingStatus; error: string | null }>({ status: 'off', error: null });
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('cinema.camera.preferences.v1') ?? 'null');
+      if (typeof saved?.mirror === 'boolean') session.setMirror(saved.mirror);
+      if (typeof saved?.zoom === 'number' && Number.isFinite(saved.zoom)) session.setZoom(saved.zoom);
+      if (typeof saved?.blur === 'number' && Number.isFinite(saved.blur)) session.setBlur(saved.blur);
+    } catch { /* Unavailable or invalid storage keeps the session defaults. */ }
+  }, [session]);
+  const savePreferences = () => {
+    const { mirror, zoom, blur } = session.getSnapshot();
+    try { window.localStorage.setItem('cinema.camera.preferences.v1', JSON.stringify({ mirror, zoom, blur })); } catch { /* Keep the live choice. */ }
+  };
 
   useEffect(() => {
     const video = session.frame.video;
@@ -40,9 +52,9 @@ export function useFilmCamera() {
     frameRef,
     start: session.start,
     stop: session.stop,
-    setMirror: session.setMirror,
-    setZoom: session.setZoom,
-    setBlur: session.setBlur,
+    setMirror(value: boolean) { session.setMirror(value); savePreferences(); },
+    setZoom(value: number) { session.setZoom(value); savePreferences(); },
+    setBlur(value: number) { session.setBlur(value); savePreferences(); },
     tracking: snapshot.status === 'on' ? tracking.status : 'off' as CameraTrackingStatus,
     trackingError: snapshot.status === 'on' ? tracking.error : null,
   };

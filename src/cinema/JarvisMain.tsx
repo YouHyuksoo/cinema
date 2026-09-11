@@ -5,10 +5,10 @@ import { useJarvisVoice } from './useJarvisVoice';
 import { JarvisWave } from './JarvisWave';
 import type { FilmThemeId } from './filmThemes';
 import { JarvisConversationTrail } from './JarvisConversationTrail';
-import { JarvisIgnition } from './JarvisIgnition';
 import { JarvisMainHeader } from './JarvisMainHeader';
 import { JarvisCenterLayout } from './JarvisCenterLayout';
 import { JarvisAiStatus } from './JarvisAiStatus';
+import { JarvisChatTools } from './JarvisChatTools';
 import { JarvisTemperatureAlerts } from './JarvisTemperatureAlerts';
 import { JarvisStream } from './JarvisStream';
 import { JarvisHelp } from './JarvisHelp';
@@ -55,9 +55,10 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
     </section>}
     <section className={styles.left}>
       <div className={styles.sectionTitle}>SESSION / CONNECTIONS</div>
+      <JarvisAiStatus connection={voice.aiConnection} />
       <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
         <dt>음성 인식</dt><dd>{voice.realtime ? 'OpenAI Realtime' : voice.supported === null ? '확인 중' : voice.supported ? '브라우저' : '미지원'}</dd>
-        <dt>현장 명령</dt><dd>사용 가능</dd><dt>자유 대화 AI</dt><dd>{voice.configured === null ? '확인 중' : voice.configured ? `${voice.providerLabel ?? 'AI'} 설정됨` : '미연결'}</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
+        <dt>현장 명령</dt><dd>사용 가능</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
     </section>
     <section className={styles.left}>
       <div className={styles.sectionTitle}>AI / 모델 선택</div>
@@ -79,13 +80,7 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
     </section>
     <JarvisHelp />
     </JarvisStream>
-    <JarvisCenterLayout camera={camera} aiStatus={<JarvisAiStatus connection={voice.aiConnection} />} ignition={
-      <JarvisIgnition compact active={voice.active} phase={voice.phase} disabled={voice.configured === null}
-        onInterrupt={voice.stopReply} onToggle={() => {
-          if (voice.active) { voice.stop(); camera.stop(); }
-          else { void voice.start(); void camera.start(); }
-        }} />
-    } heading={
+    <JarvisCenterLayout camera={camera} heading={
       <div className={styles.voiceHeading}><h1>{JARVIS_PHASE_LABELS[voice.phase]}</h1><span data-active={voice.active}>{voice.active ? '● SESSION ON' : '○ STANDBY'}{voice.configured ? ` · ${voice.realtime ? 'REALTIME' : 'BROWSER VOICE'}` : ''}</span></div>
     } visual={
       <div className={styles.wave}>
@@ -94,6 +89,9 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
       </div>
     } form={
       <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
+        <JarvisChatTools camera={camera} input={input} onInput={setInput} active={voice.active}
+          disabled={!voice.active && (voice.configured === null || voice.switching)}
+          onVoice={() => voice.active ? voice.stop() : void voice.start()} />
         <label className={styles.srOnly} htmlFor="jarvis-message">HATCHERY에게 질문</label>
         <input id="jarvis-message" placeholder="HATCHERY에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
         <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>

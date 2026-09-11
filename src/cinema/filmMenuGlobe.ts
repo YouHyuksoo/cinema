@@ -88,10 +88,15 @@ export function isGlobeDrag(origin: Point, current: Point, threshold = GLOBE_DRA
   return Math.hypot(current.x - origin.x, current.y - origin.y) > Math.max(0, threshold);
 }
 
-/** A cleared position docks at bottom right; only dragging overrides the resting place. */
-export function globeRestingCenter(viewport: Viewport, diameter: number, remembered: Point | null = null, previousViewport?: Viewport): Point {
+/**
+ * A cleared position docks at bottom right; only dragging overrides the resting place.
+ * `dockX` (the top signal bay's centerline, published as --hatchery-signal-cx) replaces the
+ * right edge when the main screen shows its scanner, so the sphere rests on that axis.
+ */
+export function globeRestingCenter(viewport: Viewport, diameter: number, remembered: Point | null = null, previousViewport?: Viewport, dockX: number | null = null, dockY: number | null = null): Point {
   const resized = previousViewport && (previousViewport.width !== viewport.width || previousViewport.height !== viewport.height);
-  return clampGlobeCenter((resized ? null : remembered) ?? { x: viewport.width, y: viewport.height }, viewport, diameter);
+  const fallback = { x: Number.isFinite(dockX) ? dockX as number : viewport.width, y: Number.isFinite(dockY) ? dockY as number : viewport.height };
+  return clampGlobeCenter((resized ? null : remembered) ?? fallback, viewport, diameter);
 }
 
 /** Velocity uses CSS pixels per millisecond and exponentially settles to zero. */

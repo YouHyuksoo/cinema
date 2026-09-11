@@ -9,7 +9,12 @@
   perspective:850px;
   transform-style:preserve-3d;
 }
+.hit { position:fixed; inset:0; z-index:5; pointer-events:none; }
+.hit .expand { pointer-events:auto; }
 .float { position:absolute; inset:0; transform-style:preserve-3d; }
+.layer[data-phase=closed] .float,.shell:has(.layer[data-phase=closed]) .hit { animation:globeFloat 4.8s ease-in-out infinite; }
+@keyframes globeFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+.layer[data-dragging=true] .float,.shell:has(.layer[data-dragging=true]) .hit { animation:none; }
 .ball {
   position:absolute;
   top:0;
@@ -88,4 +93,4 @@
 .expand[hidden] { display:none; }
 .expand:focus-visible { outline:2px solid var(--film-accent); outline-offset:5px; }
 @media(max-height:500px) { .face { width:38px; height:43px; } }
-@media(prefers-reduced-motion:reduce) { .expand::before { transition:none; } .layer[data-phase=closed] .ball { animation:none; } }
+@media(prefers-reduced-motion:reduce) { .expand::before { transition:none; } .layer[data-phase=closed] .ball,.layer[data-phase=closed] .float,.shell:has(.layer[data-phase=closed]) .hit { animation:none; } }

@@ -9,7 +9,7 @@ export const INTRO_TIMING = { holdMs: 800, doorMs: 1100, returnDelayMs: 400, cub
 export type IntroPhase = 'closed' | 'opening' | 'done';
 /** What the cube view should do: stage itself, fly home, snap home, or nothing (intro over). */
 export type IntroCubeCue = 'stage' | 'return' | 'snap' | null;
-export interface IntroFrame { phase: IntroPhase; door: number; cube: IntroCubeCue; skipped: boolean }
+export interface IntroFrame { phase: IntroPhase; door: number; cube: IntroCubeCue; skipped: boolean; ready?: boolean }
 
 /** Once per tab session; reduced motion never plays. The flag is written as the intro starts so a reload mid-intro does not replay. */
 export function shouldPlayIntro(storage: Pick<Storage, 'getItem' | 'setItem'> | null, reducedMotion: boolean) {
@@ -21,10 +21,13 @@ export function shouldPlayIntro(storage: Pick<Storage, 'getItem' | 'setItem'> | 
 
 const easeInOut = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-export function createIntroTimeline(start: number) {
+export function createIntroTimeline(start: number, requireEntry = false) {
+  let enteredAt: number | null = null;
   let solvedAt: number | null = null, readyAt: number | null = null, dockedAt: number | null = null, skippedAt: number | null = null;
+  const canEnter = (now: number) => readyAt !== null && (solvedAt !== null || now - start >= INTRO_TIMING.cubeTimeoutMs);
   /** When the doors started (or start) opening; null while still waiting. */
   const openingAt = (now: number) => {
+    if (requireEntry) return enteredAt;
     if (skippedAt !== null) return skippedAt;
     if (solvedAt !== null && readyAt !== null) return Math.max(solvedAt, readyAt);
     // A cube or a readiness probe that never reports must not keep the screen covered.
@@ -32,6 +35,7 @@ export function createIntroTimeline(start: number) {
     return null;
   };
   return {
+    enter(now: number) { if (canEnter(now)) enteredAt ??= now; },
     solved(now: number) { solvedAt ??= now; },
     ready(now: number) { readyAt ??= now; },
     docked(now: number) { dockedAt ??= now; },
@@ -39,7 +43,7 @@ export function createIntroTimeline(start: number) {
     at(now: number): IntroFrame {
       const skipped = skippedAt !== null;
       const opened = openingAt(now);
-      if (opened === null || now < opened) return { phase: 'closed', door: 0, cube: 'stage', skipped };
+      if (opened === null || now < opened) return { phase: 'closed', door: 0, cube: 'stage', skipped, ...(requireEntry ? { ready: canEnter(now) } : {}) };
       const door = easeInOut(Math.max(0, Math.min(1, (now - opened) / INTRO_TIMING.doorMs)));
       const timedOut = solvedAt === null && !skipped;
       const cubeHome = dockedAt !== null || timedOut;

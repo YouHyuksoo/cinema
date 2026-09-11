@@ -71,7 +71,7 @@
 .menu[data-menu-layout=orbit] .tile[data-front=true] svg { filter:drop-shadow(0 0 14px color-mix(in srgb,var(--film-accent) 80%,transparent)); }
 .menu[data-menu-layout=orbit] .tile {
   left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); pointer-events:auto; cursor:grab;
-  transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * var(--orbit-r,180px)),calc(sin(var(--orbit-angle,0rad)) * var(--orbit-r,180px))) scale(var(--ring-scale));
+  transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * var(--orbit-r,180px) * var(--orbit-tooth,1)),calc(sin(var(--orbit-angle,0rad)) * var(--orbit-r,180px) * var(--orbit-tooth,1))) scale(var(--ring-scale));
   transition:transform .5s cubic-bezier(.2,.75,.2,1),opacity .35s;
 }
 .menu[data-menu-layout=orbit] .stage[data-dragging=true] .tile { transition:none; cursor:grabbing; }

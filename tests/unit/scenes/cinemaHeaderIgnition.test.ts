@@ -21,17 +21,17 @@ describe('full-width metrics and center controls', () => {
       camera: { status: 'off', frameRef: { current: null }, stop() {}, start: async () => {} } as unknown as FilmCamera,
       onChapter() {},
     }));
-    expect(html.match(/aria-label="대화 시작"/g)).toHaveLength(1);
+    expect(html).not.toContain('aria-label="대화 시작"');
     expect(html).not.toContain('aria-label="HATCHERY 핑크 네온 로고"');
-    expect(html.match(/내 영상 연결/g)).toHaveLength(1);
+    expect(html.match(/aria-label="영상 연결"/g)).toHaveLength(1);
     expect(html).not.toContain('aria-label="중앙 좌측 하단 HATCHERY 로고"');
-    expect(html).toContain('aria-label="중앙 상단 AI 연결정보"');
+    expect(html).not.toContain('aria-label="중앙 좌측 상단 AI 연결정보"');
+    expect(html.indexOf('aria-label="AI 연결 상태와 모델"')).toBeLessThan(html.indexOf('aria-label="중앙 음성 대화"'));
+    expect(html).toContain('data-center-backdrop="neon-hud"');
     expect(html.match(/aria-label="AI 연결 상태와 모델"/g)).toHaveLength(1);
-    expect(html.indexOf('aria-label="AI 연결 상태와 모델"')).toBeLessThan(html.indexOf('aria-label="대화 시작"'));
     expect(html.includes('aria-label="AI 연결 상태와 모델"')).toBe(true);
     expect(html.includes('aria-label="중앙 상태 메시지"')).toBe(true);
-    expect(html.indexOf('aria-label="대화 시작"')).toBeGreaterThan(html.indexOf('aria-label="중앙 음성 대화"'));
-    expect(html.indexOf('내 영상 연결')).toBeGreaterThan(html.indexOf('aria-label="중앙 음성 대화"'));
+    expect(html.indexOf('aria-label="영상 연결"')).toBeGreaterThan(html.indexOf('aria-label="중앙 음성 대화"'));
   });
   it('keeps compact start, stop and interrupt semantics', () => {
     const props = { compact: true, active: false, disabled: true, phase: 'idle' as const, onToggle() {}, onInterrupt() {} };

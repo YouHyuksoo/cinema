@@ -6,6 +6,11 @@ import { FilmTurbineMenu } from '@/cinema/FilmTurbineMenu';
 import { runTurbineCommand } from '@/cinema/turbineCommands';
 
 describe('five-blade turbine commands', () => {
+  it('waits for client readiness instead of showing alone in the initial HTML', () => {
+    const props = { playing: false, voiceActive: false, onCommand() {} };
+    expect(renderToStaticMarkup(createElement(FilmTurbineMenu, { ...props, ready: false }))).toBe('');
+    expect(renderToStaticMarkup(createElement(FilmTurbineMenu, { ...props, ready: true }))).toContain('터빈 명령 메뉴');
+  });
   it('uses an oblique bird-view pose and translucent surfaces without fading labels', () => {
     const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');
     expect(css).toContain('transform:rotateX(40deg);');
@@ -36,14 +41,14 @@ describe('five-blade turbine commands', () => {
   it('renders five native commands and a keyboard/touch hub, without bitmap assets', () => {
     const html = renderToStaticMarkup(createElement(FilmTurbineMenu, { ready: true, playing: true, voiceActive: false, onCommand() {} }));
     expect(html.match(/data-turbine-command=/g)).toHaveLength(5);
-    for (const name of ['메인메뉴', '브리핑', '정지', '시작', 'AI대화']) expect(html).toContain(name);
+    for (const name of ['메인메뉴', '브리핑', '연출설정', '로그아웃', 'AI대화']) expect(html).toContain(name);
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('inert=""');
     expect(html).not.toMatch(/<img|<image|\.png/);
   });
   it('routes each command explicitly and never starts camera or voice on menu open', () => {
-    const actions = { home: vi.fn(), briefing: vi.fn(), pause: vi.fn(), play: vi.fn(), conversation: vi.fn() };
-    for (const command of ['home', 'briefing', 'pause', 'play', 'conversation'] as const) {
+    const actions = { home: vi.fn(), briefing: vi.fn(), settings: vi.fn(), logout: vi.fn(), conversation: vi.fn() };
+    for (const command of ['home', 'briefing', 'settings', 'logout', 'conversation'] as const) {
       runTurbineCommand(command, actions);
       expect(actions[command]).toHaveBeenCalledTimes(1);
     }
@@ -51,12 +56,16 @@ describe('five-blade turbine commands', () => {
 });
 
 describe('turbine placement on small screens', () => {
-  it('moves the desktop anchor left while retaining the safe-area inset', () => {
+  it('docks the folded hub on the top cube bay axis, retaining the safe-area inset', () => {
     const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');
-    expect(css.split('@media')[0]).toContain('left:max(0px,env(safe-area-inset-left));');
+    expect(css.split('@media')[0]).toContain('left:calc(var(--hatchery-cube-cx,94px) - 94px + env(safe-area-inset-left,0px));');
     expect(css.split('@media')[0]).toContain('transform:translateX(-56px);');
     expect(css).toContain('transform:translateX(12px); pointer-events:auto;');
     expect(css).toContain('transition:transform .45s cubic-bezier(.22,.8,.2,1);');
+    // The left axis comes from the docked cube's measured center.
+    const view = readFileSync('src/cinema/FilmMenuCubeView.tsx', 'utf8');
+    expect(view).toContain(`'--hatchery-cube-cx'`);
+    expect(view).toContain(`'--hatchery-signal-cx'`);
   });
   it('sits in the bottom-left corner at the globe diameter, mirroring the globe instead of a fixed zoom', () => {
     const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');

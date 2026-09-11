@@ -18,4 +18,19 @@ describe('decorative loops stop when nothing moves', () => {
     expect(source).toContain('watchReducedMotion(value => { if (!value) wake(); })');
     expect(source).toContain('manualTimer = window.setTimeout(wake, manualMs);');
   });
+  it('floats the management cube with CSS, measures the strip on layout, and only loops while a turn is in progress', () => {
+    const source = readFileSync('src/cinema/FilmMenuCubeView.tsx', 'utf8');
+    const css = readFileSync('src/cinema/filmMenuCube.module.css', 'utf8');
+    expect(source).not.toContain('MEASURE_MS');
+    expect(source).not.toMatch(/floatingY = 4 \* Math\.sin/);
+    expect(source).toContain('new ResizeObserver');
+    expect(source).toContain('[data-metric-strip]');
+    expect(source).toContain('attributeFilter: [SHOCK_ATTRIBUTE]');
+    expect(source).toContain('window.setTimeout(() => {');
+    expect(source).toContain('CUBE_SHOWCASE_EVERY_MS');
+    expect(source).toContain('if (!raf && !document.hidden && !reduced.matches && busy())');
+    expect(css).toContain('@keyframes cubeFloat');
+    expect(css).toMatch(/cubeFloat 4\.8s ease-in-out infinite/);
+    expect(css).toContain('translateY(-4px)');
+  });
 });

@@ -1,5 +1,8 @@
 @property --turbine-spin { syntax:'<angle>'; inherits:true; initial-value:0deg; }
-.menu { --blade-sweep:64deg; --blade-fold:24deg; position:fixed; left:max(0px,env(safe-area-inset-left)); bottom:max(12px,env(safe-area-inset-bottom)); z-index:70; width:300px; height:260px; isolation:isolate; transform:translateX(-56px); transition:transform .45s cubic-bezier(.22,.8,.2,1); pointer-events:none; }
+/* Folded, the hub sits 94px right of the menu's left edge (150px art centre - 56px tuck), so the
+   left edge is placed 94px left of the top cube bay's centerline (FilmMenuCubeView publishes
+   --hatchery-cube-cx). Without the strip the 94px fallback reproduces the old corner anchor. */
+.menu { --blade-sweep:64deg; --blade-fold:24deg; position:fixed; left:calc(var(--hatchery-cube-cx,94px) - 94px + env(safe-area-inset-left,0px)); bottom:max(12px,env(safe-area-inset-bottom)); z-index:70; width:300px; height:260px; isolation:isolate; transform:translateX(-56px); transition:transform .45s cubic-bezier(.22,.8,.2,1); pointer-events:none; }
 .menu[data-turbine-open=true] { --blade-sweep:0deg; --blade-fold:0deg; transform:translateX(12px); pointer-events:auto; }
 .hoverTarget { position:absolute; left:48px; top:32px; width:204px; height:190px; border-radius:50%; pointer-events:auto; transform:scale(.72); transition:transform .45s ease; }
 .menu[data-turbine-open=true] .hoverTarget { transform:scale(1); }

@@ -19,15 +19,16 @@ describe('boot stage markup', () => {
     expect(html).toContain('--pass:0');
     expect(html).toContain('data-online="false"');
     // The only copy is the loading caption (plus the hidden skip control).
-    expect(html).toContain('data-intro-caption');
+    expect(html).toContain('data-message-face="front"');
     expect(html).toContain('role="status"');
-    expect(html.replace(/<[^>]+>/g, '').trim()).toBe('HATCHERY로딩중건너뛰기');
+    expect(html).not.toContain('START');
+    expect(html).toContain('aria-disabled="true"');
   });
   it('flags the stage online and skipped as the cube leaves', () => {
     const html = gate(.2, true);
     expect(html).toContain('data-online="true"');
     expect(html).toContain('data-skipped="true"');
-    expect(html).toContain('준비 완료');
+    expect(html).toContain('진입 중');
     expect(html).not.toContain('로딩중');
   });
   it('is CSS 3D and gradients only: tumble, cubie cells, six sticker axes, no images', () => {
@@ -51,6 +52,9 @@ describe('boot stage markup', () => {
     const page = readFileSync('src/app/cinema/page.tsx', 'utf8');
     expect(page).toContain("import { HatcheryIntro } from '@/cinema/HatcheryIntro';");
     expect(page).toContain('<HatcheryIntro />');
+    expect(page.indexOf('<HatcheryIntro />')).toBeLessThan(page.indexOf('<SignalFilm />'));
+    expect(page).toContain('html:not([data-hatchery-intro-seen]) [data-intro-stage][data-online="false"] ~ main[data-film-theme]');
+    expect(page).toContain('opacity: 0; pointer-events: none;');
   });
 });
 

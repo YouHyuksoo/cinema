@@ -1,0 +1,7 @@
+.tools { position:relative; display:flex; align-items:center; gap:3px; flex:none; }
+.tools button { display:grid; place-items:center; width:32px; height:34px; padding:6px; border:1px solid var(--film-line); border-radius:5px; background:#07151d; color:var(--film-accent-soft); cursor:pointer; }
+.tools svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.tools button:hover,.tools button[aria-pressed=true] { color:var(--film-accent); border-color:var(--film-accent); background:#12303a; }
+.tools button:disabled { opacity:.4; cursor:not-allowed; }
+.tools input[hidden] { display:none; }
+.error { position:absolute; bottom:42px; left:0; z-index:5; width:240px; padding:10px; background:#231c17; border:1px solid #b48358; color:#ffd1a9; font-size:11px; white-space:normal; }

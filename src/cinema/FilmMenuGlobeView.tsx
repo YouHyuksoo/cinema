@@ -31,13 +31,15 @@ export function FilmMenuGlobe({ menuOpen, onExpand, onCollapse, layout = 'dock',
         </span>)}
       </div>
     </div>
-    {onExpand && <button ref={controlRef} type="button" className={styles.expand}
-      data-globe-control="true" {...events}
-      aria-label={menuOpen && layout === 'orbit' ? '메뉴 접기' : '하단 메뉴 펼치기'} aria-expanded={menuOpen} aria-controls="film-dock-panel"
-      hidden={menuOpen && layout !== 'orbit'} onClick={event => {
-        event.stopPropagation();
-        if (event.detail > 0 && blockClick()) { event.preventDefault(); return; }
-        if (menuOpen) onCollapse?.(); else onExpand?.();
-      }} />}
+    {onExpand && <div className={styles.hit}>
+      <button ref={controlRef} type="button" className={styles.expand}
+        data-globe-control="true" {...events}
+        aria-label={menuOpen && layout === 'orbit' ? '메뉴 접기' : '하단 메뉴 펼치기'} aria-expanded={menuOpen} aria-controls="film-dock-panel"
+        hidden={menuOpen && layout !== 'orbit'} onClick={event => {
+          event.stopPropagation();
+          if (event.detail > 0 && blockClick()) { event.preventDefault(); return; }
+          if (menuOpen) onCollapse?.(); else onExpand?.();
+        }} />
+    </div>}
   </div>;
 }

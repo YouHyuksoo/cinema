@@ -26,6 +26,16 @@ describe('intro session gate', () => {
 });
 
 describe('intro timeline', () => {
+  it('waits for explicit entry after loading, including beyond the timeout', () => {
+    const intro = createIntroTimeline(0, true);
+    intro.enter(100);
+    intro.ready(200); intro.solved(500);
+    expect(intro.at(20000)).toMatchObject({ phase: 'closed', ready: true, door: 0 });
+    intro.enter(20000);
+    expect(intro.at(20400).cube).toBe('return');
+    intro.docked(21600);
+    expect(intro.at(21600).phase).toBe('done');
+  });
   it('stays closed with the cube staged until both the cube and the HUD are ready', () => {
     const intro = createIntroTimeline(1000);
     expect(intro.at(1000)).toEqual({ phase: 'closed', door: 0, cube: 'stage', skipped: false });

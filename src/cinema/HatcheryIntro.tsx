@@ -23,7 +23,9 @@ let playDecision: boolean | null = null;
  * its layers scramble and solve (the same move engine as the docked cube). On the `return` / `snap`
  * cue it flies to the docked cube's real position and scale, so the hand-off is seamless.
  */
-function IntroCube({ cue, onSolved, onDocked }: { cue: IntroCubeCue; onSolved: () => void; onDocked: () => void }) {
+function IntroCube({ cue, onSolved, onDocked, ready, entering, onEnter }: {
+  cue: IntroCubeCue; onSolved(): void; onDocked(): void; ready: boolean; entering: boolean; onEnter(): void;
+}) {
   const flight = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
 
@@ -36,6 +38,7 @@ function IntroCube({ cue, onSolved, onDocked }: { cue: IntroCubeCue; onSolved: (
     const scramble = cubeScramble(8, SCRAMBLE_SEED);
     const queue: CubeMove[] = [...scramble, ...cubeInvertSequence(scramble)];
     let turning: { move: CubeMove; started: number } | null = null;
+    let lastProgress = 0;
     let startAt = performance.now() + INTRO_TIMING.holdMs;
     const paint = (progress: number) => {
       const step = container.clientWidth / 3;
@@ -53,12 +56,17 @@ function IntroCube({ cue, onSolved, onDocked }: { cue: IntroCubeCue; onSolved: (
         turning = { move, started: now };
       }
       const progress = Math.min(1, (now - turning.started) / CUBE_MOVE_MS);
+      lastProgress = progress;
       paint(progress);
       if (progress >= 1) { orients = cubeApplyMove(orients, turning.move); turning = null; startAt = now + 40; }
     });
     paint(0);
+    // CSS resizes the stickers even after solving has stopped the animation loop.
+    // Keep their pixel translation matrices in sync with that same cube size.
+    const resize = new ResizeObserver(() => paint(lastProgress));
+    resize.observe(container);
     loop.start();
-    return () => loop.stop();
+    return () => { loop.stop(); resize.disconnect(); };
   }, [onSolved]);
 
   // Return flight to the docked cube.
@@ -70,7 +78,15 @@ function IntroCube({ cue, onSolved, onDocked }: { cue: IntroCubeCue; onSolved: (
     const to = dock && dock.width ? { x: dock.left + dock.width / 2, y: dock.top + dock.height / 2 } : { x: 16 + 43, y: 16 + 43 };
     const stageSize = node.getBoundingClientRect().width || 1;
     const targetScale = (dock && dock.width ? dock.width : 86) / stageSize;
+    const spinner = node.querySelector<HTMLElement>(`.${styles.spin}`);
+    const spinTransform = spinner ? getComputedStyle(spinner).transform : 'none';
     node.dataset.flight = cue;
+    if (spinner) {
+      spinner.style.transform = spinTransform;
+      spinner.animate([{ transform: spinTransform }, { transform: 'rotateY(0deg)' }], {
+        duration: cue === 'snap' ? 300 : 1200, easing: 'ease-in-out', fill: 'forwards',
+      });
+    }
     const started = performance.now();
     const loop = createFrameLoop(now => {
       const pose = cubeIntroFlight(now - started, from, to, cue);
@@ -83,44 +99,62 @@ function IntroCube({ cue, onSolved, onDocked }: { cue: IntroCubeCue; onSolved: (
     return () => loop.stop();
   }, [cue, onDocked]);
 
-  return <div ref={flight} className={styles.flight} data-hud-object="cube">
+  return <div ref={flight} className={styles.flight} data-hud-object="cube" data-ready={ready}
+    role="button" tabIndex={0} aria-label={ready ? '큐브를 클릭해서 진입' : 'HATCHERY 로딩 중'} aria-disabled={!ready || entering}
+    onClick={() => { if (ready && !entering) onEnter(); }}
+    onKeyDown={event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (ready && !entering) onEnter(); }
+    }}>
     <div className={styles.tilt}><div className={styles.spin}>
       <div ref={body} className={styles.cube}>
         {CUBE_CUBIES.map(home => <span key={`${home.x},${home.y},${home.z}`} className={styles.cubie} data-intro-cubie
           style={{ '--cx': home.x, '--cy': home.y, '--cz': home.z } as CSSProperties}>
           {cubeCubieStickers(home).map(axis => <i key={axis} className={styles.tile} data-intro-sticker={axis} style={{ '--sticker': STICKER[axis] } as CSSProperties} />)}
         </span>)}
+        {!entering && ['front', 'right', 'back', 'left'].map(face => <div key={face} className={styles.faceMessage} data-message-face={face} aria-hidden="true">
+          <strong>HATCHERY</strong>
+          <span>{ready ? '준비 완료' : '로딩 중'}</span>
+          <small>{ready ? '클릭해서 진입' : '잠시 기다려주세요'}</small>
+        </div>)}
       </div>
     </div></div>
   </div>;
 }
 
 /** Pure presentation of the stage. `pass` 0..1 thins the backdrop as the cube leaves. */
-export function HatcheryIntroGate({ pass, skipped, cue, onSkip, onSolved, onDocked }: {
+export function HatcheryIntroGate({ pass, skipped, cue, onSkip, onSolved, onDocked, ready = false }: {
   pass: number; skipped: boolean; cue: IntroCubeCue; onSkip: () => void; onSolved: () => void; onDocked: () => void;
+  ready?: boolean;
 }) {
   return <div className={styles.stage} role="dialog" aria-label="HATCHERY 시작" tabIndex={-1} data-intro-stage
     data-gate-open={pass >= 1} data-online={pass > 0} data-skipped={skipped} style={{ '--pass': pass } as CSSProperties}>
     <div className={styles.veil} aria-hidden="true" />
+    <svg className={styles.circuit} viewBox="0 0 1000 600" aria-hidden="true" focusable="false">
+      {[false, true].map(mirror => <g key={String(mirror)} transform={mirror ? 'translate(1000 600) rotate(180)' : undefined}>
+        <path className={styles.circuitRail} d="M40 176h138l44 44h72l44 44M58 188h112l44 44h70l42 42M0 300h178l36-36h62M82 428h94l60-60h60l36-36M90 442h94l60-60h40" />
+        <path className={styles.circuitPulse} d="M40 176h138l44 44h72l44 44M82 428h94l60-60h60l36-36" />
+        <path className={styles.circuitRail} d="M118 156h66m-54-8h34M110 462h92m-76 8h42" />
+        {[ [40,176], [276,264], [82,428] ].map(([cx,cy]) => <g key={`${cx}-${cy}`}><circle cx={cx} cy={cy} r="4" /><circle cx={cx} cy={cy} r="9" className={styles.circuitRail} /></g>)}
+      </g>)}
+    </svg>
     <svg className={styles.reticle} viewBox="0 0 200 200" aria-hidden="true" focusable="false" data-hud-object="reticle">
+      <circle className={styles.reticleGuide} cx="100" cy="100" r="99" />
       <circle className={styles.reticleTicks} cx="100" cy="100" r="96" pathLength="360" />
       <circle className={styles.reticleArcs} cx="100" cy="100" r="86" pathLength="360" />
+      <circle className={styles.reticleInner} cx="100" cy="100" r="81" pathLength="360" />
+      <g className={styles.reticleMarks}>
+        {Array.from({ length: 48 }, (_, i) => <path key={i} transform={`rotate(${i * 7.5} 100 100)`} d={i % 4 === 0 ? 'M100 3v9': 'M100 8v2'} />)}
+      </g>
       <path className={styles.reticleCross} d="M100 2v10M100 188v10M2 100h10M188 100h10" />
     </svg>
     {(["tl", "tr", "bl", "br"] as const).map(corner => <i key={corner} className={styles.bracket} data-corner={corner} aria-hidden="true" />)}
-    <IntroCube cue={cue} onSolved={onSolved} onDocked={onDocked} />
-    <p className={styles.caption} data-intro-caption role="status" aria-live="polite">
-      <span className={styles.captionBrand}>HATCHERY</span>
-      <span className={styles.captionState}>{pass > 0 ? '준비 완료' : '로딩중'}</span>
-      {pass > 0 ? null : <span className={styles.captionDots} aria-hidden="true"><i /><i /><i /></span>}
-    </p>
-    <button type="button" className={styles.skip} data-intro-skip onClick={onSkip}>건너뛰기</button>
+    <IntroCube cue={cue} onSolved={onSolved} onDocked={onDocked} ready={ready || pass > 0} entering={pass > 0} onEnter={onSkip} />
+    <p className={styles.srStatus} role="status" aria-live="polite">{pass > 0 ? '진입 중' : ready ? '준비 완료. 큐브를 클릭해서 진입하세요.' : 'HATCHERY 로딩 중'}</p>
   </div>;
 }
 
 /** The stage is in the server HTML so it covers the HUD from the first paint, before any script runs. */
 const FIRST_FRAME: IntroFrame = { phase: 'closed', door: 0, cube: 'stage', skipped: false };
-const noop = () => {};
 
 /**
  * Once-per-session entry sequence. Mounted beside the film: the HUD renders behind the stage, the cube
@@ -133,7 +167,7 @@ export function HatcheryIntro() {
   const [handlers] = useState(() => ({
     solved: () => timeline.current?.solved(performance.now()),
     docked: () => timeline.current?.docked(performance.now()),
-    skip: () => timeline.current?.skip(performance.now()),
+    skip: () => timeline.current?.enter(performance.now()),
   }));
 
   useEffect(() => {
@@ -149,14 +183,14 @@ export function HatcheryIntro() {
       const drop = requestAnimationFrame(() => setFrame(null));
       return () => cancelAnimationFrame(drop);
     }
-    const intro = createIntroTimeline(performance.now());
+    const intro = createIntroTimeline(performance.now(), true);
     timeline.current = intro;
     const root = document.documentElement;
     let cue: string | null = null, published: IntroFrame | null = null;
     const apply = (next: IntroFrame) => {
       const nextCue = next.cube ?? '';
       if (nextCue !== cue) { cue = nextCue; if (nextCue) root.dataset[INTRO_DATASET_KEY] = nextCue; else delete root.dataset[INTRO_DATASET_KEY]; }
-      if (!published || published.phase !== next.phase || published.door !== next.door || published.skipped !== next.skipped || published.cube !== next.cube) {
+      if (!published || published.phase !== next.phase || published.door !== next.door || published.skipped !== next.skipped || published.cube !== next.cube || published.ready !== next.ready) {
         published = next; setFrame(next);
       }
     };
@@ -170,8 +204,6 @@ export function HatcheryIntro() {
       };
       check();
     });
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') intro.skip(performance.now()); };
-    document.addEventListener('keydown', onKey);
     const loop = createFrameLoop(now => {
       const next = intro.at(now);
       apply(next);
@@ -182,7 +214,6 @@ export function HatcheryIntro() {
     return () => {
       loop.stop(); motion.stop(); window.clearTimeout(readyTimer);
       delete root.dataset[INTRO_DATASET_KEY];
-      document.removeEventListener('keydown', onKey);
     };
   }, []);
 
@@ -198,6 +229,6 @@ export function HatcheryIntro() {
   }, [active]);
 
   if (!active || !frame) return null;
-  return <HatcheryIntroGate pass={frame.door} skipped={frame.skipped} cue={frame.cube} onSkip={handlers.skip}
+  return <HatcheryIntroGate pass={frame.door} skipped={frame.skipped} cue={frame.cube} ready={frame.ready} onSkip={handlers.skip}
     onSolved={handlers.solved} onDocked={handlers.docked} />;
 }

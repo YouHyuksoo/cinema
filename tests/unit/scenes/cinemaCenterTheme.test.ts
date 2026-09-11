@@ -44,6 +44,6 @@ describe('central HUD theme wiring', () => {
     const wave = source('JarvisWave.tsx');
     expect(wave).toContain('createFilmThemeContext');
     expect(wave).toContain('setTheme(theme)');
-    expect(wave).toContain('}, [audio]);');
+    expect(wave).toContain('}, [audio, finish]);');
   });
 });

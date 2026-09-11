@@ -5,13 +5,24 @@ import { drawScannerFlight, drawScannerTesla, type FlightSphere } from './drawSc
 import { CONNECTION_LABELS, type ConnectionState } from './scannerConnectionStatus';
 import { createFrameLoop, fitCanvasToBox, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './scannerTeslaEffect.module.css';
+import { easterEggSequence } from './easterEggSequence';
 
-/** Hover discharges in place; clicking launches the independent full-screen flight. */
+/** Hover discharges in place; a scanner click or reactor sequence launches the status flight. */
 export function ScannerTeslaEffect({still,details}:{still:boolean;details:string}) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const triggerRef=useRef<HTMLButtonElement>(null);
+  const finished=useRef<(() => void) | null>(null);
   const [playing,setPlaying]=useState(false);
   const [hovered,setHovered]=useState(false);
+  useEffect(()=>{
+    const root=triggerRef.current?.closest('main');
+    if(!root)return;
+    const unregister=easterEggSequence(root).register('scanner',done=>{
+      if(still||document.hidden)return false;
+      finished.current=done;setPlaying(true);return true;
+    });
+    return ()=>{unregister();finished.current?.();finished.current=null;};
+  },[still]);
   const mode=playing?'flight':hovered&&!still?'hover':'idle';
   useEffect(()=>{
     const canvas=canvasRef.current,ctx=canvas?.getContext('2d');
@@ -30,7 +41,7 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
       if(!cached){
         cached={color:getComputedStyle(node).getPropertyValue('--orb-color').trim()||'#8b9cab',
           label:node.dataset.statusOrb?.toUpperCase()??'',status:CONNECTION_LABELS[state]??'미확인',
-          detail:node.title.split(' · ').slice(1).join(' · ')};
+          detail:node.dataset.connectionDetail??''};
         looks.set(key,cached);
       }
       return cached;
@@ -43,7 +54,7 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
       delete canvas.dataset.inspectedOrb;
       if(plane)delete plane.dataset.flight;
     };
-    const finish=(cancelHover=false)=>{clear();setPlaying(false);if(cancelHover)setHovered(false);};
+    const finish=(cancelHover=false)=>{clear();finished.current?.();finished.current=null;setPlaying(false);if(cancelHover)setHovered(false);};
     const motion=watchReducedMotion(reduced=>{if(reduced)finish(true);});
     const draw=(time:number)=>{
       started??=time;
@@ -76,17 +87,21 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
     const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')finish(true);};
     document.addEventListener('keydown',escape);
     loop.start();
-    return ()=>{clear();unwatch();document.removeEventListener('keydown',escape);motion.stop();};
+    return ()=>{clear();unwatch();if(mode==='flight'){finished.current?.();finished.current=null;}document.removeEventListener('keydown',escape);motion.stop();};
   },[mode]);
   const canvas=<canvas ref={canvasRef} className={playing?styles.flyby:styles.arcs} data-scanner-tesla="true" data-active="false" aria-hidden="true" />;
   return <>
-    <button ref={triggerRef} type="button" className={styles.trigger} aria-label="신호 구체 테슬라 방전" aria-busy={playing} disabled={still||playing}
-      title={`${still?'동작 줄이기 설정으로 연출 정지':'호버: 테슬라 전기 · 클릭: 구체별 확대 및 2초 상태 확인 후 복귀 · Escape: 취소'}\n${details}`}
+    <button ref={triggerRef} type="button" className={styles.trigger} aria-label="신호 감지기 상태 공전 실행" aria-busy={playing} disabled={still||playing}
+      aria-description={details}
       onPointerEnter={event=>{if(event.pointerType!=='touch')setHovered(true);}}
       onPointerLeave={()=>setHovered(false)}
       onFocus={event=>{if(event.currentTarget.matches(':focus-visible'))setHovered(true);}}
       onBlur={()=>setHovered(false)}
-      onClick={event=>{event.stopPropagation();setPlaying(true);}} />
+      onClick={event=>{
+        event.stopPropagation();
+        const root=event.currentTarget.closest('main');
+        if(root)easterEggSequence(root).play('scanner');
+      }} />
     {playing?createPortal(canvas,document.body):canvas}
   </>;
 }

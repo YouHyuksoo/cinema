@@ -28,17 +28,21 @@ export const MENU_LAYOUTS = [
 export const isMenuLayout = (value: unknown): value is MenuLayout => MENU_LAYOUTS.some(item => item.value === value);
 
 export const ORBIT_FRONT_ANGLE = -Math.PI / 2;
-/** Orbit radius for a globe diameter: just outside the sphere with room for the hex tiles. */
-export const orbitRadius = (diameter: number) => (Number.isFinite(diameter) ? Math.max(0, diameter) : 0) * .5 + 96;
+/** Inner teeth sit at this fraction of the outer radius so adjacent hexes nest instead of sharing one circle. */
+export const ORBIT_INNER_SCALE = .74;
+/** Outer orbit radius for a globe diameter: sawtooth packing needs less pad than a single circle. */
+export const orbitRadius = (diameter: number) => (Number.isFinite(diameter) ? Math.max(0, diameter) : 0) * .5 + 48;
+export const orbitTooth = (index: number) => index % 2 === 0 ? 1 : ORBIT_INNER_SCALE;
 
-/** Orbit layout: tiles sit flat on a circle around the globe, the front slot at twelve o'clock. */
+/** Orbit layout: tiles sit flat in a sawtooth around the globe, the front slot at twelve o'clock. */
 export function orbitPose(index: number, turn: number, count: number, radius: number) {
   const offset = ((index - turn) % count + count) % count;
   const around = offset / count * Math.PI * 2;
   const angle = ORBIT_FRONT_ANGLE + around;
   const front = (Math.cos(around) + 1) / 2;
+  const r = radius * orbitTooth(index);
   // Larger than the dock ring's tiles: they sit against the busy main screen, so they need presence.
-  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius, z: 0, yaw: 0, angle,
+  return { x: Math.cos(angle) * r, y: Math.sin(angle) * r, z: 0, yaw: 0, angle, radius: r, tooth: orbitTooth(index),
     scale: 1.02 + front * .3, opacity: .82 + front * .18 };
 }
 
@@ -47,7 +51,7 @@ export function menuPoseStyle(pose:ReturnType<typeof ringPose>|ReturnType<typeof
   const cssNumber=(value:number)=>String(Number(value.toFixed(6)));
   const appearance={'--ring-scale':cssNumber(pose.scale),'--ring-opacity':cssNumber(pose.opacity)};
   return 'angle' in pose
-    ? {...appearance,'--orbit-angle':`${cssNumber(pose.angle)}rad`}
+    ? {...appearance,'--orbit-angle':`${cssNumber(pose.angle)}rad`,'--orbit-tooth':cssNumber(pose.tooth)}
     : {...appearance,'--ring-x':`${cssNumber(pose.x)}px`,'--ring-y':`${cssNumber(pose.y)}px`,
       '--ring-z':`${cssNumber(pose.z)}px`,'--ring-yaw':`${cssNumber(pose.yaw)}deg`};
 }

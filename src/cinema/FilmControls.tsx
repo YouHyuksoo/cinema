@@ -9,6 +9,7 @@ import { FilmCameraControls, type FilmCameraMode } from './FilmCameraControls';
 import { FilmMachineControls } from './FilmMachineControls';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import { SelectField } from './FilmFields';
+import { FilmCenterControls } from './FilmCenterControls';
 import { MENU_LAYOUTS } from './filmMenuRing';
 import styles from './film.module.css';
 
@@ -32,6 +33,7 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
         aria-label="현재 장면 재생 위치" aria-valuetext={`${title} ${localTime.toFixed(1)}초 / ${chapter.duration}초`}
         disabled={!player.ready} onChange={(event) => player.seek(Number(event.target.value))} /></>}
       <FilmThemeControls theme={player.theme} disabled={!player.ready} onChange={player.changeTheme} />
+      <FilmCenterControls />
       <div className={styles.textureRow}>
         <SelectField label="메뉴 펼침 방식" value={player.menuLayout ?? 'dock'} options={MENU_LAYOUTS} disabled={!player.ready} onChange={player.changeMenuLayout} />
         <span className={styles.textureDescription}>{(player.menuLayout ?? 'dock') === 'orbit' ? '구체가 화면 안쪽으로 나와 둘레에 장면 링을 펼칩니다' : '구체가 하단 3D 링으로 펼쳐집니다'}</span>

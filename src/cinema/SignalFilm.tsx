@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useFilmPlayback } from './useFilmPlayback';
 import { FilmDock } from './FilmDock';
 import { FilmControls } from './FilmControls';
+import { FilmSettingsDialog } from './FilmSettingsDialog';
 import { FilmTurbineMenu } from './FilmTurbineMenu';
 import { FilmBriefing } from './FilmBriefing';
 import { ReactorMenuPrank } from './ReactorMenuPrank';
@@ -23,6 +24,7 @@ export function SignalFilm() {
   const cameraView = useRef(true);
   const [preview, setPreview] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const player = useFilmPlayback(canvas, camera.frameRef, cameraView);
   const description = player.position.chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject] : player.position.chapter;
   const cameraMode = {
@@ -33,7 +35,8 @@ export function SignalFilm() {
   };
   const turbine = useFilmTurbine(player,
     () => { cameraMode.openPreview(); setMenuOpen(false); },
-    () => cameraMode.closePreview());
+    () => cameraMode.closePreview(),
+    () => setSettingsOpen(true));
   const themeStyle = useMemo(() => {
     const { accent } = getFilmTheme(player.theme);
     return {
@@ -70,6 +73,7 @@ export function SignalFilm() {
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmBriefing text={turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''} source={turbine.voice.source}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
+      {settingsOpen && <FilmSettingsDialog player={player} camera={cameraMode} onClose={() => setSettingsOpen(false)} />}
       <FilmTurbineMenu ready={player.ready} playing={player.playing} voiceActive={turbine.voice.active} onCommand={turbine.command}/>
       {preview && <ReactorMenuPrank/>}
     </main>

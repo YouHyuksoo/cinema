@@ -1,0 +1,10 @@
+.dialog { width:min(760px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); box-sizing:border-box; padding:0; overflow:auto;
+  color:var(--film-ink); background:var(--film-panel); border:1px solid var(--film-accent); border-radius:12px;
+  box-shadow:0 24px 90px #000b; font-family:var(--font-korean),sans-serif; }
+.dialog::backdrop { background:#000a; }
+.header { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:18px 24px; background:var(--film-panel); border-bottom:1px solid var(--film-line); }
+.header h2 { margin:0; color:var(--film-accent-soft); font-size:18px; }
+.header button { padding:7px 14px; border:1px solid var(--film-line); border-radius:6px; background:var(--film-bg); color:var(--film-ink); cursor:pointer; }
+.header button:focus-visible { outline:2px solid var(--film-accent); outline-offset:3px; }
+.content { padding:20px 24px; }

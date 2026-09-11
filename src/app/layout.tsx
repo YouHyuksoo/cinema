@@ -15,7 +15,8 @@ const INTRO_SEEN_SCRIPT = `try{if(!/[?&]intro=/.test(location.search)&&(sessionS
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    // The pre-paint script intentionally adds the session attribute before hydration.
+    <html lang="ko" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: INTRO_SEEN_SCRIPT }} /></head>
       <body>{children}</body>
     </html>

@@ -15,7 +15,7 @@ const SHORT_LABELS: Partial<Record<FilmId, string>> = {
   machine: 'PCB 검사', network: '공정망', energy: '에너지', product: '내부 검사', spc: 'SPC', cctv: 'CCTV',
 };
 
-/** Browsing the ring never starts a scene; activate the aligned tile to launch. */
+/** Drag rotates the ring; a click on any tile launches that scene. Keyboard arrows still align, Enter runs the front tile. */
 export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, onExpand, onCollapse, globeButtonRef, onOpened, layout = 'dock' }: {
   active: FilmId | null; disabled: boolean; onSelect: (id: FilmId) => void;
   menuOpen?: boolean; onExpand?: () => void; onCollapse?: () => void; globeButtonRef?: Ref<HTMLButtonElement>;
@@ -58,8 +58,8 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
           aria-label={`${pad2(index + 1)} ${chapter.title}`}
           aria-current={active === chapter.id ? 'step' : undefined}
           title={`${chapter.title} · ${chapter.subtitle}`} disabled={disabled}
-          onFocus={() => { if (!ringBlocked && !pointerActive()) align(index); }}
-          onClick={() => { if (ringBlocked) return; if (index === front) onSelect(chapter.id); else align(index); }}>
+          onFocus={event => { if (!ringBlocked && !pointerActive() && event.currentTarget.matches(':focus-visible')) align(index); }}
+          onClick={() => { if (ringBlocked) return; onSelect(chapter.id); }}>
           <span className={styles.hexTile} aria-hidden="true">
             <svg className={styles.hexFrame} viewBox="0 0 64 72" fill="none" focusable="false">
               <path className={styles.hexBack} d="M32 7 60 23v32L32 71 4 55V23Z" />
@@ -69,7 +69,7 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
             </svg>
             <FilmChapterIcon id={chapter.id} className={styles.chapterIcon} />
           </span>
-          <span className={styles.chapterLabel}>{SHORT_LABELS[chapter.id] ?? chapter.title}</span>
+          <span className={styles.chapterLabel} data-chapter-label="true">{SHORT_LABELS[chapter.id] ?? chapter.title}</span>
         </button>;
       })}
       </div>
@@ -77,11 +77,11 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
         <button type="button" aria-label="이전 메뉴로 회전" disabled={disabled} onClick={() => align(ringIndex(turn - 1, FILM_CHAPTERS.length))}>‹</button>
         <div className={ringStyles.readout} aria-live={dragging ? 'off' : 'polite'} aria-atomic="true">
           <strong title={selected.title}>{pad2(front + 1)} / {FILM_CHAPTERS.length} · {selected.title}</strong>
-          <small>{selected.id === active ? '재생 중 · 클릭하면 다시 시작' : '정면 클릭 · Enter로 실행'}</small>
+          <small>{selected.id === active ? '재생 중 · 클릭하면 다시 시작' : '클릭 · Enter로 실행'}</small>
         </div>
         <button type="button" aria-label="다음 메뉴로 회전" disabled={disabled} onClick={() => align(ringIndex(turn + 1, FILM_CHAPTERS.length))}>›</button>
       </div>
-      <p id="film-ring-hint" className={ringStyles.hint}>좌우로 밀어 회전 · 방향키로 선택 · 정면 클릭 또는 Enter로 실행</p>
+      <p id="film-ring-hint" className={ringStyles.hint}>좌우로 밀어 회전 · 방향키로 선택 · 클릭 또는 Enter로 실행</p>
       </div>
       <FilmMenuGlobe menuOpen={menuOpen} onExpand={onExpand} onCollapse={onCollapse} layout={layout}
         layerRef={globe.layer} floatRef={globe.float} controlRef={globe.control}

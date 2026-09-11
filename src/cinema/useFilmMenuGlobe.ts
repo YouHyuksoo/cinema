@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
-import { clampGlobeCenter, drawSoccerSphere, globeDiameter, turbineOrbMetrics, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
+import { clampGlobeCenter, drawSoccerSphere, GLOBE_TIGHT_MAX_WIDTH, globeDiameter, turbineOrbMetrics, globeFaceSize, globeMomentumStep, globePose, globeRestingCenter,
   globeRestScale, globeRestStep, isGlobeDrag, mixMenuPose, soccerHexScreenPoses, sphereSpinAngle, type MenuPose,
   type Point } from './filmMenuGlobe';
 import { orbitPose, orbitRadius, ringPose, type MenuLayout } from './filmMenuRing';
@@ -45,11 +45,13 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const ORBIT_SPHERE_SCALE = .66;
     let ballScale = 1, ballScaleFrom = 1;
     const sphereScale = () => orbit && (currentPhase !== 'closed' || input.menuOpen) ? ballScale : restScale();
-    let raf = 0, previousTime: number | null = null, elapsed = 0, angle = 0, floatTime = 0;
+    let raf = 0, previousTime: number | null = null, elapsed = 0, angle = 0;
     let current: MenuPose[] = [], from: MenuPose[] = [], ringTarget: MenuPose[] = [];
     let ringOrigin = { x: 0, y: 0 }, rect = element.getBoundingClientRect();
     let viewport = { width: window.innerWidth, height: window.innerHeight };
-    let diameter = 240, faceHeight = 50, radius = 0, faceScale = 0, floatingY = 0;
+    let diameter = 240, faceHeight = 50, radius = 0, faceScale = 0;
+    let dockX: number | null = null;
+    let dockY: number | null = null, manuallyPlaced = false;
     let globeCenter = globeRestingCenter(viewport, diameter);
     let perspective = { ...globeCenter }, fromPerspective = { ...globeCenter };
     let momentum = { x: 0, y: 0 };
@@ -68,11 +70,11 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const stageCenter = () => ({ x: rect.left + rect.width / 2,
       y: rect.top + rect.height * (short.matches ? .36 : .4) });
     const ringPerspective = () => orbit ? { ...globeCenter } : { x: rect.left + rect.width / 2, y: rect.top + rect.height * .45 };
-    /** Pull the globe inward so its orbit ring (plus tiles and the readout below) stays on screen above the dock bar. */
+    /** Pull the globe inward so its orbit ring (plus tiles and the readout below) stays on screen. */
     const orbitCenterFor = (center: Point): Point => {
       const margin = orbitRadius(diameter) + 56;
       return { x: Math.max(margin, Math.min(viewport.width - margin, center.x)),
-        y: Math.max(margin, Math.min(viewport.height - 84 - margin - 44, center.y)) };
+        y: Math.max(margin, Math.min(viewport.height - margin - 44, center.y)) };
     };
     const orbitFace = (index: number) => {
       const ringButton = buttons.current[index], hex = ringButton?.firstElementChild as HTMLElement | null;
@@ -88,11 +90,17 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       rect = element.getBoundingClientRect();
       const previousViewport = viewport;
       viewport = { width: window.innerWidth, height: window.innerHeight };
+      // Rest axis: the top signal bay's centerline (FilmMenuCubeView publishes it while the strip
+      // is docked). Small screens hide that bay, so the sphere keeps its corner there.
+      const signalAxis = Number.parseFloat(document.documentElement.style.getPropertyValue('--hatchery-signal-cx'));
+      dockX = viewport.width > GLOBE_TIGHT_MAX_WIDTH && Number.isFinite(signalAxis) ? signalAxis : null;
+      const turbine = document.querySelector<HTMLElement>('[data-turbine-hub]')?.getBoundingClientRect();
+      dockY = turbine && turbine.height > 0 ? turbine.top + turbine.height / 2 : null;
       diameter = globeDiameter(viewport.width, viewport.height);
       faceHeight = short.matches ? 43 : 50;
       radius = diameter / (2 + unitFace);
       faceScale = faceHeight > 0 ? unitFace * radius / faceHeight : 0;
-      globeCenter = globeRestingCenter(viewport, diameter * restScale(), rememberedCenter.current, previousViewport);
+      globeCenter = globeRestingCenter(viewport, diameter * restScale(), manuallyPlaced ? rememberedCenter.current : null, previousViewport, dockX, dockY);
       if (previousViewport.width !== viewport.width || previousViewport.height !== viewport.height) {
         rememberedCenter.current = globeCenter;
         momentum = { x: 0, y: 0 };
@@ -181,10 +189,8 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         }
       }
       dragDirty = false;
-      floating.style.transform = `translateY(${floatingY}px)`;
-      const visualY = currentPhase === 'closed' ? floatingY : 0;
-      overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y + visualY}px`;
-      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y + floatingY}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
+      overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y}px`;
+      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
     };
     const stopFrame = () => { if (raf) cancelAnimationFrame(raf); raf = 0; previousTime = null; };
     const releaseActivePointer = () => {
@@ -199,7 +205,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     };
     const finish = () => {
       rest = input.menuOpen || awake ? 0 : 1; idleMs = 0;
-      current = input.menuOpen ? targetRing() : globe(); floatingY = 0; elapsed = 0; floatTime = 0;
+      current = input.menuOpen ? targetRing() : globe(); elapsed = 0;
       perspective = input.menuOpen ? ringPerspective() : { ...globeCenter };
       publish(input.menuOpen ? 'open' : 'closed'); draw();
     };
@@ -238,8 +244,6 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
           globeCenter = next.center; momentum = next.velocity; rememberedCenter.current = globeCenter;
         }
         const orbitOpen = orbit && input.menuOpen;
-        // While the orbit ring is open the globe stays put at full size (the real tiles do not float).
-        if (!orbitOpen) { floatTime += delta; floatingY = 4 * Math.sin(floatTime * Math.PI * 2 / 4800); }
         // Idle time is wall-clock: a slow frame must not postpone the rest.
         idleMs += raw;
         const before = restScale();
@@ -247,7 +251,14 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         // Rest about the globe's bottom-right corner: shift the center by the radius change so that
         // tangent point stays put while the globe shrinks toward, or grows out of, the corner.
         const shift = diameter / 2 * (before - restScale());
-        if (shift) { globeCenter = { x: globeCenter.x + shift, y: globeCenter.y + shift }; rememberedCenter.current = globeCenter; }
+        if (shift) {
+          // The turbine mounts after readiness and its responsive plate settles after our first measure.
+          const hub = document.querySelector<HTMLElement>('[data-turbine-hub]')?.getBoundingClientRect();
+          if (hub && hub.height > 0) dockY = hub.top + hub.height / 2;
+          globeCenter = manuallyPlaced ? { x: globeCenter.x + shift, y: globeCenter.y + shift }
+            : globeRestingCenter(viewport, diameter * restScale(), null, undefined, dockX, dockY);
+          rememberedCenter.current = globeCenter;
+        }
         perspective = { ...globeCenter }; current = globe(); draw();
       }
       schedule();
@@ -257,8 +268,9 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       start(pointerId, point, time) {
         if (currentPhase !== 'closed' || pointer) return false;
         stopFrame(); momentum = { x: 0, y: 0 }; suppressClick = false; awake = true; idleMs = 0;
-        globeCenter = clampGlobeCenter({ x: globeCenter.x, y: globeCenter.y + floatingY }, viewport, diameter * restScale());
-        rememberedCenter.current = globeCenter; floatingY = 0; perspective = { ...globeCenter };
+        const bob = Number(new DOMMatrixReadOnly(getComputedStyle(floating).transform).m42) || 0;
+        globeCenter = clampGlobeCenter({ x: globeCenter.x, y: globeCenter.y + bob }, viewport, diameter * restScale());
+        rememberedCenter.current = globeCenter; perspective = { ...globeCenter };
         pointer = { id: pointerId, origin: point, center: globeCenter, lastCenter: globeCenter,
           lastTime: time, dragged: false, velocity: { x: 0, y: 0 } };
         setDragging(true); current = globe(); draw(); schedule(); return true;
@@ -273,6 +285,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         pointer.velocity = { x: pointer.velocity.x * .55 + instant.x * .45,
           y: pointer.velocity.y * .55 + instant.y * .45 };
         pointer.dragged ||= isGlobeDrag(pointer.origin, point);
+        manuallyPlaced ||= pointer.dragged;
         pointer.lastCenter = globeCenter; pointer.lastTime = time;
         rememberedCenter.current = globeCenter; dragDirty = true; schedule();
       },
@@ -308,22 +321,24 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       }
       stopFrame(); momentum = { x: 0, y: 0 }; releaseActivePointer();
       if (currentPhase === 'open') current = ring(true);
-      from = current.map(pose => ({ ...pose, y: pose.y + floatingY }));
-      fromPerspective = { x: perspective.x, y: perspective.y + floatingY };
-      floatingY = 0; input = next; elapsed = 0;
+      const bob = Number(new DOMMatrixReadOnly(getComputedStyle(floating).transform).m42) || 0;
+      from = current.map(pose => ({ ...pose, y: pose.y + bob }));
+      fromPerspective = { x: perspective.x, y: perspective.y + bob };
+      input = next; elapsed = 0;
       if (orbit) {
         // Open: settle the globe at full size and slide it to where the ring fits; close: back to the corner.
-        centerFrom = { x: globeCenter.x, y: globeCenter.y + floatingY };
+        centerFrom = { x: globeCenter.x, y: globeCenter.y };
         ballScaleFrom = currentPhase === 'open' ? ORBIT_SPHERE_SCALE : restScale(); ballScale = ballScaleFrom;
         rest = 0; awake = next.menuOpen;
         orbitCenter = next.menuOpen ? orbitCenterFor(centerFrom) : orbitCenter;
-        centerTo = next.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter, null);
+        if (!next.menuOpen) manuallyPlaced = false;
+        centerTo = next.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter * restScale(), null, undefined, dockX, dockY);
         rememberedCenter.current = next.menuOpen ? orbitCenter : null;
         measure(); globeCenter = centerFrom; cacheRing();
         if (reduced.matches) { globeCenter = centerTo; finish(); } else { publish('morphing'); draw(); schedule(); }
         return;
       }
-      if (!next.menuOpen) rememberedCenter.current = null;
+      if (!next.menuOpen) { rememberedCenter.current = null; manuallyPlaced = false; }
       measure(); cacheRing();
       if (reduced.matches) finish(); else { publish('morphing'); draw(); schedule(); }
     };
@@ -332,10 +347,10 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       if (viewportChanged) releaseActivePointer();
       measure();
       if (orbit && viewportChanged) {
-        orbitCenter = orbitCenterFor(globeRestingCenter(viewport, diameter * restScale()));
+        orbitCenter = orbitCenterFor(globeRestingCenter(viewport, diameter * restScale(), null, undefined, dockX));
         if (input.menuOpen) globeCenter = { ...orbitCenter };
         centerFrom = { ...globeCenter };
-        centerTo = input.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter * restScale());
+        centerTo = input.menuOpen ? orbitCenter : globeRestingCenter(viewport, diameter * restScale(), null, undefined, dockX, dockY);
         rememberedCenter.current = { ...globeCenter };
       }
       cacheRing();
@@ -356,7 +371,7 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const wake = () => { awake = true; idleMs = 0; schedule(); };
     const sleep = () => { awake = button.matches(':hover') || button.matches(':focus-visible'); idleMs = 0; };
     const preference = () => {
-      stopFrame(); momentum = { x: 0, y: 0 }; floatingY = 0; rest = 0;
+      stopFrame(); momentum = { x: 0, y: 0 }; rest = 0;
       if (reduced.matches) finish(); else schedule();
     };
     measure(); cacheRing(); current = input.menuOpen ? targetRing() : globe();
@@ -364,12 +379,24 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     draw(); overlay.dataset.phase = currentPhase; button.dataset.phase = currentPhase; setDragging(false);
     overlay.dataset.positioned='true';button.dataset.positioned='true';
     const observer = new ResizeObserver(resize); observer.observe(element);
+    // Preview toggle mounts/unmounts the strip without a viewport resize: re-dock when the
+    // published signal axis appears, disappears or moves. Own orb variables never re-enter
+    // (the value guard skips them).
+    let seenSignalAxis = document.documentElement.style.getPropertyValue('--hatchery-signal-cx');
+    const axisWatch = new MutationObserver(() => {
+      const value = document.documentElement.style.getPropertyValue('--hatchery-signal-cx');
+      if (value === seenSignalAxis) return;
+      seenSignalAxis = value;
+      rememberedCenter.current = null;
+      resize();
+    });
+    axisWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
     window.addEventListener('resize', resize); document.addEventListener('visibilitychange', visibility);
     reduced.addEventListener('change', preference); short.addEventListener('change', resize); schedule();
     button.addEventListener('pointerenter', wake); button.addEventListener('pointerleave', sleep);
     button.addEventListener('focus', wake); button.addEventListener('blur', sleep);
     return () => {
-      stopFrame(); releaseActivePointer(); observer.disconnect(); update.current = null; actions.current = null;
+      stopFrame(); releaseActivePointer(); observer.disconnect(); axisWatch.disconnect(); update.current = null; actions.current = null;
       delete overlay.dataset.positioned;delete button.dataset.positioned;
       button.removeEventListener('pointerenter', wake); button.removeEventListener('pointerleave', sleep);
       button.removeEventListener('focus', wake); button.removeEventListener('blur', sleep);

@@ -21,10 +21,12 @@ import { browserFeedPollingOptions, startFeedPolling, type FeedPollSummary } fro
 import { DEFAULT_MACHINE_SUBJECT, isMachineSubject, type MachineSubject } from './machinePresentation';
 import { type MenuLayout } from './filmMenuRing';
 import { menuLayoutPreference } from './filmMenuPreference';
+import { readPlaybackPreference, savePlaybackPreference } from './filmPlaybackPreference';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
   const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, machineSubject: DEFAULT_MACHINE_SUBJECT as MachineSubject });
+  const preferencesLoaded = useRef(false);
   const [machineSubject, setMachineSubject] = useState<MachineSubject>(DEFAULT_MACHINE_SUBJECT);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
@@ -69,6 +71,10 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     let cameraTime = 3;
     let lastKey: FilmFrameKey | null = null;
     const current = clock.current;
+    if (!preferencesLoaded.current) {
+      try { Object.assign(current, readPlaybackPreference(window.localStorage)); } catch { /* Storage may be blocked. */ }
+      preferencesLoaded.current = true;
+    }
     const themed = createFilmThemeContext(ctx, current.theme);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       current.paused = true; current.time = FILM_CHAPTERS[0].previewAt;
@@ -96,7 +102,11 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     const dockObserver = new MutationObserver(syncDockInset);
     const page = node.closest('[data-film-theme]');
     if (page) dockObserver.observe(page, { attributes: true, attributeFilter: ['data-menu-open', 'data-preview', 'data-menu-layout'] });
-    const sync = requestAnimationFrame(() => { setReady(true); setPlaying(!current.paused); setPosition(chapterAt(current.time)); });
+    const sync = requestAnimationFrame(() => {
+      setReady(true); setPlaying(!current.paused); setPosition(chapterAt(current.time));
+      setSpeed(current.speed); setMode(current.mode); setTheme(current.theme);
+      setTexture(current.texture); setCharts(current.charts); setMachineSubject(current.machineSubject);
+    });
     const render = (now: number) => {
       if (!current.paused) {
         const elapsed = Math.min((now - previous) / 1000, .05) * current.speed;
@@ -155,6 +165,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     changeMachineSubject(value: MachineSubject) {
       if (!isMachineSubject(value) || value === clock.current.machineSubject) return;
       clock.current.machineSubject = value; setMachineSubject(value);
+      savePlaybackPreference(clock.current);
       if (chapterAt(clock.current.time).chapter.id === 'machine') {
         clock.current.time = chapterStart('machine'); setPosition(chapterAt(clock.current.time));
       }
@@ -168,6 +179,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     changeTheme(value: FilmThemeId) {
       clock.current.theme = getFilmTheme(value).id;
       setTheme(clock.current.theme);
+      savePlaybackPreference(clock.current);
     },
     changeChartPresentation(kind: ChartKind, change: Partial<ChartPresentation>) {
       clock.current.charts = {
@@ -175,18 +187,21 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         [kind]: normalizeChartPresentation({ ...clock.current.charts[kind], ...change }),
       };
       setCharts(clock.current.charts);
+      savePlaybackPreference(clock.current);
     },
     changeTextureStyle(style: FilmTextureStyle) {
       clock.current.texture = { ...clock.current.texture, style };
       setTexture(clock.current.texture);
+      savePlaybackPreference(clock.current);
     },
     changeTextureIntensity(value: number) {
       if (!Number.isFinite(value)) return;
       clock.current.texture = { ...clock.current.texture, intensity: Math.max(0, Math.min(1, value)) };
       setTexture(clock.current.texture);
+      savePlaybackPreference(clock.current);
     },
-    changeSpeed(value: number) { clock.current.speed = value; setSpeed(value); },
-    changeMode(value: PlaybackMode) { clock.current.mode = value; setMode(value); },
+    changeSpeed(value: number) { clock.current.speed = value; setSpeed(value); savePlaybackPreference(clock.current); },
+    changeMode(value: PlaybackMode) { clock.current.mode = value; setMode(value); savePlaybackPreference(clock.current); },
     pause() { factory.clear(); cctv.clear(); clock.current.paused = true; setPlaying(false); },
     play() { factory.clear(); cctv.clear(); clock.current.paused = false; setPlaying(true); },
     togglePlay() { factory.clear(); cctv.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },

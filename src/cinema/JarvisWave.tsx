@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import type { JarvisAudioFrame } from './jarvisAudio';
 import { drawJarvisVoiceField } from './drawJarvisVoiceField';
 import { voiceCoreCanvasTransform, voiceCoreEnvelope } from './jarvisVoiceCore';
@@ -9,15 +9,19 @@ import { createFilmThemeContext } from './filmThemeCanvas';
 import type { FilmThemeId } from './filmThemes';
 import { createFrameLoop, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './jarvisWave.module.css';
+import { easterEggSequence } from './easterEggSequence';
 
 export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisAudioFrame>; theme?: FilmThemeId }) {
   const palette = useRef<ReturnType<typeof createFilmThemeContext> | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const egg = useRef(createReactorEggPlayback());
+  const finished = useRef<(() => void) | null>(null);
   const [playing, setPlaying] = useState(false);
+  const finish = useCallback(() => { finished.current?.(); finished.current = null; setPlaying(false); }, []);
   const start = () => {
-    if (egg.current.start(watchReducedMotion().reduced)) setPlaying(true);
+    const root = trigger.current?.closest('main');
+    if (root) easterEggSequence(root).play();
   };
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d');
@@ -28,6 +32,11 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
     const playback = egg.current;
     let samples = new Uint8Array(1024);
     const motion = watchReducedMotion();
+    const root = node.closest('main');
+    const unregister = root && easterEggSequence(root).register('ship', done => {
+      if (!playback.start(motion.reduced)) return false;
+      finished.current = done; setPlaying(true); return true;
+    });
     const resize = () => {
       const rect = node.getBoundingClientRect();
       dpr = Math.min(devicePixelRatio || 1, 2);
@@ -56,7 +65,7 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
       } else samples.fill(128);
       level = voiceCoreEnvelope(level, target, seconds);
       const wasActive = playback.active, eggFrame = playback.advance(seconds, motion.reduced);
-      if (wasActive && !playback.active) setPlaying(false);
+      if (wasActive && !playback.active) finish();
       const eggPhase = eggFrame?.phase ?? 'idle';
       if (eggPhase !== lastPhase) { node.dataset.easterEgg = eggPhase; lastPhase = eggPhase; }
       const expression = eggFrame && eggFrame.anger > .98 ? 'angry' : 'calm';
@@ -66,20 +75,20 @@ export function JarvisWave({ audio, theme = 'cyan' }: { audio: RefObject<JarvisA
     const loop = createFrameLoop(draw);
     const visibility = (hidden: boolean) => {
       loop.stop(); previous = 0;
-      if (hidden) { playback.cancel(); setPlaying(false); }
+      if (hidden) { playback.cancel(); finish(); }
       else loop.start();
     };
     const unwatch = watchPageVisibility(visibility); visibility(document.hidden);
-    return () => { playback.cancel(); loop.stop(); observer.disconnect(); unwatch(); motion.stop(); };
-  }, [audio]);
+    return () => { unregister?.(); finish(); playback.cancel(); loop.stop(); observer.disconnect(); unwatch(); motion.stop(); };
+  }, [audio, finish]);
   // Recolor the existing renderer, without cancelling a running Easter egg or resetting its clock.
   useEffect(() => { palette.current?.setTheme(theme); }, [theme, audio]);
   return <div className={styles.stage}>
     <canvas ref={canvas} data-reactor-theme={theme} style={{ width: '100%', height: '100%', display: 'block' }} aria-label="회전하는 아크 리액터: 음성 크기에 반응하는 테슬라 스파크" role="img" />
-    <button ref={trigger} type="button" data-reactor-trigger className={styles.trigger} aria-label="리액터 이스터에그 재생" aria-disabled={playing}
+    <button ref={trigger} type="button" data-reactor-trigger className={styles.trigger} aria-label="다음 이스터에그 재생" aria-disabled={playing}
       onClick={start} onKeyDown={event => {
         if (event.key === 'Escape' && egg.current.active) {
-          event.preventDefault(); event.stopPropagation(); egg.current.cancel(); setPlaying(false);
+          event.preventDefault(); event.stopPropagation(); egg.current.cancel(); finish();
         }
       }} />
     <span className={styles.announcement} role="status">{playing ? '우주선 추격 연출 중. Escape로 취소할 수 있습니다.' : ''}</span>

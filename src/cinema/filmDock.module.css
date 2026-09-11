@@ -2,22 +2,10 @@
 .content { display:flex; flex-direction:column; gap:4px; width:100%; min-width:0; }
 .dock[data-menu-open=false] { padding-top:0; padding-bottom:calc(32px + var(--film-safe-extra)); gap:0; background:none; }
 .dock[data-menu-open=false] .panel { display:none; }
-/* Orbit layout: nothing stays at the page bottom. Status and the four actions sit inside the globe at the ring's centre
-   (the menu publishes --orbit-cx/-cy/-r on the root); the settings panel opens beside the ring. */
+/* Orbit layout: tiles launch and fold; the globe itself folds. No centre hub or bottom bar. */
 .dock[data-menu-layout=orbit][data-menu-open=true] { background:none; padding-top:0; padding-bottom:0; }
-.dock[data-menu-layout=orbit] .panel { position:fixed; z-index:6; left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); width:calc(var(--orbit-r,180px) * 1.18); transform:translate(-50%,-50%); }
-.dock[data-menu-layout=orbit] .content { box-sizing:border-box; aspect-ratio:1; justify-content:center; gap:8px; padding:14px 12px; border-radius:50%; border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent); background:radial-gradient(circle,color-mix(in srgb,var(--film-bg) 94%,transparent) 0 58%,color-mix(in srgb,var(--film-bg) 72%,transparent) 100%); box-shadow:0 0 26px color-mix(in srgb,var(--film-accent) 18%,transparent),inset 0 0 30px color-mix(in srgb,var(--film-accent) 8%,transparent); }
-.dock[data-menu-layout=orbit] [data-dock-bar] { flex-direction:column; gap:8px; max-width:none; }
-.dock[data-menu-layout=orbit] [data-dock-status] { flex-direction:column; gap:2px; text-align:center; font-size:11px; }
-.dock[data-menu-layout=orbit] [data-dock-status]>span:nth-child(2) { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dock[data-menu-layout=orbit] [data-dock-buttons] { display:grid; grid-template-columns:1fr 1fr; gap:4px 6px; width:100%; }
-.dock[data-menu-layout=orbit] [data-dock-buttons] button { min-height:32px; padding:6px 4px; font-size:10px; border:1px solid color-mix(in srgb,var(--film-accent) 35%,transparent); background:color-mix(in srgb,var(--film-accent) 6%,transparent); }
-.dock[data-menu-layout=orbit] [data-dock-buttons] button:hover { border-color:var(--film-accent); background:color-mix(in srgb,var(--film-accent) 14%,transparent); }
-.dock[data-menu-layout=orbit] [data-dock-settings] { position:fixed; left:calc(var(--orbit-cx,50%) + var(--orbit-r,180px) + 48px); top:50%; bottom:auto; transform:translateY(-50%); width:min(460px,calc(100vw - var(--orbit-cx,50%) - var(--orbit-r,180px) - 72px)); max-height:min(520px,calc(100dvh - 48px)); }
-@media(max-width:680px) {
-  .dock[data-menu-layout=orbit] [data-dock-settings] { left:12px; right:12px; top:auto; bottom:calc(var(--film-dock-space,84px) + 8px); width:auto; transform:none; }
-  .dock[data-menu-layout=orbit] [data-dock-buttons] button { min-height:28px; font-size:9px; padding:4px 2px; }
-}
+.dock[data-menu-layout=orbit] .panel { display:none; }
+.actionIcon { display:none; width:18px; height:18px; }
 @media(max-width:680px) {
   .dock.dock { padding-inline:12px; }
 }

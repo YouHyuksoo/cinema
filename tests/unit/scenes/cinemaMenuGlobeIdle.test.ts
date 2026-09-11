@@ -28,4 +28,15 @@ describe('folded globe idle cost', () => {
     expect(source).toContain('if (spin !== rasterSpin || diameter !== rasterSize) {');
     expect(source).toContain('drawSoccerSphere(ball.current, diameter, spin);');
   });
+  it('bobs with CSS; tiles follow the live spin every frame and only the sphere raster snaps', () => {
+    const source = readFileSync('src/cinema/useFilmMenuGlobe.ts', 'utf8');
+    const css = readFileSync('src/cinema/filmMenuGlobe.module.css', 'utf8');
+    expect(source).not.toMatch(/floatingY = 4 \* Math\.sin/);
+    expect(source).toContain('soccerHexScreenPoses(visual / 2, angle)');
+    expect(source).not.toContain('if (spin !== rasterSpin || diameter !== rasterSize || restNow !== before || shift || coasting)');
+    expect(source).toContain('perspective = { ...globeCenter }; current = globe(); draw();');
+    expect(css).toContain('@keyframes globeFloat');
+    expect(css).toMatch(/globeFloat 4\.8s ease-in-out infinite/);
+    expect(css).toContain('translateY(-4px)');
+  });
 });

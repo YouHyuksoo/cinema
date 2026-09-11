@@ -69,6 +69,9 @@ describe('management cube markup', () => {
     expect(css).toMatch(/\.layer\s*{[^}]*position:fixed[^}]*pointer-events:none/);
     expect(css).toMatch(/\.control\s*{[^}]*position:fixed[^}]*touch-action:none/);
     expect(css).toMatch(/\.control\s*{[^}]*pointer-events:auto/);
+    expect(css).toMatch(/\.hit,.float\s*{[^}]*animation:cubeFloat 4\.8s ease-in-out infinite/);
+    expect(css).toContain('@keyframes cubeFloat');
+    expect(css).toContain('translateY(-4px)');
     expect(css).toMatch(/\.cube\s*{[^}]*transform-style:preserve-3d/);
     expect(css).toMatch(/\.cubie\s*{[^}]*transform-style:preserve-3d/);
     expect(css).toMatch(/\.tile\s*{[^}]*border-radius/);

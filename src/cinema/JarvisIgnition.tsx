@@ -2,6 +2,7 @@ import type { JarvisPhase } from './jarvisAudio';
 import styles from './jarvisIgnition.module.css';
 
 interface Props {
+  label?: string;
   compact?: boolean;
   active: boolean;
   disabled: boolean;
@@ -15,13 +16,13 @@ const STATUS: Record<JarvisPhase, string> = {
   thinking: 'PROCESSING', speaking: 'VOICE ACTIVE', error: 'CHECK SYSTEM',
 };
 
-export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt, compact = false }: Props) {
+export function JarvisIgnition({ active, disabled, phase, onToggle, onInterrupt, compact = false, label }: Props) {
   const busy = phase === 'thinking' || phase === 'speaking';
   return <div className={styles.control} data-active={active} data-phase={phase} data-compact={compact}>
     <div className={styles.socket}>
       <div className={styles.halo} aria-hidden="true" />
       <button type="button" className={styles.ignition} disabled={disabled} onClick={onToggle}
-        aria-label={active ? '대화 종료' : '대화 시작'} aria-pressed={active}>
+        aria-label={label ?? (active ? '대화 종료' : '대화 시작')} aria-pressed={active}>
         <svg className={styles.power} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M12 2v10M6 5a9 9 0 1 0 12 0" />
         </svg>

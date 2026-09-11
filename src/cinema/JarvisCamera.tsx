@@ -36,5 +36,5 @@ export function JarvisCamera({ camera }: { camera: FilmCamera }) {
       return () => { loop.stop(); unwatch(); };
     } else paint();
   }, [camera.frameRef, camera.status]);
-  return <canvas ref={canvas} width={480} height={360} role="img" aria-label={camera.status === 'on' ? '우측 상단 운영자 카메라 영상' : '운영자 카메라 대기'} style={{ width: '100%', display: 'block' }} />;
+  return <canvas ref={canvas} width={480} height={360} role="img" aria-label={camera.status === 'on' ? '운영자 카메라 영상' : '운영자 카메라 대기'} style={{ width: '100%', display: 'block' }} />;
 }

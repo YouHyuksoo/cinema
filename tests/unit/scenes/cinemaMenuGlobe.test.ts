@@ -46,6 +46,15 @@ describe('floating menu globe geometry', () => {
     expect(globeRestingCenter({ width: 1440, height: 900 }, 240, null)).toEqual({ x: 1304, y: 732 });
   });
 
+  it('rests on the signal scanner axis when one is published, clamped to the edge', () => {
+    // Bottom clearance is unchanged; only the horizontal anchor moves from the corner to the axis.
+    expect(globeRestingCenter({ width: 1440, height: 900 }, 240, null, undefined, 1280)).toEqual({ x: 1280, y: 732 });
+    expect(globeRestingCenter({ width: 1440, height: 900 }, 240, null, undefined, 1400)).toEqual({ x: 1304, y: 732 });
+    // A remembered drag position still wins over the axis, and NaN falls back to the corner.
+    expect(globeRestingCenter({ width: 1440, height: 900 }, 240, { x: 400, y: 300 }, undefined, 1280)).toEqual({ x: 400, y: 300 });
+    expect(globeRestingCenter({ width: 1440, height: 900 }, 240, null, undefined, Number.NaN)).toEqual({ x: 1304, y: 732 });
+  });
+
   it('uses the requested desktop, mobile, and short-screen diameters', () => {
     expect(globeDiameter(1440, 900)).toBe(240);
     expect(globeDiameter(1000, 900)).toBe(240);
@@ -284,4 +293,23 @@ describe('turbine mirrors the globe on small screens', () => {
     expect(tablet.openScale).toBeLessThanOrEqual(Math.max(tablet.scale, (TURBINE_CORNER_INSET + tablet.diameter / 2) / (TURBINE_ART_SIZE / 2)) + 1e-9);
     expect(turbineOrbMetrics(Number.NaN)).toEqual({ diameter: 0, scale: 0, openScale: 0 });
   });
+});
+
+describe('signal axis docking', () => {
+  it('reads the published signal bay centerline and re-docks when it changes', async () => {
+    const { readFileSync } = await import('node:fs');
+    const hook = readFileSync('src/cinema/useFilmMenuGlobe.ts', 'utf8');
+    expect(hook).toContain(`'--hatchery-signal-cx'`);
+    // The bay is desktop-only (hidden at ≤680px), so the axis is ignored on tight viewports.
+    expect(hook).toContain('GLOBE_TIGHT_MAX_WIDTH');
+    // Preview toggles do not resize the viewport: a style-attribute watcher re-measures.
+    expect(hook).toContain(`attributeFilter: ['style']`);
+  });
+});
+
+it('keeps the folded sphere on the turbine centre as its diameter changes', () => {
+  const viewport = { width: 1440, height: 900 };
+  for (const diameter of [120, 168]) {
+    expect(globeRestingCenter(viewport, diameter, null, undefined, 1280, 760)).toEqual({ x: 1280, y: 760 });
+  }
 });

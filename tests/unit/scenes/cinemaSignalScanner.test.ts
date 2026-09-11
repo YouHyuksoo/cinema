@@ -35,7 +35,7 @@ describe('signal scanner bay', () => {
   it('draws ring, pedestal disc, sweep and pings, and announces itself as one decorative image', () => {
     const html = renderToStaticMarkup(createElement(JarvisSignalScanner));
     expect(html).toContain('role="group"');
-    expect(html).toContain('aria-label="신호 구체 테슬라 방전"');
+    expect(html).toContain('aria-label="신호 감지기 상태 공전 실행"');
     expect(html).toContain('data-scanner-tesla="true" data-active="false"');
     expect(html).toContain('aria-label="신호 감지기 연출');
     expect(html).toContain('SIGNAL / SCAN');
