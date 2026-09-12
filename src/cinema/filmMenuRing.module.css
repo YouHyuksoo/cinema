@@ -71,12 +71,12 @@
 .menu[data-menu-layout=orbit] .tile[data-front=true] svg { filter:drop-shadow(0 0 14px color-mix(in srgb,var(--film-accent) 80%,transparent)); }
 .menu[data-menu-layout=orbit] .tile {
   left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); pointer-events:auto; cursor:grab;
-  transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * var(--orbit-r,180px) * var(--orbit-tooth,1)),calc(sin(var(--orbit-angle,0rad)) * var(--orbit-r,180px) * var(--orbit-tooth,1))) scale(var(--ring-scale));
+  transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * (var(--orbit-r,180px) * var(--orbit-tooth,1) + var(--orbit-spread-x,0px) * var(--orbit-outer,0))),calc(sin(var(--orbit-angle,0rad)) * (var(--orbit-r,180px) * var(--orbit-tooth,1) + var(--orbit-spread-y,0px) * var(--orbit-outer,0)))) scale(var(--ring-scale));
   transition:transform .5s cubic-bezier(.2,.75,.2,1),opacity .35s;
 }
 .menu[data-menu-layout=orbit] .stage[data-dragging=true] .tile { transition:none; cursor:grabbing; }
 .menu[data-menu-layout=orbit] .controls {
-  position:fixed; inset:auto; left:calc(var(--orbit-cx,50%) - var(--orbit-r,180px) - 64px); top:calc(var(--orbit-cy,50%) + var(--orbit-r,180px) + 40px);
+  position:fixed; inset:auto; left:calc(var(--orbit-cx,50%) - var(--orbit-r,180px) - 64px); top:calc(var(--orbit-cy,50%) + var(--orbit-r,180px) + var(--orbit-spread-y,0px) + 40px);
   width:calc(var(--orbit-r,180px) * 2 + 128px); height:48px;
 }
 .menu[data-menu-layout=orbit] .readout { top:50%; }

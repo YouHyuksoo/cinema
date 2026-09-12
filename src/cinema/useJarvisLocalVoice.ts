@@ -11,6 +11,7 @@ import { describeSceneDataResult, resolveHatcheryValueCommand, type HatcheryActi
 import { isSceneId, parseSceneObjectPatch } from './sceneDataDocument';
 import { isMachineSubject, type MachineSubject } from './machinePresentation';
 import { cinemaApi } from './cinemaApi';
+import { resolveScreenCommands } from './screenCommands';
 
 interface Message { role: 'user' | 'assistant'; content: string }
 export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
@@ -180,13 +181,34 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       else if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
-      let data = resolveReply(message);
+      const direct = resolveScreenCommands(message);
+      let data: JarvisReply | null = null;
+      if (direct) {
+        const replies: string[] = [];
+        for (const command of direct) {
+          const result = await actionsRef.current?.screen?.(command);
+          replies.push(result?.message ?? '화면 설정 도구가 연결되지 않았습니다.');
+          if (!result?.ok) break;
+        }
+        data = { source: 'local', reply: replies.join('\n') };
+      } else data = resolveReply(message);
       if (!data) {
-        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, history: previous }), signal: abort.signal });
+        const screenState = await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
+        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, history: previous,
+          screenState: screenState?.state ? JSON.stringify(screenState.state) : undefined }), signal: abort.signal });
         const answer = await response.json() as JarvisReply & { error?: string };
         if (token !== current.generation) return;
         if (!response.ok || !answer.reply) throw new Error(answer.error || '응답을 받지 못했습니다.');
         data = applyReplyPatch(answer);
+        if (answer.screenCommands?.length) {
+          const replies: string[] = [];
+          for (const command of answer.screenCommands) {
+            const result = await actionsRef.current?.screen?.(command);
+            replies.push(result?.message ?? '화면 설정 도구가 연결되지 않았습니다.');
+            if (!result?.ok) break;
+          }
+          data = { source: 'ai', reply: replies.join('\n') };
+        }
       }
       history.current = [...history.current, { role: 'assistant' as const, content: data.reply }].slice(-8);
       setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'AI 생성 답변 · 텍스트 모델' : 'AI 연결 안내');

@@ -51,7 +51,7 @@ export function menuPoseStyle(pose:ReturnType<typeof ringPose>|ReturnType<typeof
   const cssNumber=(value:number)=>String(Number(value.toFixed(6)));
   const appearance={'--ring-scale':cssNumber(pose.scale),'--ring-opacity':cssNumber(pose.opacity)};
   return 'angle' in pose
-    ? {...appearance,'--orbit-angle':`${cssNumber(pose.angle)}rad`,'--orbit-tooth':cssNumber(pose.tooth)}
+    ? {...appearance,'--orbit-angle':`${cssNumber(pose.angle)}rad`,'--orbit-tooth':cssNumber(pose.tooth),'--orbit-outer':pose.tooth === 1 ? '1' : '0'}
     : {...appearance,'--ring-x':`${cssNumber(pose.x)}px`,'--ring-y':`${cssNumber(pose.y)}px`,
       '--ring-z':`${cssNumber(pose.z)}px`,'--ring-yaw':`${cssNumber(pose.yaw)}deg`};
 }

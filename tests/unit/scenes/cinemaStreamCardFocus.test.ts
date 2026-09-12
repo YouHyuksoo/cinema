@@ -30,7 +30,7 @@ describe('Jarvis stream card focus', () => {
     expect(source).toContain('duration:280');
     expect(source).toContain('MutationObserver');
     expect(css).toContain('@media(prefers-reduced-motion:reduce)');
-    expect(css).toContain('width:min(760px,calc(100vw - 32px))');
+    expect(css).toContain('width:min(700px,calc(100vw - 44px))');
   });
 
   it('decorates and delegates every direct stream card while preserving nested controls', () => {
@@ -45,6 +45,6 @@ describe('Jarvis stream card focus', () => {
     expect(main.match(/onFocusCard={focusCard}/g)).toHaveLength(2);
     expect(main.match(/suspended={Boolean\(cardFocus\)}/g)).toHaveLength(2);
     expect(main).toContain('{cardFocus && <JarvisCardFocus');
-    expect(main.match(/data-card-title/g)).toHaveLength(3);
+    expect(main.match(/data-card-title/g)).toHaveLength(4);
   });
 });

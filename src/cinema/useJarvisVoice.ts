@@ -11,6 +11,7 @@ import type { MachineSubject } from './machinePresentation';
 import { cinemaApi, cinemaApiUrl } from './cinemaApi';
 import type { AiProviderId, AiProviderOption, AiVoiceMode } from './aiConfig';
 import { realtimeVoiceFor } from './jarvisVoiceGender';
+import { describeScreenState, validateScreenCommand, type ScreenExecutor } from './screenCommands';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
@@ -39,7 +40,49 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const session = useRef<JarvisRealtimeSession | null>(null);
   const chapter = useRef(onChapter);
   const actionsRef = useRef(actions);
-  const local = useJarvisLocalVoice(onChapter, { speakReplies: !realtime, actions });
+  const screen: ScreenExecutor = async input => {
+    const c = validateScreenCommand(input);
+    if (!c) return { ok: false, message: '잘못된 화면 설정 명령입니다.' };
+    const voiceState = { voiceGender: local.speechProfile.preferredGender.current, voiceMode, provider, model };
+    const adminKeys = ['temperature', 'maxOutputTokens', 'realtimeModel', 'instructions', 'prompt'];
+    if (adminKeys.includes(c.key)) {
+      if (c.action === 'set' && switching) return { ok: false, message: '다른 AI 설정 변경이 진행 중입니다. 잠시 후 다시 요청해주세요.' };
+      try {
+        const response = await cinemaApi('admin/ai');
+        if (!response.ok) return { ok: false, message: '서버 AI 설정을 조회하지 못했습니다.' };
+        const current = (await response.json()).ai;
+        if (c.action === 'get') return { ok: true, message: `${c.key}: ${current[c.key]}`, state: { [c.key]: current[c.key] } };
+        const value = ['temperature', 'maxOutputTokens'].includes(c.key) ? Number(c.value) : c.value;
+        const saved = await cinemaApi('admin/ai', { method: 'PUT', body: JSON.stringify({ ...current, apiKey: '', [c.key]: value }) });
+        if (!saved.ok) return { ok: false, message: '서버 AI 설정 저장을 거부했습니다. 값과 범위를 확인해주세요.' };
+        const persisted = (await saved.json()).ai;
+        await readStatus();
+        const ok = persisted?.[c.key] === value;
+        return { ok, message: ok ? `${c.key} 서버 저장을 확인했습니다.${active || local.active ? ' 진행 중인 대화는 유지하며 다음 AI 요청 또는 재연결부터 적용됩니다.' : ''}` : '요청한 값의 저장을 확인하지 못했습니다.' };
+      } catch { return { ok: false, message: '서버 AI 설정 연결에 실패했습니다.' }; }
+    }
+    if (c.action === 'get') {
+      const base = await actionsRef.current?.screen?.(c);
+      const state = { ...base?.state, ...voiceState };
+      return { ok: true, message: describeScreenState(state, c.key), state };
+    }
+    if (c.key === 'voiceGender') { local.speechProfile.setGender(c.value as 'male' | 'female'); return { ok: true, message: `목소리를 ${c.value === 'male' ? '남성' : '여성'}으로 설정했습니다. 실시간 음성은 다음 연결부터 적용됩니다.` }; }
+    if (['voiceMode', 'provider', 'model'].includes(c.key)) {
+      if (switching) return { ok: false, message: '다른 AI 설정 변경이 진행 중입니다. 잠시 후 다시 요청해주세요.' };
+      const patch = c.key === 'voiceMode' ? { voiceMode: c.value } : c.key === 'provider' ? { provider: c.value } : { model: c.value };
+      try {
+        const response = await cinemaApi('admin/ai', { method: 'PATCH', body: JSON.stringify(patch) });
+        if (!response.ok) return { ok: false, message: 'AI 설정 변경에 실패했습니다. 제공자 설정과 모델을 확인해주세요.' };
+        const saved = (await response.json()).ai;
+        await readStatus();
+        const ok = saved?.[c.key] === c.value;
+        return { ok, message: ok ? `${c.key}: ${c.value} 서버 저장 완료.${active || local.active ? ' 현재 대화는 유지하며 다음 연결부터 적용됩니다.' : ''}` : '요청한 AI 설정값의 저장을 확인하지 못했습니다.' };
+      } catch { return { ok: false, message: 'AI 설정 서버에 연결하지 못했습니다.' }; }
+    }
+    return await actionsRef.current?.screen?.(c) ?? { ok: false, message: '화면 설정 도구가 연결되지 않았습니다.' };
+  };
+  const screenRef = useRef<ScreenExecutor>(screen); screenRef.current = screen;
+  const local = useJarvisLocalVoice(onChapter, { speakReplies: !realtime, actions: actions ? { ...actions, screen: input => screenRef.current(input) } : undefined });
   useEffect(() => { chapter.current = onChapter; }, [onChapter]);
   useEffect(() => { actionsRef.current = actions; }, [actions]);
   useEffect(() => { session.current?.setRobotVoice(robotVoice); }, [robotVoice]);
@@ -79,6 +122,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
       error: setError, transcript: setTranscript, ended: () => setActive(false), chapter: (id, subject) => subject ? chapter.current(id, subject) : chapter.current(id),
       patch: input => actionsRef.current?.applySceneObjects(input) ?? { ok: false, reason: '이 화면에서는 값 변경을 처리할 수 없습니다.' },
       sceneData: () => actionsRef.current?.sceneData() ?? DEFAULT_FILM_SCENE_DATA,
+      screen: input => screenRef.current(input),
       message(role, content, id) {
         setMessages(previous => {
           const next = previous.filter(item => item.id !== id);

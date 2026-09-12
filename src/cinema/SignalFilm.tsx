@@ -17,6 +17,8 @@ import { EnvironmentZoneInteraction } from './EnvironmentZoneInteraction';
 import { CctvExplorer } from './CctvExplorer';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
+import { useScreenCommands } from './useScreenCommands';
+import { JarvisCameraPopup } from './JarvisCameraPopup';
 
 export function SignalFilm() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -33,10 +35,12 @@ export function SignalFilm() {
     closePreview() { turbine.voice.stop(); camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
     enable() { player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
   };
+  const screenCommands = useScreenCommands({ player, camera, menuOpen, settingsOpen, preview,
+    menu: setMenuOpen, settings: setSettingsOpen, home(value) { cameraView.current = value; setPreview(value); } });
   const turbine = useFilmTurbine(player,
     () => { cameraMode.openPreview(); setMenuOpen(false); },
     () => cameraMode.closePreview(),
-    () => setSettingsOpen(true));
+    () => setSettingsOpen(true), screenCommands);
   const themeStyle = useMemo(() => {
     const { accent } = getFilmTheme(player.theme);
     return {
@@ -73,6 +77,7 @@ export function SignalFilm() {
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmBriefing text={turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''} source={turbine.voice.source}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
+      <JarvisCameraPopup camera={camera} host />
       {settingsOpen && <FilmSettingsDialog player={player} camera={cameraMode} onClose={() => setSettingsOpen(false)} />}
       <FilmTurbineMenu ready={player.ready} playing={player.playing} voiceActive={turbine.voice.active} onCommand={turbine.command}/>
       {preview && <ReactorMenuPrank/>}

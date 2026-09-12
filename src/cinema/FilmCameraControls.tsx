@@ -17,7 +17,7 @@ export function FilmCameraControls({ camera }: { camera: FilmCameraMode }) {
       <legend>운영자 영상 설정</legend>
       <div className={styles.cameraActions}>
         <button type="button" className={styles.cameraButton}
-          onClick={on || busy ? camera.stop : () => { camera.openPreview(); void camera.start(); }}>
+          onClick={on || busy ? camera.stop : () => { window.dispatchEvent(new CustomEvent('cinema-camera-popup', { detail: true })); void camera.start(); }}>
           {on ? '영상 끄기' : busy ? '영상 요청 취소' : camera.status === 'error' ? '영상 다시 연결' : '내 영상 연결'}
         </button>
         <button type="button" onClick={camera.preview ? camera.closePreview : camera.openPreview}>
@@ -45,7 +45,7 @@ export function FilmCameraControls({ camera }: { camera: FilmCameraMode }) {
           : camera.tracking === 'error' ? camera.trackingError
             : camera.tracking === 'searching' ? '얼굴을 찾고 있어요. 카메라를 바라봐 주세요.' : '얼굴 추적 모델을 준비하고 있어요.'}
       </p>}
-      <p className={styles.cameraNote}>영상은 메인 메뉴 우측 상단 고정 영역에 표시하며 녹화·전송하지 않습니다. 음성 대화는 메인 메뉴에서 시작합니다.</p>
+      <p className={styles.cameraNote}>영상은 이동과 크기 조절이 가능한 팝업에 표시합니다. 음성 대화는 터빈의 AI 대화에서 시작합니다.</p>
       {camera.preview && <p className={styles.cameraNote}>얼굴을 영상 영역 안에 자동으로 맞춥니다.</p>}
     </fieldset>
   );

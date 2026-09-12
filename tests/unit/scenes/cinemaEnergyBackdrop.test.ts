@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { drawEnergyCoreFilm } from '@/cinema/drawEnergyCoreFilm';
-import { ENERGY_PALETTE } from '@/cinema/energyDashboard';
 import { recordingCanvas } from '../support/recordingCanvas';
 
 const fonts = { label: 'Label', mono: 'Mono' };
@@ -39,14 +38,12 @@ describe('energy scene backdrop follows the theme base', () => {
     expect(infoBottom[2]).toBeGreaterThan(hudBottom[2]);
     expect(infoBottom[0]).toBeLessThan(infoBottom[2] / 2);
   });
-  it('draws the grid and dot matrix in the accent, not the infographic magenta', () => {
-    const canvas = recordingCanvas();
-    drawEnergyCoreFilm(canvas.ctx, 1280, 720, 25, fonts);
-    const styles = canvas.calls.filter(call => call[0] === 'set' && (call[1] === 'fillStyle' || call[1] === 'strokeStyle')).map(call => call[2]);
-    expect(styles).toContain(ENERGY_PALETTE.hud.line);
-    // The first few style writes belong to the backdrop layer (base, gradient, grid, dots): none may be infographic colors.
-    const backdropStyles = styles.slice(0, 6);
-    expect(backdropStyles).not.toContain(ENERGY_PALETTE.infographic.channels[1]);
-    expect(backdropStyles).not.toContain(ENERGY_PALETTE.infographic.line);
+  it('keeps background grid lines and background dots out of both acts', () => {
+    for (const time of [8, 25]) {
+      const canvas = recordingCanvas();
+      drawEnergyCoreFilm(canvas.ctx, 1280, 720, time, fonts);
+      expect(canvas.calls.some(call => call[0] === 'moveTo' && call[1] === 72 && call[2] === 60)).toBe(false);
+      expect(canvas.calls.some(call => call[0] === 'fillRect' && call[3] === 1.5 && call[4] === 1.5)).toBe(false);
+    }
   });
 });

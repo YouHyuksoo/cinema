@@ -203,7 +203,8 @@ describe('menu pose transition', () => {
 });
 
 describe('globe resting size', () => {
-  it('grows to 70% on hover and shrinks immediately when idle', () => {
+  it('uses 80% of the previous half-size resting diameter', () => {
+    expect(GLOBE_REST_SCALE).toBeCloseTo(.4);
     expect(GLOBE_AWAKE_SCALE).toBeCloseTo(.7);
     expect(globeRestScale(0)).toBe(GLOBE_AWAKE_SCALE);
     expect(globeRestScale(1)).toBe(GLOBE_REST_SCALE);
@@ -283,8 +284,8 @@ describe('turbine mirrors the globe on small screens', () => {
     // Phone: layout diameter 120 → the globe rests at 60px; the folded rotor (¾ of its plate) matches that visually.
     const phone = turbineOrbMetrics(globeDiameter(390, 844));
     expect(phone.diameter).toBe(120 * GLOBE_REST_SCALE);
-    expect(phone.scale).toBeCloseTo(60 / (TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT));
-    expect(phone.scale * TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT).toBeCloseTo(60);
+    expect(phone.scale).toBeCloseTo(phone.diameter / (TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT));
+    expect(phone.scale * TURBINE_ART_SIZE * TURBINE_FOLDED_EXTENT).toBeCloseTo(phone.diameter);
     // Tucked 6px into the corner the hub is only 36px from the edge, so opening cannot grow the rotor; it only unfurls.
     expect(phone.openScale).toBe(phone.scale);
     const tablet = turbineOrbMetrics(globeDiameter(680, 900));
@@ -311,5 +312,17 @@ it('keeps the folded sphere on the turbine centre as its diameter changes', () =
   const viewport = { width: 1440, height: 900 };
   for (const diameter of [120, 168]) {
     expect(globeRestingCenter(viewport, diameter, null, undefined, 1280, 760)).toEqual({ x: 1280, y: 760 });
+  }
+});
+
+it('keeps resting corner instruments mirrored on one baseline across resize', async () => {
+  const { cornerInstrumentCenter } = await import('@/cinema/filmMenuGlobe');
+  for (const [width, height] of [[390,844], [795,940], [1440,900], [1920,1080], [795,940]]) {
+    const viewport = { width, height };
+    const left = cornerInstrumentCenter(viewport, 'left');
+    const right = cornerInstrumentCenter(viewport, 'right');
+    expect(left.y).toBe(right.y);
+    expect(left.x + right.x).toBe(width);
+    expect(height - left.y).toBeCloseTo(globeDiameter(width, height) * GLOBE_REST_SCALE / 2 + 20);
   }
 });

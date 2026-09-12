@@ -1,7 +1,15 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { createCenterBackgroundPreference, CENTER_BACKGROUND_KEY } from '@/cinema/jarvisCenterBackground';
+import { createCenterBackgroundPreference, CENTER_BACKGROUND_KEY, CENTER_BACKGROUNDS } from '@/cinema/jarvisCenterBackground';
+import { FilmCenterControls } from '@/cinema/FilmCenterControls';
 
 describe('main center background preference', () => {
+  it('includes the default neon HUD artwork in the settings choices', () => {
+    expect(CENTER_BACKGROUNDS).toContainEqual({ id: 'neon-hud', label: '네온 HUD' });
+    expect(renderToStaticMarkup(createElement(FilmCenterControls))).toContain('중앙 배경 네온 HUD');
+  });
+
   it('shows the central pattern by default, including SSR and unknown saved options', () => {
     expect(createCenterBackgroundPreference().getSnapshot()).toBe('neon-hud');
     expect(createCenterBackgroundPreference().getServerSnapshot()).toBe('neon-hud');

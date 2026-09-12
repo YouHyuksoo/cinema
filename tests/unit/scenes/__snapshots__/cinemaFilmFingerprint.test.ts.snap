@@ -24,11 +24,11 @@ exports[`film draw-call fingerprint > corners at 34s 1`] = `"4816 calls · 3f809
 
 exports[`film draw-call fingerprint > corners at 39s 1`] = `"4816 calls · 3fb1ee3f8383f514bcd2367450146aee7394ce80"`;
 
-exports[`film draw-call fingerprint > energy at 0.6s 1`] = `"3010 calls · f2efd5fd75de2cc0663c57769b8ed4e202eb82e0"`;
+exports[`film draw-call fingerprint > energy at 0.6s 1`] = `"1577 calls · 799fb14c9053835d4eb11d31a9c56775f6e1e860"`;
 
-exports[`film draw-call fingerprint > energy at 15s 1`] = `"3010 calls · a039b3fc8e675bd710c0de31ce5a77e6ab46868c"`;
+exports[`film draw-call fingerprint > energy at 15s 1`] = `"1577 calls · 34ce3e3d414e175d5bbf894133e1dd63986bb2b5"`;
 
-exports[`film draw-call fingerprint > energy at 20s 1`] = `"4352 calls · 3192c81bd8efcae0fb9378a17ae903c4c0f32ea0"`;
+exports[`film draw-call fingerprint > energy at 20s 1`] = `"2523 calls · f3e03b588eac8d867177712babfb10e7fe77cdf8"`;
 
 exports[`film draw-call fingerprint > gears at 0.6s 1`] = `"9125 calls · 93a9903a5dbfae98352907e7a30e79a86bd41785"`;
 

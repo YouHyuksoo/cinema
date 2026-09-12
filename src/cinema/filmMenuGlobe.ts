@@ -190,11 +190,11 @@ export function mixMenuPose(from: MenuPose, to: MenuPose, progress: number): Req
   };
 }
 
-/** Hover grows to 70% of the layout diameter; leaving hover shrinks back to half immediately. */
+/** The folded corner instruments use 40% of the layout diameter. */
 export const GLOBE_REST_DELAY_MS = 0;
 export const GLOBE_SHRINK_MS = 280;
 export const GLOBE_GROW_MS = 280;
-export const GLOBE_REST_SCALE = .5;
+export const GLOBE_REST_SCALE = .4;
 export const GLOBE_AWAKE_SCALE = .7;
 
 /** Advance the 0..1 rest amount: 0 = hover size, 1 = resting size. `awake` (hover, focus, drag) always grows. */
@@ -541,4 +541,10 @@ export function soccerHexScreenPoses(radius: number, angleRadians: number): Requ
       opacity: front ? .2 + .8 * depth : 0,
     };
   });
+}
+
+/** Shared resting corner anchors; independent of hover scale and animated DOM bounds. */
+export function cornerInstrumentCenter(viewport: Viewport, side: 'left' | 'right'): Point {
+  const radius = globeDiameter(viewport.width, viewport.height) * GLOBE_REST_SCALE / 2;
+  return { x: side === 'left' ? radius + 16 : viewport.width - radius - 16, y: viewport.height - radius - 20 };
 }

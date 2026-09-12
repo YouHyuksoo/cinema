@@ -7,8 +7,10 @@ import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { SceneDataResult } from './sceneDataDocument';
 import { isMachineSubject, MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 import { cinemaApiUrl } from './cinemaApi';
+import { SCREEN_CONTROL_TOOL, type ScreenExecutor } from './screenCommands';
 
 export interface RealtimeCallbacks {
+  screen?: ScreenExecutor;
   phase(value: JarvisPhase): void;
   message(role: 'user' | 'assistant', content: string, id: string): void;
   transcript(value: string): void;
@@ -117,7 +119,7 @@ export class JarvisRealtimeSession {
       };
       channel.onmessage = event => {
         if (this.closed) return;
-        try { this.handle(JSON.parse(event.data) as RealtimeEvent); }
+        try { void this.handle(JSON.parse(event.data) as RealtimeEvent).catch(() => this.fail('음성 도구 처리에 실패했습니다.')); }
         catch { this.fail('음성 응답을 처리하지 못했습니다. 다시 시작해 주세요.'); }
       };
       channel.onclose = () => { if (!this.closed) this.fail('OpenAI 대화 연결이 종료되었습니다.'); };
@@ -155,7 +157,7 @@ export class JarvisRealtimeSession {
     this.startupPending = false; clearTimeout(this.startupTimer);
     this.microphone?.getAudioTracks().forEach(track => { track.enabled = true; });
   }
-  private handle(event: RealtimeEvent) {
+  private async handle(event: RealtimeEvent) {
     if (event.response_id && this.ignoredResponses.has(event.response_id)) return;
     switch (event.type) {
       case 'input_audio_buffer.speech_started':
@@ -198,6 +200,14 @@ export class JarvisRealtimeSession {
         if (event.response?.status !== 'completed') { this.pendingChapter = undefined; break; }
         const calls = event.response.output?.filter(item => item.type === 'function_call') ?? [];
         for (const call of calls) {
+          if (call.name === SCREEN_CONTROL_TOOL.name) {
+            let result;
+            try { result = await this.callbacks.screen?.(JSON.parse(call.arguments ?? '{}')) ?? { ok: false, message: '화면 도구 미연결' }; }
+            catch { result = { ok: false, message: '설정 실행에 실패했습니다.' }; }
+            if (this.closed) return;
+            this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(result) } });
+            continue;
+          }
           if (call.name === SET_SCENE_OBJECT_VALUES_TOOL.name) {
             // Value changes apply at once and keep the conversation open, unlike scene navigation.
             this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(this.applyValues(call.arguments)) } });

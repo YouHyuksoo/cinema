@@ -35,7 +35,7 @@ function drawLeadPanel(ctx: CanvasRenderingContext2D, fonts: FilmFonts, data: En
   ctx.fillText('전력·생산·효율 세 채널을 기준 대비 비율로 요약합니다.', rect.x + 16, rect.y + 40);
   ctx.fillText('오른쪽 매트릭스와 점검표는 같은 값에서 파생됩니다.', rect.x + 16, rect.y + 56);
   const power = Math.round(energyRatio(data.power) * 100), efficiency = Math.round(energyRatio(data.efficiency) * 100);
-  ctx.font = `30px ${fonts.mono}`;
+  ctx.font = `30px ${fonts.label}`;
   ctx.fillStyle = P.channels[0]; ctx.fillText(`${power}%`, rect.x + 22, rect.y + 100);
   ctx.strokeStyle = withAlpha(P.line, .5); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rect.x + 138, rect.y + 72); ctx.lineTo(rect.x + 138, rect.y + 106); ctx.stroke();
   ctx.fillStyle = P.channels[2]; ctx.fillText(`${efficiency}%`, rect.x + 156, rect.y + 100);
@@ -80,9 +80,9 @@ function drawRingPercents(ctx: CanvasRenderingContext2D, fonts: FilmFonts, data:
     const sweep = ctx.createLinearGradient(x - r, y, x + r, y);
     sweep.addColorStop(0, P.channels[1]); sweep.addColorStop(1, P.channels[index]);
     ctx.strokeStyle = sweep; ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + TAU * ratio); ctx.stroke();
-    ctx.fillStyle = P.ink; ctx.font = `${position === 0 ? 20 : 14}px ${fonts.mono}`; ctx.textAlign = 'center';
+    ctx.fillStyle = P.ink; ctx.font = `${position === 0 ? 20 : 14}px ${fonts.label}`; ctx.textAlign = 'center';
     ctx.fillText(`${Math.round(ratio * 100)}%`, x, y + (position === 0 ? 7 : 5));
-    ctx.fillStyle = P.dim; ctx.font = `8px ${fonts.mono}`; ctx.fillText(ENERGY_LAYERS[index].label, x, y + r + 16);
+    ctx.fillStyle = P.dim; ctx.font = `8px ${fonts.label}`; ctx.fillText(ENERGY_LAYERS[index].label, x, y + r + 16);
   });
   ctx.restore();
 }

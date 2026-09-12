@@ -5,7 +5,7 @@ import type { SceneObjectPatch } from './sceneDataDocument';
 import { MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 
 /** chapter opens a scene; patch changes scene object values (docs/standards/scene-data-contract.md). Both may be present. */
-export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId; machineSubject?: MachineSubject; patch?: SceneObjectPatch }
+export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId; machineSubject?: MachineSubject; patch?: SceneObjectPatch; screenCommands?: import('./screenCommands').ScreenCommand[] }
 export function jarvisOverview() {
   const zones = DEFAULT_ENVIRONMENT_DATA.zones;
   return { zones, normal: zones.filter(z => environmentZoneStatus(z) === 'normal').length,

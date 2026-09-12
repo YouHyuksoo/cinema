@@ -85,20 +85,21 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
         <button key={q} disabled={busy} onClick={() => void voice.ask(q)}>{q}</button>)}</div>
       <p className={styles.notice}>{voice.realtime ? 'AI 생성 음성입니다. 대화 중 마이크 음성·질문·시연 정보가 OpenAI로 전송되며 사용량에 따라 과금됩니다. 세션은 최대 10분이며 종료·화면 이탈 시 연결을 닫습니다. 카메라는 화면에만 표시합니다.' : voice.configured ? `카메라는 화면에만 표시합니다. 음성 인식·합성은 브라우저 서비스를 이용하고, 질문 텍스트와 시연 정보만 ${voice.providerLabel ?? 'AI'}로 전송됩니다.` : '카메라는 화면에만 표시합니다. 음성 인식은 브라우저 서비스를 이용합니다. 자유 대화 AI는 미연결 상태입니다.'}</p>
     </section>
+    {voice.messages.length > 1 && <section className={styles.left}>
+      <div className={styles.sectionTitle} data-card-title>HISTORY / 이전 대화</div>
+      <JarvisConversationTrail messages={voice.messages} />
+    </section>}
     <JarvisHelp />
     </JarvisStream>
     <JarvisCenterLayout camera={camera} heading={
       <div className={styles.voiceHeading}><h1>{JARVIS_PHASE_LABELS[voice.phase]}</h1><span data-active={voice.active}>{voice.active ? '● SESSION ON' : '○ STANDBY'}{voice.configured ? ` · ${voice.realtime ? 'REALTIME' : 'BROWSER VOICE'}` : ''}</span></div>
     } visual={
       <div className={styles.wave}>
-        <JarvisConversationTrail messages={voice.messages} />
         <JarvisWave theme={theme} audio={voice.audioRef} />
       </div>
     } form={
       <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
-        <JarvisChatTools camera={camera} input={input} onInput={setInput} active={voice.active}
-          disabled={!voice.active && (voice.configured === null || voice.switching)}
-          onVoice={() => voice.active ? voice.stop() : void voice.start()} />
+        <JarvisChatTools camera={camera} input={input} onInput={setInput} voiceActive={voice.active} />
         <label className={styles.srOnly} htmlFor="jarvis-message">HATCHERY에게 질문</label>
         <input id="jarvis-message" placeholder="HATCHERY에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
         <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>

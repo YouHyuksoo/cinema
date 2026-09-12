@@ -22,7 +22,7 @@ const NUMBER_REFERENCES: Record<HatcheryPatchScene, RegExp[]> = {
 const QUESTION = /알려|얼마|몇|뭐|무엇|\?/;
 
 /** What the film player hands the assistant: current data to resolve targets, and the patch entry point. */
-export interface HatcheryActions { sceneData(): FilmSceneData; applySceneObjects(input: unknown): SceneDataResult }
+export interface HatcheryActions { sceneData(): FilmSceneData; applySceneObjects(input: unknown): SceneDataResult; screen?: import('./screenCommands').ScreenExecutor }
 export interface HatcheryObject { id: string; label: string; aliases: string[]; number?: number }
 
 const norm = (value: string) => value.toLowerCase().replace(/[\s\-_]+/g, '');

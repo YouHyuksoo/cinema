@@ -10,6 +10,27 @@ const request = (body: unknown, origin = 'http://localhost:3000') => new Request
 beforeEach(() => { vi.stubEnv('HATCHERY_CONFIG_PATH', join(tmpdir(), `hatchery-none-${process.pid}.json`)); vi.stubEnv('OPENAI_API_KEY', 'test-server-secret'); vi.stubGlobal('fetch', vi.fn()); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe('Jarvis OpenAI server boundary', () => {
+  it('returns validated screen actions for the browser without claiming they already ran', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ output: [
+      { type: 'function_call', name: 'control_screen', arguments: JSON.stringify({ action: 'set', key: 'menuLayout', value: 'orbit' }) },
+      { type: 'function_call', name: 'control_screen', arguments: JSON.stringify({ action: 'set', key: 'menu', value: 'true' }) },
+    ] }));
+    const result = await POST(request({ message: '구체 방식의 메뉴를 펼쳐 줘', screenState: '{"menu":false}' }));
+    const body = await result.json();
+    expect(body.screenCommands).toEqual([{ action: 'set', key: 'menuLayout', value: 'orbit' }, { action: 'set', key: 'menu', value: 'true' }]);
+    expect(body.reply).not.toContain('완료');
+    const payload = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(payload.tools.some((t: { name: string }) => t.name === 'control_screen')).toBe(true);
+    expect(payload.instructions).toContain('"menu":false');
+  });
+  it('rejects an invalid screen command batch before applying any part', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ output: [
+      { type: 'function_call', name: 'control_screen', arguments: JSON.stringify({ action: 'set', key: 'speed', value: '800' }) },
+    ] }));
+    const body = await (await POST(request({ message: '속도를 아주 빠르게 조정해' }))).json();
+    expect(body.screenCommands).toBeUndefined();
+    expect(body.reply).toContain('실행하지 않았습니다');
+  });
   it('reports configured status without disclosing credentials', async () => {
     vi.stubEnv('OPENAI_TEXT_MODEL', 'server-text-model');
     vi.stubEnv('OPENAI_REALTIME_MODEL', 'server-voice-model');

@@ -5,6 +5,7 @@
 /* Orbit layout: tiles launch and fold; the globe itself folds. No centre hub or bottom bar. */
 .dock[data-menu-layout=orbit][data-menu-open=true] { background:none; padding-top:0; padding-bottom:0; }
 .dock[data-menu-layout=orbit] .panel { display:none; }
+.dock[data-menu-layout=dock][data-menu-open=true] { bottom:50%; transform:translateY(50%); background:rgba(4,11,16,.94); border-block:1px solid var(--film-line); padding-block:16px; }
 .actionIcon { display:none; width:18px; height:18px; }
 @media(max-width:680px) {
   .dock.dock { padding-inline:12px; }

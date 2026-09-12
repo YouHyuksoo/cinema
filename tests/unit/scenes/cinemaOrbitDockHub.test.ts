@@ -36,6 +36,6 @@ describe('orbit layout dock hub', () => {
     expect(page).toContain('.page[data-menu-layout=orbit][data-menu-open=true] { --film-dock-space: calc(32px + var(--film-safe-extra)); }');
     const hook = read('src/cinema/useFilmMenuGlobe.ts');
     expect(hook).not.toContain('viewport.height - 84 - margin - 44');
-    expect(hook).toContain('viewport.height - margin - 44');
+    expect(hook).toContain('viewport.height - marginY - 44');
   });
 });

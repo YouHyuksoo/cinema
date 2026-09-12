@@ -5,13 +5,13 @@ import type { MachineSubject } from './machinePresentation';
 import { runTurbineCommand, type TurbineCommand } from './turbineCommands';
 
 /** One voice session and explicit command routing for the main page and every film scene. */
-export function useFilmTurbine(player: FilmPlayback, home: () => void, close: () => void, openSettings: () => void) {
+export function useFilmTurbine(player: FilmPlayback, home: () => void, close: () => void, openSettings: () => void, screen?: import('./screenCommands').ScreenExecutor) {
   const selectScene = (id: FilmId, subject?: MachineSubject) => {
     close();
     if (subject) player.changeMachineSubject(subject);
     player.selectChapter(id);
   };
-  const voice = useJarvisVoice(selectScene, { sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects });
+  const voice = useJarvisVoice(selectScene, { sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects, screen });
   return { voice, selectScene, command(command: TurbineCommand) {
     runTurbineCommand(command, {
       home,

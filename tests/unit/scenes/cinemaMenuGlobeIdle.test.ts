@@ -34,7 +34,7 @@ describe('folded globe idle cost', () => {
     expect(source).not.toMatch(/floatingY = 4 \* Math\.sin/);
     expect(source).toContain('soccerHexScreenPoses(visual / 2, angle)');
     expect(source).not.toContain('if (spin !== rasterSpin || diameter !== rasterSize || restNow !== before || shift || coasting)');
-    expect(source).toContain('perspective = { ...globeCenter }; current = globe(); draw();');
+    expect(source).toContain('perspective = { ...globeCenter }; current = orbit && input.menuOpen ? targetRing() : globe(); draw();');
     expect(css).toContain('@keyframes globeFloat');
     expect(css).toMatch(/globeFloat 4\.8s ease-in-out infinite/);
     expect(css).toContain('translateY(-4px)');

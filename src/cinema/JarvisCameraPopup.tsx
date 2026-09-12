@@ -6,14 +6,24 @@ import { JarvisCamera } from './JarvisCamera';
 import type { FilmCamera } from './useFilmCamera';
 import styles from './jarvisCameraPopup.module.css';
 
-export function JarvisCameraPopup({ camera, icon = false }: { camera: FilmCamera; icon?: boolean }) {
+export function JarvisCameraPopup({ camera, icon = false, host = false }: { camera: FilmCamera; icon?: boolean; host?: boolean }) {
   const [open, setOpen] = useState(false);
   const placement = useCameraWindow();
+  useEffect(() => {
+    if (!host) return;
+    const show = (event: Event) => {
+      const next = (event as CustomEvent<boolean>).detail;
+      setOpen(next);
+      if (!next) camera.stop();
+    };
+    window.addEventListener('cinema-camera-popup', show);
+    return () => window.removeEventListener('cinema-camera-popup', show);
+  }, [host, camera.stop]);
   return <>
-    <button type="button" className={styles.trigger} aria-haspopup="dialog" aria-label={camera.status === 'on' ? '영상 보기' : '영상 연결'} title="영상 연결" onClick={() => setOpen(true)}>
+    {!host && <button type="button" className={styles.trigger} aria-haspopup="dialog" aria-label={camera.status === 'on' ? '영상 보기' : '영상 연결'} title="영상 연결" onClick={() => window.dispatchEvent(new CustomEvent('cinema-camera-popup', { detail: true }))}>
       {icon ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="13" height="14" rx="2" /><path d="m15 9 7-4v14l-7-4" /></svg> : camera.status === 'on' ? '영상 보기' : '영상 연결'}
-    </button>
-    {open && placement.bounds && createPortal(<CameraDialog camera={camera} placement={placement}
+    </button>}
+    {host && open && placement.bounds && createPortal(<CameraDialog camera={camera} placement={placement}
       onClose={() => { camera.stop(); setOpen(false); }} />, document.body)}
   </>;
 }

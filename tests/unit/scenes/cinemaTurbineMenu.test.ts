@@ -18,9 +18,14 @@ describe('five-blade turbine commands', () => {
     const blade = readFileSync('src/cinema/TurbineBlade.tsx', 'utf8');
     expect(blade).toContain('fillOpacity=".72"');
     expect(blade).toContain('<pattern');
+    expect(blade).toContain('className={styles.glassSheen}');
     expect(blade).toContain('translate(0 18)');
     expect(css).toContain('.menu[data-turbine-open=true] .thickness { opacity:1; }');
     expect(css).toContain('.menu[data-turbine-open=true] .legend { opacity:1;');
+    expect(css).toContain('.menu[data-turbine-open=true] .glassGrain { opacity:.06; }');
+    expect(css).toContain('.menu[data-turbine-open=true] .bladeArt { filter:none; shape-rendering:geometricPrecision; }');
+    expect(css).toContain('text-shadow:none;');
+    expect(css).toContain('.menu[data-turbine-open=true] .legend svg { filter:none;');
     expect(css).toContain('width:52px; height:52px;');
     expect(css).toContain('animation:turbineSpin 100s linear infinite;');
     expect(css).toContain('.menu[data-turbine-open=false] .legend>span { display:none; }');
@@ -78,7 +83,7 @@ describe('turbine placement on small screens', () => {
     expect(mobile).toContain('left:max(6px,env(safe-area-inset-left));');
     expect(mobile).toContain('bottom:max(10px,env(safe-area-inset-bottom));');
     expect(mobile).toContain('transform:scale(var(--hatchery-orb-scale,.4));');
-    expect(mobile).toContain('.menu[data-turbine-open=true] .art { transform:scale(var(--hatchery-orb-open-scale,.5)); }');
+    expect(mobile).toContain('.menu[data-turbine-open=true] .art { transform:scale(calc(var(--expanded) / 300px)); }');
     const hook = readFileSync('src/cinema/useFilmMenuGlobe.ts', 'utf8');
     for (const name of ['--hatchery-orb-diameter', '--hatchery-orb-scale', '--hatchery-orb-open-scale']) expect(hook).toContain(name);
   });

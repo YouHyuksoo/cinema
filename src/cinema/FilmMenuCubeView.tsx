@@ -116,6 +116,7 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     const measure = () => {
       viewport = { width: window.innerWidth, height: window.innerHeight };
       size = cubeSize(viewport.width, viewport.height);
+      cubieDirty = true;
       // Reserve the bay first, so the first measured center uses the final strip layout.
       document.documentElement.style.setProperty(STRIP_SPACE_PROPERTY, `${cubeStripSpace(size)}px`);
       document.documentElement.style.setProperty(BAY_WIDTH_PROPERTY, `${cubeBayWidth(size)}px`);

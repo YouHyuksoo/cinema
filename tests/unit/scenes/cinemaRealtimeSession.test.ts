@@ -121,6 +121,20 @@ describe('Realtime lifecycle', () => {
 });
 
 describe('Realtime value commands', () => {
+  it('waits for screen execution and gives its failure back to the voice model', async () => {
+    const screen = vi.fn(async () => ({ ok: false, message: '권한 거절' }));
+    const session = new JarvisRealtimeSession({ ...callbacks(), screen }); await session.start('cedar');
+    channel.onmessage?.({ data: JSON.stringify({ type: 'response.done', response: { status: 'completed', output: [
+      { type: 'function_call', name: 'control_screen', call_id: 'screen-1', arguments: JSON.stringify({ action: 'set', key: 'camera', value: 'true' }) },
+    ] } }) });
+    await Promise.resolve(); await Promise.resolve();
+    expect(screen).toHaveBeenCalledExactlyOnceWith({ action: 'set', key: 'camera', value: 'true' });
+    const sent = channel.send.mock.calls.map(([value]) => JSON.parse(value));
+    const output = sent.find(message => message.item?.call_id === 'screen-1');
+    expect(JSON.parse(output.item.output)).toEqual({ ok: false, message: '권한 거절' });
+    expect(sent.at(-1).type).toBe('response.create');
+    session.stop();
+  });
   const sent = () => channel.send.mock.calls.map(call => JSON.parse(call[0] as string) as { type: string; item?: { output: string } });
   const valueCall = (args: unknown) => ({ type: 'response.done', response: { status: 'completed',
     output: [{ type: 'function_call', name: 'set_scene_object_values', call_id: 'v1', arguments: JSON.stringify(args) }] } });

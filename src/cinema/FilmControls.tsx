@@ -12,8 +12,8 @@ import { SelectField } from './FilmFields';
 import { FilmCenterControls } from './FilmCenterControls';
 import { MENU_LAYOUTS } from './filmMenuRing';
 import styles from './film.module.css';
+import { PLAYBACK_RATE_OPTIONS } from './playbackRates';
 
-const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4].map(rate => ({ value: String(rate), label: `${rate}×${rate === 1 ? ' (기본)' : ''}` }));
 const PLAYBACK_MODES = [
   { value: 'sequence', label: '전체 연속' },
   { value: 'chapter', label: '현재 장면 반복' },
@@ -50,7 +50,7 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
         <span className={styles.simulation}>연출 비교 · 시뮬레이션 데이터</span>
         <div className={styles.controls}>
           {!camera.preview && <SelectField label="재생 방식" value={player.mode} options={PLAYBACK_MODES} onChange={player.changeMode} />}
-          <SelectField label="재생 속도" value={String(player.speed)} options={PLAYBACK_RATES} onChange={value => player.changeSpeed(Number(value))} />
+          <SelectField label="재생 속도" value={String(player.speed)} options={PLAYBACK_RATE_OPTIONS} onChange={value => player.changeSpeed(Number(value))} />
           <button disabled={!player.ready} onClick={player.togglePlay}>{player.playing ? '일시정지' : '재생'}</button>
           {!camera.preview && <button disabled={!player.ready} onClick={player.restart}>처음부터</button>}
         </div>

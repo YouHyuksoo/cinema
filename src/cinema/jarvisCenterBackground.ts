@@ -1,5 +1,6 @@
 export const CENTER_BACKGROUND_KEY = 'cinema.center.background.v1';
 export const CENTER_BACKGROUNDS = [
+  { id: 'neon-hud', label: '네온 HUD' },
   { id: 'cyan-panel', label: '시안 계기판' },
   { id: 'steel-orbit', label: '스틸 오비트' },
   { id: 'crimson-core', label: '크림슨 코어' },

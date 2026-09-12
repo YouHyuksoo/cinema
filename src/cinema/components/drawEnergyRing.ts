@@ -2,7 +2,7 @@ import { ENERGY_PALETTE, RING_CENTER, RING_RADIUS, litSegments, type EnergyBoard
 import { ENERGY_LAYERS, energyRatio, type EnergyCoreData } from '../energyCore';
 import { mix } from '../filmMath';
 import { withAlpha } from './drawHudPanel';
-import { drawSevenSegment } from './drawHudPanel';
+import { drawEnergyValue } from './drawEnergyValue';
 import type { FilmFonts } from '../filmDrawing';
 
 const TAU = Math.PI * 2;
@@ -108,19 +108,26 @@ export function drawEnergyRing(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
     const a = spin * .8 + notch / 6 * TAU;
     ctx.beginPath(); ctx.arc(cx, cy, radius * .62, a, a + TAU / 6 * .22); ctx.stroke();
   }
-  // Core disc.
-  const core = ctx.createRadialGradient(cx - radius * .15, cy - radius * .18, radius * .05, cx, cy, radius * .55);
-  core.addColorStop(0, mixHex('#bff6ff', '#9fe8ff', blend)); core.addColorStop(.5, mixHex('#2fb7e6', '#3f8fe0', blend));
-  core.addColorStop(1, mixHex('#0a2b52', '#231060', blend));
-  ctx.globalAlpha = alpha * (.55 + .45 * state.assembly); ctx.fillStyle = core;
-  ctx.beginPath(); ctx.arc(cx, cy, radius * .55 * (.8 + .2 * state.assembly), 0, TAU); ctx.fill();
+  // A restrained glow and three circulating pulses keep the core suspended in space.
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * .56);
+  core.addColorStop(0, withAlpha(hud.line, .08));
+  core.addColorStop(1, withAlpha(hud.line, 0));
+  ctx.globalAlpha = alpha * state.assembly; ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(cx, cy, radius * .56, 0, TAU); ctx.fill();
+  ctx.lineCap = 'round';
+  for (let pulse = 0; pulse < 3; pulse++) {
+    const angle = -time * .45 + pulse * TAU / 3;
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
+    ctx.globalAlpha = alpha * state.assembly * (.35 + ratio * .4);
+    ctx.beginPath(); ctx.arc(cx, cy, radius * .52, angle, angle + .35 + ratio * .4); ctx.stroke();
+  }
 
-  // Readout: value of the active channel in seven-segment digits, label under it.
+  // Readout: value of the active channel in plain numerals, label under it.
   const reading = data[layer.key];
   const value = Number.isFinite(reading.value) ? reading.value.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '--';
-  drawSevenSegment(ctx, value.replace(/[^0-9.\-]/g, ''), cx, cy - 12, 34, mixHex('#e8fbff', '#fff1ff', blend), alpha * .95, { align: 'center', ghost: .06 });
+  drawEnergyValue(ctx, fonts, value.replace(/[^0-9.\-]/g, ''), cx, cy - 12, 34, mixHex('#e8fbff', '#fff1ff', blend), alpha * .95, { align: 'center' });
   ctx.globalAlpha = alpha * .8; ctx.fillStyle = mixHex(hud.dim, info.dim, blend);
-  ctx.font = `11px ${fonts.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = `11px ${fonts.label}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.fillText(`${layer.label} · ${reading.unit} · ${(ratio * 100).toFixed(0)}%`, cx, cy + 46);
   ctx.restore();
 }
