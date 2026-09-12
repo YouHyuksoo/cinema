@@ -67,6 +67,7 @@ describe('Jarvis OpenAI server boundary', () => {
     vi.stubEnv('CINEMA_ALLOWED_ORIGINS', 'http://139.150.82.207:3010, https://cinema.example.com/path');
     expect(rejectExternalRequest(new Request('http://139.150.82.207:3010/api/cinema/admin/ai'))).toBeNull();
     expect(rejectExternalRequest(new Request('https://cinema.example.com/api/cinema/admin/ai', { headers: { origin: 'https://cinema.example.com' } }))).toBeNull();
+    expect(rejectExternalRequest(new Request('http://localhost:3010/api/cinema/admin/ai', { headers: { origin: 'http://139.150.82.207:3010' } }))).toBeNull();
     expect(rejectExternalRequest(new Request('http://139.150.82.207:3010/api/cinema/admin/ai', { headers: { origin: 'https://evil.example' } }))?.status).toBe(403);
     expect(rejectExternalRequest(new Request('http://unlisted.example/api/cinema/admin/ai'))?.status).toBe(403);
   });

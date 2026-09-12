@@ -25,8 +25,8 @@ export function JarvisAiProviderSelect({ providers, provider, model, busy, onCha
         onClick={() => { if (option.id !== provider) onChange(option.id); }}>{option.label}</button>)}
     </div>
     <label className={styles.row}>
-      <span className={styles.label}>모델</span>
-      <select className={styles.select} value={model ?? ''} disabled={busy} aria-label="AI 모델"
+      <span className={styles.label}>채팅 모델</span>
+      <select className={styles.select} value={model ?? ''} disabled={busy} aria-label="AI 채팅 모델"
         onChange={event => onChange(provider, event.target.value)}>
         {models.map(id => <option key={id} value={id}>{id}</option>)}
       </select>

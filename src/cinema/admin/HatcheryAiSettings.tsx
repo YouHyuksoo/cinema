@@ -106,7 +106,7 @@ export function HatcheryAiSettings() {
         <div className={styles.grid}>
           <label>프로바이더<select value={draft.provider} onChange={event => changeProvider(event.target.value as AiProviderId)}>
             {AI_PROVIDERS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-          <label>모델<select value={customModel ? '__custom' : draft.model} onChange={event => update({ model: event.target.value === '__custom' ? '' : event.target.value })}>
+          <label>채팅 모델<select value={customModel ? '__custom' : draft.model} onChange={event => update({ model: event.target.value === '__custom' ? '' : event.target.value })}>
             {provider.models.map(model => <option key={model} value={model}>{model}</option>)}<option value="__custom">직접 입력…</option></select></label>
           {customModel && <label>모델 ID<input value={draft.model} placeholder={provider.models[0]} onChange={event => update({ model: event.target.value })} /></label>}
           {provider.realtime && <label>실시간 음성 모델 (OpenAI)<input value={draft.realtimeModel} onChange={event => update({ realtimeModel: event.target.value })} /></label>}

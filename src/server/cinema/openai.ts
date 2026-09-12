@@ -57,8 +57,10 @@ function configuredAiOrigins() {
 // The demo has no login: paid endpoints are limited to local requests or explicitly allowed deployment origins.
 export function rejectExternalRequest(request: Request): Response | null {
   const url = new URL(request.url), origin = request.headers.get('origin');
-  const allowedTarget = localHosts.has(url.hostname) || configuredAiOrigins().has(url.origin);
-  if (!allowedTarget || (origin && origin !== url.origin))
+  const allowedOrigins = configuredAiOrigins();
+  const allowedTarget = localHosts.has(url.hostname) || allowedOrigins.has(url.origin) || Boolean(origin && allowedOrigins.has(origin));
+  const sameOrigin = !origin || origin === url.origin || allowedOrigins.has(origin);
+  if (!allowedTarget || !sameOrigin)
     return Response.json({ error: '허용된 HUD 주소에서만 사용할 수 있습니다.' }, { status: 403 });
   return null;
 }
