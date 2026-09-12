@@ -56,6 +56,5 @@
 
 - [ ] Push the local commits to `origin/main`.
 - [ ] On JSIDC2, pull with `git pull --ff-only`, build, restart PM2 service `cinema`, and save PM2 state.
-- [ ] Store the supplied Mistral key through the server AI settings API while restoring the previously selected ChatGPT provider/model afterward.
-- [ ] Test the Mistral connection through the local server API and verify the external assistant status includes Mistral as ready without exposing the key.
-
+- [ ] Record the current ChatGPT provider/model, store and select Mistral through the server AI settings API, then run the live connection and chat checks without exposing the key.
+- [ ] Restore the recorded ChatGPT provider/model and verify the external assistant status still reports Mistral as ready through the key vault.

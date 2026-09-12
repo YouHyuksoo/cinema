@@ -43,7 +43,9 @@
 
 **Files:**
 - Modify: `DESIGN.md`
+- Modify if needed: `src/cinema/jarvisStream.module.css`
 
 - [ ] Update the main settings rule with the two-card ownership and ordering.
 - [ ] Run `npm run typecheck`, `npm run test:unit`, and `npm run build`.
+- [ ] Check the development screen at desktop and mobile widths for card order, folding, and independent stream scrolling.
 - [ ] Commit source, tests, and docs as `refactor(cinema): split theme settings card`.
