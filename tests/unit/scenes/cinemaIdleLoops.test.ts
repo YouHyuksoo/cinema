@@ -17,6 +17,9 @@ describe('decorative loops stop when nothing moves', () => {
     expect(source).toContain('watchPageVisibility(hidden => { if (!hidden) wake(); })');
     expect(source).toContain('watchReducedMotion(value => { if (!value) wake(); })');
     expect(source).toContain('manualTimer = window.setTimeout(wake, manualMs);');
+    expect(source).toContain('suspended?: boolean');
+    expect(source).toContain('paused || suspended || hovered');
+    expect(source).toContain('stopped: paused || suspended');
   });
   it('floats the management cube with CSS, measures the strip on layout, and only loops while a turn is in progress', () => {
     const source = readFileSync('src/cinema/FilmMenuCubeView.tsx', 'utf8');

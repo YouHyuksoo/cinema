@@ -16,6 +16,8 @@ export interface DriftScrollOptions {
   initialHoldMs?: number;
   /** Manual wheel/touch/keyboard input suppresses drifting for this long (ms). */
   manualMs?: number;
+  /** Stops external motion without changing the user's pause choice. */
+  suspended?: boolean;
   /** Runs every animation frame, before the scroll write, e.g. to pose panels by scroll position. */
   onFrame?: (now: number, viewport: HTMLElement) => void;
 }
@@ -29,7 +31,7 @@ export interface DriftScrollOptions {
  * viewport) and `viewportRef` to the scrolling element.
  */
 export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewport extends HTMLElement = HTMLDivElement>(
-  { axis, speed, holdMs = 1800, resumeMs = 800, initialHoldMs = 0, manualMs = 4000, onFrame }: DriftScrollOptions) {
+  { axis, speed, holdMs = 1800, resumeMs = 800, initialHoldMs = 0, manualMs = 4000, suspended = false, onFrame }: DriftScrollOptions) {
   const hostRef = useRef<Host>(null);
   const viewportRef = useRef<Viewport>(null);
   const [paused, setPaused] = useState(false);
@@ -50,7 +52,7 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
       last = now;
       frameCallback.current?.(now, viewport);
       const max = Math.max(0, extent());
-      const stopped = paused || hovered || focused || reduced.reduced || document.hidden || now < manualUntil;
+      const stopped = paused || suspended || hovered || focused || reduced.reduced || document.hidden || now < manualUntil;
       // Nothing to drift: drop the frame loop. The events that end the hold wake it again, and a
       // viewport without overflow re-checks once a second for content that arrives later.
       if (stopped || !max) { position = viewport[scrollKey]; loop.stop(); last = 0;
@@ -98,7 +100,7 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
       viewport.removeEventListener('scroll', onScroll);
       for (const type of manualEvents) viewport.removeEventListener(type, manual);
     };
-  }, [axis, speed, paused, holdMs, resumeMs, initialHoldMs, manualMs]);
+  }, [axis, speed, paused, suspended, holdMs, resumeMs, initialHoldMs, manualMs]);
 
-  return { hostRef, viewportRef, paused, toggle: () => setPaused(value => !value) };
+  return { hostRef, viewportRef, paused, stopped: paused || suspended, toggle: () => setPaused(value => !value) };
 }

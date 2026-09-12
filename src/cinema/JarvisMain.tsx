@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { useJarvisVoice } from './useJarvisVoice';
 import { JarvisWave } from './JarvisWave';
 import type { FilmThemeId } from './filmThemes';
@@ -11,6 +11,8 @@ import { JarvisAiStatus } from './JarvisAiStatus';
 import { JarvisChatTools } from './JarvisChatTools';
 import { JarvisTemperatureAlerts } from './JarvisTemperatureAlerts';
 import { JarvisStream } from './JarvisStream';
+import { JarvisCardFocus } from './JarvisCardFocus';
+import type { JarvisStreamFocusRequest } from './JarvisStream';
 import { JarvisHelp } from './JarvisHelp';
 import { JarvisOperations, JarvisQualityEnergy } from './JarvisOperations';
 import { JarvisChannelDials } from './JarvisChannelDials';
@@ -40,13 +42,18 @@ function ConnectedJarvisMain(props: JarvisMainProps) {
 }
 function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
   const [input, setInput] = useState('');
+  const [cardFocus, setCardFocus] = useState<{ source:HTMLElement; label:string; openId:number } | null>(null);
+  const nextFocusId = useRef(0);
+  const focusCard = useCallback(({ source, label }: JarvisStreamFocusRequest) => {
+    setCardFocus(current => current ? current : { source, label, openId:++nextFocusId.current });
+  }, []);
   const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
   return <section className={styles.main} data-external-briefing={externalBriefing} aria-label="HATCHERY 메인 메뉴">
     <JarvisMainHeader feedStatus={feedStatus} />
     <div className={styles.body}>
-    <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15}>
+    <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15} suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
     {sceneSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="연출 설정">
       <details>
         <summary>SCENE / 연출 설정</summary>
@@ -54,19 +61,19 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
       </details>
     </section>}
     <section className={styles.left}>
-      <div className={styles.sectionTitle}>SESSION / CONNECTIONS</div>
+      <div className={styles.sectionTitle} data-card-title>SESSION / CONNECTIONS</div>
       <JarvisAiStatus connection={voice.aiConnection} />
       <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
         <dt>음성 인식</dt><dd>{voice.realtime ? 'OpenAI Realtime' : voice.supported === null ? '확인 중' : voice.supported ? '브라우저' : '미지원'}</dd>
         <dt>현장 명령</dt><dd>사용 가능</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
     </section>
     <section className={styles.left}>
-      <div className={styles.sectionTitle}>AI / 모델 선택</div>
+      <div className={styles.sectionTitle} data-card-title>AI / 모델 선택</div>
       <JarvisAiProviderSelect providers={voice.providers} provider={voice.provider} model={voice.model} busy={voice.active || voice.switching}
         onChange={(id, model) => void voice.selectProvider(id, model)} />
     </section>
     <section className={styles.left}>
-      <div className={styles.sectionTitle}>VOICE / 대화 설정</div>
+      <div className={styles.sectionTitle} data-card-title>VOICE / 대화 설정</div>
       {voice.configured && <JarvisVoiceModeToggle mode={voice.voiceMode} realtimeAvailable={voice.realtimeAvailable} busy={voice.active || voice.switching}
         onChange={mode => void voice.setVoiceMode(mode)} />}
       {voice.realtime ? <JarvisAiVoiceSettings gender={voice.voiceGender} active={voice.active}
@@ -99,12 +106,13 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
     }>
       {!externalBriefing && <JarvisDialogue key={reply} text={reply} source={voice.source} />}
     </JarvisCenterLayout>
-    <JarvisStream title="DATA / ANALYSIS" label="우측 분석 정보" speed={19} side="right">
+    <JarvisStream title="DATA / ANALYSIS" label="우측 분석 정보" speed={19} side="right" suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
       <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials /></section>
       <JarvisOperations onChapter={onChapter} />
       <JarvisQualityEnergy onChapter={onChapter} />
       <JarvisTemperatureAlerts zones={overview.zones} onDetails={() => onChapter('wave')} />
     </JarvisStream>
     </div>
+    {cardFocus && <JarvisCardFocus {...cardFocus} onClose={() => setCardFocus(null)} />}
   </section>;
 }
