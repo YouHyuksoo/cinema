@@ -48,11 +48,18 @@ ${JSON.stringify({ zones: jarvisOverview().zones, energy: jarvisMainData.energy,
 export const ChatBody = z.object({ message: z.string().trim().min(1).max(1200),
   screenState: z.string().max(8000).optional(),
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(4000) })).max(8).default([]) });
-// The demo has no login: paid endpoints are limited to local requests.
+const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+function configuredAiOrigins() {
+  return new Set((process.env.CINEMA_ALLOWED_ORIGINS ?? '').split(',').map(value => value.trim()).filter(Boolean).flatMap(value => {
+    try { return [new URL(value).origin]; } catch { return []; }
+  }));
+}
+// The demo has no login: paid endpoints are limited to local requests or explicitly allowed deployment origins.
 export function rejectExternalRequest(request: Request): Response | null {
   const url = new URL(request.url), origin = request.headers.get('origin');
-  if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || (origin && origin !== url.origin))
-    return Response.json({ error: '로컬 HUD에서만 사용할 수 있습니다.' }, { status: 403 });
+  const allowedTarget = localHosts.has(url.hostname) || configuredAiOrigins().has(url.origin);
+  if (!allowedTarget || (origin && origin !== url.origin))
+    return Response.json({ error: '허용된 HUD 주소에서만 사용할 수 있습니다.' }, { status: 403 });
   return null;
 }
 export class OpenAiFailure extends Error {

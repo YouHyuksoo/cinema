@@ -32,6 +32,8 @@ npm start
 
 API는 localhost 접속과 동일 출처를 검증합니다. 외부 배포용 인증은 별도로 구성해야 합니다. 카메라는 브라우저 안에서 처리하며 OpenAI에 전송하지 않습니다.
 
+외부 서버에서 AI 대화와 모델 선택을 사용할 때는 서버 전용 `CINEMA_ALLOWED_ORIGINS`에 허용할 전체 origin을 쉼표로 지정합니다. 예: `http://139.150.82.207:3010`. 등록되지 않은 주소와 다른 origin에서 온 요청은 403으로 거부됩니다.
+
 ## 구조
 
 - src/app: 메인 및 /cinema 진입점, CINEMA API
