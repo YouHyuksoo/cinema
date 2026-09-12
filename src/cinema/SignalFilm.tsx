@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useFilmPlayback } from './useFilmPlayback';
 import { FilmDock } from './FilmDock';
-import { FilmControls } from './FilmControls';
+import { FilmSceneSettings, FilmThemeSettings } from './FilmControls';
 import { FilmSettingsDialog } from './FilmSettingsDialog';
 import { FilmTurbineMenu } from './FilmTurbineMenu';
 import { FilmBriefing } from './FilmBriefing';
@@ -73,7 +73,7 @@ export function SignalFilm() {
           onClick={player.togglePlay} />}
       </div>
       {preview && <JarvisMain feedStatus={player.feedStatus} externalBriefing theme={player.theme} camera={camera} voice={turbine.voice} onChapter={turbine.selectScene}
-        sceneSettings={<FilmControls player={player} camera={cameraMode} />}
+        themeSettings={<FilmThemeSettings player={player}/>} sceneSettings={<FilmSceneSettings player={player} camera={cameraMode}/>}
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmBriefing text={turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''} source={turbine.voice.source}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />

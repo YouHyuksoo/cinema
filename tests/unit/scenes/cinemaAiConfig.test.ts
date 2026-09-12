@@ -12,11 +12,12 @@ const saved: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-5', apiKe
   instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' };
 
 describe('AI settings model', () => {
-  it('lists four providers, OpenAI API alone realtime-capable and the ChatGPT subscription keyless', () => {
-    expect(AI_PROVIDERS.map(provider => provider.id)).toEqual(['openai', 'chatgpt', 'anthropic', 'gemini']);
+  it('lists five providers, OpenAI API alone realtime-capable and the ChatGPT subscription keyless', () => {
+    expect(AI_PROVIDERS.map(provider => provider.id)).toEqual(['openai', 'chatgpt', 'anthropic', 'gemini', 'mistral']);
     expect(AI_PROVIDERS.filter(provider => provider.realtime).map(provider => provider.id)).toEqual(['openai']);
     expect(AI_PROVIDERS.find(provider => provider.id === 'chatgpt')?.auth).toBe('codex');
     expect(AI_PROVIDERS.find(provider => provider.id === 'chatgpt')?.models).toContain('gpt-5.6-luna');
+    expect(AI_PROVIDERS.find(provider => provider.id === 'mistral')?.models).toEqual(['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest']);
   });
   it('validates provider, model, ranges and instruction length, filling defaults for omitted settings', () => {
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-4.1-mini' })).toEqual({ ok: true, config: { ...DEFAULT_AI_CONFIG } });
@@ -66,9 +67,9 @@ describe('AI settings model', () => {
     expect(mergeAiKey({ ...back, apiKey: 'sk-ant-new' }, { ...back, apiKeys: { anthropic: 'stale', gemini: 'AIza1' } })).toMatchObject({ apiKey: 'sk-ant-new', apiKeys: { gemini: 'AIza1' } });
   });
   it('reports which providers the main screen may switch to', () => {
-    expect(aiProviderReadiness(undefined, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: false, gemini: false });
+    expect(aiProviderReadiness(undefined, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: false, gemini: false, mistral: false });
     expect(aiProviderReadiness(undefined, true, true)).toMatchObject({ openai: true, chatgpt: true, anthropic: false });
-    expect(aiProviderReadiness({ ...saved, apiKeys: { gemini: 'AIza1' } }, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: true, gemini: true });
+    expect(aiProviderReadiness({ ...saved, apiKeys: { gemini: 'AIza1', mistral: 'mistral-secret' } }, false, false)).toEqual({ openai: false, chatgpt: false, anthropic: true, gemini: true, mistral: true });
   });
   it('renders the editable prompt with the voice persona and falls back to the built-in text', () => {
     expect(DEFAULT_JARVIS_PROMPT).toContain(JARVIS_VOICE_PLACEHOLDER);
@@ -111,6 +112,14 @@ describe('provider wire formats', () => {
     expect(body.contents.map((item: { role: string }) => item.role)).toEqual(['user', 'model', 'user']);
     expect(body.generationConfig).toEqual({ temperature: 0.4, maxOutputTokens: 600 });
   });
+  it('builds a Mistral Chat Completions call with system and conversation messages', () => {
+    const { url, init } = buildChatRequest({ ...saved, provider: 'mistral', model: 'mistral-small-latest', apiKey: 'mistral-secret', temperature: 1.2 }, 'SYS', turns, 321);
+    expect(url).toBe('https://api.mistral.ai/v1/chat/completions');
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer mistral-secret', 'Content-Type': 'application/json' });
+    const body = JSON.parse(init.body as string);
+    expect(body).toEqual({ model: 'mistral-small-latest', temperature: 1.2, max_tokens: 321,
+      messages: [{ role: 'system', content: 'SYS' }, ...turns] });
+  });
   it('talks to the Codex backend with the ChatGPT login and reads its SSE stream', () => {
     const codex = { accessToken: 'at', refreshToken: 'rt', accountId: 'acc-1', expiresAt: null };
     const { url, init } = buildChatRequest({ ...DEFAULT_AI_CONFIG, provider: 'chatgpt', model: 'gpt-6-astra' }, 'SYS', turns, 800, codex);
@@ -147,5 +156,7 @@ describe('provider wire formats', () => {
     expect(extractChatText('anthropic', { content: [{ type: 'text', text: '확인' }, { type: 'tool_use' }] })).toBe('확인');
     expect(extractChatText('gemini', { candidates: [{ content: { parts: [{ text: '확' }, { text: '인' }] } }] })).toBe('확\n인');
     expect(extractChatText('gemini', {})).toBe('');
+    expect(extractChatText('mistral', { choices: [{ message: { content: ' 확인 ' } }] })).toBe('확인');
+    expect(extractChatText('mistral', { choices: [{ message: { content: [{ type: 'text', text: '확' }, { type: 'image_url' }, { type: 'text', text: '인' }] } }] })).toBe('확\n인');
   });
 });

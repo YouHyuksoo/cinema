@@ -3,7 +3,7 @@
  * Stored inside the server-only hatchery config file; the AI settings screen (/cinema/ai) edits it.
  * Environment variables (OPENAI_*) remain the fallback when nothing is saved.
  */
-export type AiProviderId = 'openai' | 'chatgpt' | 'anthropic' | 'gemini';
+export type AiProviderId = 'openai' | 'chatgpt' | 'anthropic' | 'gemini' | 'mistral';
 /** How the operator talks to HATCHERY: OpenAI's realtime voice session, or the browser's own speech with the text model. */
 export type AiVoiceMode = 'realtime' | 'browser';
 export const AI_VOICE_MODES: readonly { id: AiVoiceMode; label: string; hint: string }[] = [
@@ -34,6 +34,8 @@ export const AI_PROVIDERS: readonly AiProvider[] = [
     realtime: false, auth: 'key', docs: 'https://console.anthropic.com/settings/keys' },
   { id: 'gemini', label: 'Google Gemini', models: ['gemini-2.5-flash', 'gemini-2.5-pro'], keyHint: 'AIza…',
     realtime: false, auth: 'key', docs: 'https://aistudio.google.com/apikey' },
+  { id: 'mistral', label: 'Mistral AI', models: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'], keyHint: 'Mistral API 키',
+    realtime: false, auth: 'key', docs: 'https://console.mistral.ai/api-keys' },
 ];
 
 export interface AiConfig {
@@ -111,7 +113,7 @@ export function aiKeyVault(config: AiConfig | undefined): KeyVault {
 /** Which providers the main screen may switch to right now: a key on file, the OpenAI environment key, or the Codex login. */
 export function aiProviderReadiness(config: AiConfig | undefined, envKey: boolean, codexLogin: boolean): Record<AiProviderId, boolean> {
   const vault = aiKeyVault(config);
-  return { openai: Boolean(vault.openai) || envKey, chatgpt: codexLogin, anthropic: Boolean(vault.anthropic), gemini: Boolean(vault.gemini) };
+  return { openai: Boolean(vault.openai) || envKey, chatgpt: codexLogin, anthropic: Boolean(vault.anthropic), gemini: Boolean(vault.gemini), mistral: Boolean(vault.mistral) };
 }
 /** What the main screen's provider selector receives from the status endpoint. */
 export interface AiProviderOption { id: AiProviderId; label: string; models: readonly string[]; ready: boolean }

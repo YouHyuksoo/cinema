@@ -20,10 +20,30 @@ const PLAYBACK_MODES = [
 ] as const satisfies readonly { value: PlaybackMode; label: string }[];
 
 export function FilmControls({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
+  return <div className={styles.footer}><ThemeFields player={player}/><SceneFields player={player} camera={camera}/></div>;
+}
+
+export function FilmThemeSettings({ player }: { player: FilmPlayback }) {
+  return <div className={styles.footer}><ThemeFields player={player}/></div>;
+}
+
+export function FilmSceneSettings({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
+  return <div className={styles.footer}><SceneFields player={player} camera={camera}/></div>;
+}
+
+function ThemeFields({ player }: { player: FilmPlayback }) {
+  return <>
+    <FilmThemeControls theme={player.theme} disabled={!player.ready} onChange={player.changeTheme} />
+    <FilmCenterControls />
+    <FilmTextureControls texture={player.texture} disabled={!player.ready}
+      onStyleChange={player.changeTextureStyle} onIntensityChange={player.changeTextureIntensity} />
+  </>;
+}
+
+function SceneFields({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
   const { chapter, localTime } = player.position;
   const title = chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject].title : chapter.title;
-  return (
-    <div className={styles.footer}>
+  return <>
       <FilmCameraControls camera={camera} />
       {!camera.preview && <><div className={styles.chapterDetail}>
         <span>{title}</span>
@@ -32,14 +52,10 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
       <input className={styles.seek} type="range" min={0} max={chapter.duration} step={0.1} value={localTime}
         aria-label="현재 장면 재생 위치" aria-valuetext={`${title} ${localTime.toFixed(1)}초 / ${chapter.duration}초`}
         disabled={!player.ready} onChange={(event) => player.seek(Number(event.target.value))} /></>}
-      <FilmThemeControls theme={player.theme} disabled={!player.ready} onChange={player.changeTheme} />
-      <FilmCenterControls />
       <div className={styles.textureRow}>
         <SelectField label="메뉴 펼침 방식" value={player.menuLayout ?? 'dock'} options={MENU_LAYOUTS} disabled={!player.ready} onChange={player.changeMenuLayout} />
         <span className={styles.textureDescription}>{(player.menuLayout ?? 'dock') === 'orbit' ? '구체가 화면 안쪽으로 나와 둘레에 장면 링을 펼칩니다' : '구체가 하단 3D 링으로 펼쳐집니다'}</span>
       </div>
-      <FilmTextureControls texture={player.texture} disabled={!player.ready}
-        onStyleChange={player.changeTextureStyle} onIntensityChange={player.changeTextureIntensity} />
       {!camera.preview && chapter.id === 'machine' && <FilmMachineControls subject={player.machineSubject}
         disabled={!player.ready} onChange={player.changeMachineSubject} />}
       {!camera.preview && (chapter.id === 'bars' || chapter.id === 'pie') && (
@@ -55,6 +71,5 @@ export function FilmControls({ player, camera }: { player: FilmPlayback; camera:
           {!camera.preview && <button disabled={!player.ready} onClick={player.restart}>처음부터</button>}
         </div>
       </div>
-    </div>
-  );
+  </>;
 }

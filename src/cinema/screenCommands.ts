@@ -33,7 +33,7 @@ export const SCREEN_SETTINGS: readonly Setting[] = [
   { key: 'blur', label: '얼굴 블러', min: 0, max: 100 },
   { key: 'voiceGender', label: '목소리 성별', options: [{ value: 'male', label: '남성' }, { value: 'female', label: '여성' }] },
   { key: 'voiceMode', label: '음성 방식', options: [{ value: 'browser', label: '브라우저 음성' }, { value: 'realtime', label: '실시간 음성' }] },
-  { key: 'provider', label: 'AI 제공자', options: ['openai', 'chatgpt', 'anthropic', 'gemini'].map(value => ({ value, label: value })) },
+  { key: 'provider', label: 'AI 제공자', options: ['openai', 'chatgpt', 'anthropic', 'gemini', 'mistral'].map(value => ({ value, label: value })) },
   { key: 'model', label: 'AI 모델' },
   { key: 'realtimeModel', label: '실시간 음성 모델' },
   { key: 'temperature', label: 'AI 응답 다양성', min: AI_LIMITS.temperature.min, max: AI_LIMITS.temperature.max },

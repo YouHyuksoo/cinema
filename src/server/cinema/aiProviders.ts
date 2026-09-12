@@ -61,6 +61,11 @@ export function buildChatRequest(runtime: AiConfig, system: string, turns: ChatT
         body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] },
           contents: turns.map(turn => ({ role: turn.role === 'assistant' ? 'model' : 'user', parts: [{ text: turn.content }] })),
           generationConfig: { temperature, maxOutputTokens } }) } };
+    case 'mistral':
+      return { url: 'https://api.mistral.ai/v1/chat/completions', init: { method: 'POST',
+        headers: { Authorization: `Bearer ${runtime.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: runtime.model, temperature, max_tokens: maxOutputTokens,
+          messages: [{ role: 'system', content: system }, ...turns] }) } };
     default:
       return { url: 'https://api.openai.com/v1/responses', init: { method: 'POST',
         headers: { Authorization: `Bearer ${runtime.apiKey}`, 'Content-Type': 'application/json' },
@@ -97,6 +102,12 @@ export function extractChatText(provider: AiProviderId, data: unknown): string {
   if (provider === 'gemini') {
     const candidates = Array.isArray(body.candidates) ? body.candidates as { content?: { parts?: { text?: string }[] } }[] : [];
     return candidates.flatMap(candidate => candidate.content?.parts ?? []).map(part => part.text ?? '').join('\n').trim();
+  }
+  if (provider === 'mistral') {
+    const choices = Array.isArray(body.choices) ? body.choices as { message?: { content?: string | { type?: string; text?: string }[] } }[] : [];
+    const content = choices[0]?.message?.content;
+    if (typeof content === 'string') return content.trim();
+    return (Array.isArray(content) ? content : []).filter(part => part.type === 'text').map(part => part.text ?? '').join('\n').trim();
   }
   const output = Array.isArray(body.output) ? body.output as { type?: string; content?: { type?: string; text?: string; refusal?: string }[] }[] : [];
   return output.filter(item => item.type === 'message').flatMap(item => item.content ?? [])

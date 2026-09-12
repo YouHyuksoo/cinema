@@ -32,7 +32,7 @@ import streamStyles from './jarvisStream.module.css';
 import type { FeedPollSummary } from './feedPolling';
 
 const overview = jarvisOverview();
-interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null }
+interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; themeSettings?: ReactNode; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null }
 export function JarvisMain(props: JarvisMainProps) {
   return props.voice ? <JarvisMainContent {...props} voice={props.voice}/> : <ConnectedJarvisMain {...props}/>;
 }
@@ -40,7 +40,7 @@ function ConnectedJarvisMain(props: JarvisMainProps) {
   const voice = useJarvisVoice(props.onChapter, props.actions);
   return <JarvisMainContent {...props} voice={voice}/>;
 }
-function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
+function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
   const [input, setInput] = useState('');
   const [cardFocus, setCardFocus] = useState<{ source:HTMLElement; label:string; openId:number } | null>(null);
   const nextFocusId = useRef(0);
@@ -54,6 +54,12 @@ function JarvisMainContent({ camera, onChapter, sceneSettings, theme = 'cyan', v
     <JarvisMainHeader feedStatus={feedStatus} />
     <div className={styles.body}>
     <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15} suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
+    {themeSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="테마 설정">
+      <details>
+        <summary>THEME / 테마</summary>
+        {themeSettings}
+      </details>
+    </section>}
     {sceneSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="연출 설정">
       <details>
         <summary>SCENE / 연출 설정</summary>

@@ -6,12 +6,20 @@ import { SignalFilm } from '@/cinema/SignalFilm';
 import type { FilmCamera } from '@/cinema/useFilmCamera';
 
 describe('main stream responsibilities', () => {
-  it('hosts the existing scene controls only in the left stream on the main page', () => {
+  it('splits theme and scene controls into ordered cards in the left stream', () => {
     const html = renderToStaticMarkup(createElement(SignalFilm));
     const left = html.match(/<aside\b[^>]*data-side="left"[^>]*>[\s\S]*?<\/aside>/)?.[0];
+    const theme = left?.match(/<section\b[^>]*aria-label="테마 설정"[^>]*>[\s\S]*?<\/section>/)?.[0];
+    const scene = left?.match(/<section\b[^>]*aria-label="연출 설정"[^>]*>[\s\S]*?<\/section>/)?.[0];
+    expect(theme).toContain('<summary>THEME / 테마</summary>');
+    for (const label of ['색상 테마', '중앙 배경', '화면 질감', '질감 강도']) expect(theme).toContain(label);
+    for (const label of ['운영자 영상 설정', '메뉴 펼침 방식', '재생 속도']) expect(theme).not.toContain(label);
     expect(left).toContain('aria-label="연출 설정"');
-    expect(left).toContain('<summary>SCENE / 연출 설정</summary>');
-    for (const label of ['색상 테마', '화면 질감', '질감 강도', '재생 속도', '거울 모드', '얼굴 확대']) expect(left).toContain(label);
+    expect(scene).toContain('<summary>SCENE / 연출 설정</summary>');
+    for (const label of ['운영자 영상 설정', '메뉴 펼침 방식', '재생 속도', '거울 모드', '얼굴 확대']) expect(scene).toContain(label);
+    for (const label of ['색상 테마', '중앙 배경', '화면 질감', '질감 강도']) expect(scene).not.toContain(label);
+    expect(left!.indexOf('aria-label="테마 설정"')).toBeLessThan(left!.indexOf('aria-label="연출 설정"'));
+    expect(html.match(/aria-label="테마 설정"/g)).toHaveLength(1);
     expect(html.match(/aria-label="연출 설정"/g)).toHaveLength(1);
     expect(html).not.toContain('aria-controls="film-playback-settings"');
   });

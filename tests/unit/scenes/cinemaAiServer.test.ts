@@ -16,6 +16,7 @@ const request = (method: string, body?: unknown, contentType = 'application/json
   method, headers: { origin: 'http://localhost:3000', 'Content-Type': contentType }, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
 });
 const anthropic = { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'sk-ant-secret', temperature: 0.4, maxOutputTokens: 600, instructions: '세 문장 이내로.' };
+const mistral = { ...anthropic, provider: 'mistral', model: 'mistral-small-latest', apiKey: 'mistral-secret' };
 const codexJwt = () => `h.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.s`;
 
 let dir = '';
@@ -32,7 +33,7 @@ describe('AI settings API', () => {
   it('starts unsaved, saves a provider with its key on the server only, and keeps the key on a blank resave', async () => {
     const initial = await (await getAi(request('GET'))).json();
     expect(initial).toMatchObject({ saved: false, ai: { provider: 'openai', hasApiKey: false, keySource: 'none' } });
-    expect(initial.providers.map((provider: { id: string }) => provider.id)).toEqual(['openai', 'chatgpt', 'anthropic', 'gemini']);
+    expect(initial.providers.map((provider: { id: string }) => provider.id)).toEqual(['openai', 'chatgpt', 'anthropic', 'gemini', 'mistral']);
 
     const saved = await (await putAi(request('PUT', anthropic))).json();
     expect(saved).toMatchObject({ saved: true, ai: { provider: 'anthropic', model: 'claude-sonnet-5', hasApiKey: true, keySource: 'config', instructions: '세 문장 이내로.' } });
@@ -64,7 +65,7 @@ describe('AI settings API', () => {
     // The settings screen saw Anthropic, then Gemini: both keys are on file and the status lists both as switchable.
     let status = await (await assistantStatus()).json();
     expect(status).toMatchObject({ selectedProvider: 'gemini', selectedModel: 'gemini-2.5-flash' });
-    expect(status.providers.map((p: { id: string; ready: boolean }) => [p.id, p.ready])).toEqual([['openai', false], ['chatgpt', false], ['anthropic', true], ['gemini', true]]);
+    expect(status.providers.map((p: { id: string; ready: boolean }) => [p.id, p.ready])).toEqual([['openai', false], ['chatgpt', false], ['anthropic', true], ['gemini', true], ['mistral', false]]);
     expect(JSON.stringify(status)).not.toMatch(/sk-ant-secret|AIza1/);
     // Back to Anthropic from the main screen without re-entering its key; the catalogue's first model applies.
     const switched = await (await patchAi(request('PATCH', { provider: 'anthropic' }))).json();
@@ -127,6 +128,17 @@ describe('AI settings API', () => {
     const notFound = await (await testAi(request('POST', { ...anthropic, apiKey: '' }))).json();
     expect(notFound).toMatchObject({ ok: false });
     expect(notFound.error).toContain('모델을 쓸 수 없습니다');
+  });
+  it('stores a Mistral key server-side, tests it, and keeps it ready after switching providers', async () => {
+    await putAi(request('PUT', mistral));
+    expect(await (await getAi(request('GET'))).json()).toMatchObject({ ai: { provider: 'mistral', model: 'mistral-small-latest', hasApiKey: true, keySource: 'config' } });
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ choices: [{ message: { content: '확인' } }] }));
+    expect(await (await testAi(request('POST', { ...mistral, apiKey: '' }))).json()).toMatchObject({ ok: true, provider: 'mistral', reply: '확인' });
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe('https://api.mistral.ai/v1/chat/completions');
+    await putAi(request('PUT', anthropic));
+    const status = await (await assistantStatus()).json();
+    expect(status.providers.find((provider: { id: string }) => provider.id === 'mistral')).toMatchObject({ ready: true });
+    expect(JSON.stringify(status)).not.toContain('mistral-secret');
   });
   it('answers free questions through the saved provider and reports it in the status, while realtime stays OpenAI-only', async () => {
     await putAi(request('PUT', anthropic));
