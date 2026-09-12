@@ -16,6 +16,7 @@ describe('AI settings model', () => {
     expect(AI_PROVIDERS.map(provider => provider.id)).toEqual(['openai', 'chatgpt', 'anthropic', 'gemini']);
     expect(AI_PROVIDERS.filter(provider => provider.realtime).map(provider => provider.id)).toEqual(['openai']);
     expect(AI_PROVIDERS.find(provider => provider.id === 'chatgpt')?.auth).toBe('codex');
+    expect(AI_PROVIDERS.find(provider => provider.id === 'chatgpt')?.models).toContain('gpt-5.6-luna');
   });
   it('validates provider, model, ranges and instruction length, filling defaults for omitted settings', () => {
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-4.1-mini' })).toEqual({ ok: true, config: { ...DEFAULT_AI_CONFIG } });

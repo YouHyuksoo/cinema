@@ -28,7 +28,7 @@ export const AI_PROVIDERS: readonly AiProvider[] = [
   { id: 'openai', label: 'OpenAI API', models: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-5-mini', 'gpt-5'], keyHint: 'sk-…',
     realtime: true, auth: 'key', docs: 'https://platform.openai.com/api-keys' },
   // Only the models the ChatGPT account is entitled to on the Codex backend (checked 2026-09); others answer 400.
-  { id: 'chatgpt', label: 'ChatGPT 구독 (Codex 로그인)', models: ['gpt-6-astra', 'gpt-5.5'], keyHint: 'API 키 불필요',
+  { id: 'chatgpt', label: 'ChatGPT 구독 (Codex 로그인)', models: ['gpt-6-astra', 'gpt-5.6-luna', 'gpt-5.5'], keyHint: 'API 키 불필요',
     realtime: false, auth: 'codex', docs: 'https://developers.openai.com/codex/cli' },
   { id: 'anthropic', label: 'Anthropic Claude', models: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5-20251001'], keyHint: 'sk-ant-…',
     realtime: false, auth: 'key', docs: 'https://console.anthropic.com/settings/keys' },
