@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { voiceCoreCanvasTransform, voiceCoreEnvelope, voiceCoreState, VOICE_CORE_SCALE_MAX, VOICE_CORE_VIEW } from '@/cinema/jarvisVoiceCore';
-import { projectReactor, reactorDiscPoint, reactorRimGlyphs, voiceTeslaSparks } from '@/cinema/voiceReactorGeometry';
+import { compactVoiceCoreCanvasTransform, voiceCoreCanvasTransform, voiceCoreEnvelope, voiceCoreState, VOICE_CORE_SCALE_MAX, VOICE_CORE_VIEW } from '@/cinema/jarvisVoiceCore';
+import { projectReactor, reactorProjector, reactorDiscPoint, reactorRimGlyphs, voiceTeslaSparks } from '@/cinema/voiceReactorGeometry';
 import { drawJarvisVoiceField } from '@/cinema/drawJarvisVoiceField';
 import type { JarvisPhase } from '@/cinema/jarvisAudio';
 
 const phases: JarvisPhase[] = ['idle', 'requesting', 'listening', 'thinking', 'speaking', 'error'];
 
 describe('rotating voice reactor audio and motion contract', () => {
+  it('preserves projection depth for painter sorting, including invalid pitch fallback', () => {
+    const point = { x: 36, y: -42, z: 80 };
+    for (const pitch of [.27, -.6, 1.4, NaN, Infinity]) {
+      expect(projectReactor(point, pitch)).toEqual(reactorProjector(pitch)(point));
+    }
+  });
   it.each(['listening', 'speaking'] as const)('%s powers the reactor with actual sound energy', phase => {
     const quiet = voiceCoreState(3, phase, 0), active = voiceCoreState(3, phase, .8);
     expect(voiceTeslaSparks(quiet)).toHaveLength(0);
@@ -67,6 +73,12 @@ describe('rotating voice reactor audio and motion contract', () => {
     expect(VOICE_CORE_VIEW.y).toBeLessThan(148);
     expect(VOICE_CORE_VIEW.y).toBeGreaterThan(120);
     expect(projectReactor({ x: 0, y: 0, z: 0 }).y).toBe(VOICE_CORE_VIEW.y);
+  });
+  it('fills a square corner indicator around the same reactor center', () => {
+    const compact = compactVoiceCoreCanvasTransform(120, 120);
+    expect(compact.scale).toBe(.5);
+    expect(compact.x + VOICE_CORE_VIEW.x * compact.scale).toBe(60);
+    expect(compact.y + VOICE_CORE_VIEW.y * compact.scale).toBe(60);
   });
   it('inscribes alien glyphs on the rim instead of gear teeth', () => {
     const a = voiceCoreState(1.2, 'idle', 0), b = voiceCoreState(2.8, 'idle', 0);

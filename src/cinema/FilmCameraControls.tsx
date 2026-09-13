@@ -45,7 +45,7 @@ export function FilmCameraControls({ camera }: { camera: FilmCameraMode }) {
           : camera.tracking === 'error' ? camera.trackingError
             : camera.tracking === 'searching' ? '얼굴을 찾고 있어요. 카메라를 바라봐 주세요.' : '얼굴 추적 모델을 준비하고 있어요.'}
       </p>}
-      <p className={styles.cameraNote}>영상은 이동과 크기 조절이 가능한 팝업에 표시합니다. 음성 대화는 터빈의 AI 대화에서 시작합니다.</p>
+      <p className={styles.cameraNote}>영상은 이동과 크기 조절이 가능한 팝업에 표시합니다. 음성 대화는 중앙 마이크 또는 터빈의 AI 대화에서 시작합니다.</p>
       {camera.preview && <p className={styles.cameraNote}>얼굴을 영상 영역 안에 자동으로 맞춥니다.</p>}
     </fieldset>
   );

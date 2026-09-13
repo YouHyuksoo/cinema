@@ -42,6 +42,22 @@ describe('film texture bloom pass', () => {
   });
   it('is turned off for the main backdrop only', () => {
     const source = readFileSync('src/cinema/useFilmPlayback.ts', 'utf8');
-    expect(source).toContain('current.texture, { bloom: !cameraView.current });');
+    expect(source).toContain('current.texture, { bloom: !cameraView.current, now });');
+  });
+  it('reuses only the soft glow between updates and refreshes on seeking and resizing', () => {
+    const draw = createFilmTextureRenderer('cyan'), frame = recordingCanvas();
+    const settings = { style: 'glass' as const, intensity: .55 };
+    draw(frame.ctx, 1920, 1080, 3, settings, { now: 100 });
+    const bloom = surfaces[blurSurface()];
+    const draws = drawImages(frame);
+    draw(frame.ctx, 1920, 1080, 3.016, settings, { now: 116 });
+    expect(drawImages(bloom)).toBe(1);
+    expect(drawImages(frame)).toBe(draws * 2);
+    draw(frame.ctx, 1920, 1080, 3.034, settings, { now: 134 });
+    expect(drawImages(bloom)).toBe(2);
+    draw(frame.ctx, 1920, 1080, 1, settings, { now: 140 });
+    expect(drawImages(bloom)).toBe(3);
+    draw(frame.ctx, 1280, 720, 1.006, settings, { now: 146 });
+    expect(drawImages(bloom)).toBe(4);
   });
 });

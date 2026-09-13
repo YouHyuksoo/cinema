@@ -138,7 +138,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if ('speechSynthesis' in window) {
         current.busy = true;
         const utterance = new SpeechSynthesisUtterance(JARVIS_STARTUP_MESSAGE);
-        utterance.lang = 'en-US'; utterance.pitch = .72; utterance.rate = .9;
+        utterance.lang = 'en-US';
         const english = window.speechSynthesis.getVoices().filter(voice => /^en[-_]/i.test(voice.lang));
         utterance.voice = english.find(voice => /David|Mark|Guy|Daniel|\bmale\b/i.test(voice.name)) ?? english[0] ?? null;
         const finish = () => {
@@ -177,8 +177,8 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       finished = true;
       if (current.speechTimer) clearTimeout(current.speechTimer);
       current.speechTimer = undefined; current.busy = false;
-      if (chapter) { stop(); if (machineSubject) chapterRef.current(chapter, machineSubject); else chapterRef.current(chapter); }
-      else if (current.enabled) listen(); else phaseTo('idle');
+      if (chapter) { if (machineSubject) chapterRef.current(chapter, machineSubject); else chapterRef.current(chapter); }
+      if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
       const direct = resolveScreenCommands(message);

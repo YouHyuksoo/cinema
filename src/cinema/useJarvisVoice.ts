@@ -1,16 +1,16 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useJarvisLocalVoice } from './useJarvisLocalVoice';
 import { JarvisRealtimeSession } from './jarvisRealtimeSession';
+import { playJarvisShutdownSound } from './jarvisShutdownSound';
 import type { JarvisAudioFrame, JarvisPhase } from './jarvisAudio';
 import type { FilmId } from './filmProgram';
-import { DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
 import type { HatcheryActions } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA } from './filmSceneData';
 import type { MachineSubject } from './machinePresentation';
 import { cinemaApi, cinemaApiUrl } from './cinemaApi';
 import type { AiProviderId, AiProviderOption, AiVoiceMode } from './aiConfig';
-import { realtimeVoiceFor } from './jarvisVoiceGender';
+import { isVoiceGender, realtimeVoiceFor, type VoiceGender } from './jarvisVoiceGender';
 import { describeScreenState, validateScreenCommand, type ScreenExecutor } from './screenCommands';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
@@ -29,7 +29,6 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const [statusError, setStatusError] = useState('');
   const [models, setModels] = useState<{ text: string | null; realtime: string | null }>({ text: null, realtime: null });
   const [connected, setConnected] = useState(false);
-  const [robotVoice, setRobotVoice] = useState<RobotVoiceSettings>(DEFAULT_ROBOT_VOICE);
   const [realtimeView, setRealtimeView] = useState(false);
   const [active, setActive] = useState(false);
   const [phase, setPhase] = useState<JarvisPhase>('idle');
@@ -38,6 +37,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const [error, setError] = useState('');
   const audioRef = useRef<JarvisAudioFrame>({ phase: 'idle', analyser: null });
   const session = useRef<JarvisRealtimeSession | null>(null);
+  const inputStopper = useRef<(() => void) | null>(null);
   const chapter = useRef(onChapter);
   const actionsRef = useRef(actions);
   const screen: ScreenExecutor = async input => {
@@ -66,7 +66,11 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
       const state = { ...base?.state, ...voiceState };
       return { ok: true, message: describeScreenState(state, c.key), state };
     }
-    if (c.key === 'voiceGender') { local.speechProfile.setGender(c.value as 'male' | 'female'); return { ok: true, message: `목소리를 ${c.value === 'male' ? '남성' : '여성'}으로 설정했습니다. 실시간 음성은 다음 연결부터 적용됩니다.` }; }
+    if (c.key === 'voiceGender') {
+      const value = c.value as VoiceGender;
+      await patchSettings({ voiceGender: value }, '목소리 설정을 저장하지 못했습니다.');
+      return { ok: local.speechProfile.preferredGender.current === value, message: `목소리를 ${value === 'male' ? '남성' : '여성'}으로 저장했습니다. 실시간 음성은 다음 연결부터 적용됩니다.` };
+    }
     if (['voiceMode', 'provider', 'model'].includes(c.key)) {
       if (switching) return { ok: false, message: '다른 AI 설정 변경이 진행 중입니다. 잠시 후 다시 요청해주세요.' };
       const patch = c.key === 'voiceMode' ? { voiceMode: c.value } : c.key === 'provider' ? { provider: c.value } : { model: c.value };
@@ -85,7 +89,6 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const local = useJarvisLocalVoice(onChapter, { speakReplies: !realtime, actions: actions ? { ...actions, screen: input => screenRef.current(input) } : undefined });
   useEffect(() => { chapter.current = onChapter; }, [onChapter]);
   useEffect(() => { actionsRef.current = actions; }, [actions]);
-  useEffect(() => { session.current?.setRobotVoice(robotVoice); }, [robotVoice]);
   const readStatus = (signal?: AbortSignal) => fetch(cinemaApiUrl('assistant'), { signal, cache: 'no-store' })
     .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
     .then(data => {
@@ -94,6 +97,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
       setRealtime(data.useRealtime === true);
       setRealtimeAvailable(data.realtimeAvailable === true);
       setVoiceModeState(data.voiceMode === 'browser' ? 'browser' : 'realtime');
+      if (isVoiceGender(data.voiceGender)) local.speechProfile.setGender(data.voiceGender);
       setProviderLabel(typeof data.providerLabel === 'string' ? data.providerLabel : null);
       setProvider(typeof data.selectedProvider === 'string' ? data.selectedProvider as AiProviderId : null);
       setModel(typeof data.selectedModel === 'string' ? data.selectedModel : null);
@@ -111,6 +115,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     return () => { abort.abort(); hide(); window.removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', visibility); };
   }, []);
   async function start() {
+    inputStopper.current?.();
     if (configured === null) return;
     if (!configured || !realtime) { setRealtimeView(false); await local.start(); return; }
     if (active) return;
@@ -132,12 +137,21 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
         });
       },
     });
-    session.current = current; current.setRobotVoice(robotVoice); await current.start(realtimeVoiceFor(local.speechProfile.gender));
+    session.current = current; await current.start(realtimeVoiceFor(local.speechProfile.gender));
   }
-  function stop() { session.current?.stop(); local.stop(); }
+  function stop() {
+    const wasActive = active || local.active;
+    session.current?.stop(); local.stop();
+    if (wasActive) playJarvisShutdownSound();
+  }
+  const registerInputStopper = useCallback((stopper: () => void) => {
+    inputStopper.current = stopper;
+    return () => { if (inputStopper.current === stopper) inputStopper.current = null; };
+  }, []);
   /** Persist a main-screen quick setting (voice mode, provider, model), then re-read what the server will actually do. */
-  async function patchSettings(change: { voiceMode?: AiVoiceMode; provider?: AiProviderId; model?: string }, failure: string) {
+  async function patchSettings(change: { voiceMode?: AiVoiceMode; voiceGender?: VoiceGender; provider?: AiProviderId; model?: string }, failure: string) {
     if (active || switching) return;
+    if (change.voiceMode) inputStopper.current?.();
     setSwitching(true); setStatusError('');
     try {
       const response = await cinemaApi('admin/ai', { method: 'PATCH', body: JSON.stringify(change) });
@@ -147,6 +161,10 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     finally { setSwitching(false); }
   }
   const setVoiceMode = (mode: AiVoiceMode) => patchSettings({ voiceMode: mode }, '음성 방식을 바꾸지 못했습니다.');
+  const setVoiceGender = (gender: VoiceGender) => {
+    local.speechProfile.setGender(gender);
+    return patchSettings({ voiceGender: gender }, '목소리 설정을 저장하지 못했습니다.');
+  };
   const selectProvider = (id: AiProviderId, nextModel?: string) => patchSettings({ provider: id, ...(nextModel ? { model: nextModel } : {}) }, 'AI 프로바이더를 바꾸지 못했습니다.');
   async function ask(input: string) {
     if (active) session.current?.ask(input);
@@ -155,8 +173,8 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const selected = realtimeView ? { phase, transcript, messages, error, source: 'OpenAI Realtime · AI 생성 음성',
     supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
   return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError,
-    provider, model, providers, selectProvider, voiceGender: local.speechProfile.gender, setVoiceGender: local.speechProfile.setGender,
-    robotVoice, setRobotVoice, speechProfile: local.speechProfile,
+    provider, model, providers, selectProvider, voiceGender: local.speechProfile.gender, setVoiceGender,
+    speechProfile: local.speechProfile,
     aiConnection: { configured, statusError, models, connected, realtimeActive: active, error: realtimeView ? error : local.error },
-    start, stop, ask, stopReply: realtimeView ? () => session.current?.interrupt() : local.stopReply };
+    start, stop, ask, registerInputStopper, stopReply: realtimeView ? () => session.current?.interrupt() : local.stopReply };
 }

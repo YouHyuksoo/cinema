@@ -6,7 +6,10 @@
 .menu[data-turbine-open=true] { --blade-sweep:0deg; --blade-fold:0deg; transform:translateX(12px); pointer-events:auto; }
 .hoverTarget { position:absolute; left:48px; top:32px; width:204px; height:190px; border-radius:50%; pointer-events:auto; transform:scale(.72); transition:transform .45s ease; }
 .menu[data-turbine-open=true] .hoverTarget { transform:scale(1); }
-.art { position:absolute; left:0; bottom:-20px; width:300px; height:300px; perspective:750px; pointer-events:none; transform:scale(.72); transform-origin:center; transition:transform .45s cubic-bezier(.22,.8,.2,1); }
+.art { position:absolute; left:0; bottom:-20px; width:300px; height:300px; perspective:750px; pointer-events:none; transform:scale(.72); transform-origin:center; transition:transform .45s cubic-bezier(.22,.8,.2,1),filter .24s ease; }
+.menu[data-turbine-open=false]:hover .art { filter:brightness(1.13) saturate(1.12) drop-shadow(0 0 12px color-mix(in srgb,var(--film-accent) 42%,transparent)); }
+.menu[data-turbine-open=false]:hover .glassSheen { opacity:.68; }
+.menu[data-turbine-open=false]:hover .hub span { animation:turbineHoverPulse 1.5s ease-in-out infinite; }
 .menu[data-turbine-open=true] .art { transform:scale(1); }
 .pose { width:100%; height:100%; transform:rotateX(40deg); transform-origin:center; transform-style:preserve-3d; }
 .float { position:relative; width:100%; height:100%; transform-style:preserve-3d; animation:float 5s ease-in-out infinite; }
@@ -43,11 +46,13 @@
 .blade:disabled { cursor:default; }
 .blade:disabled .legend { opacity:.45; }
 .hub { position:absolute; left:124px; top:124px; width:52px; height:52px; border-radius:50%; border:3px solid #bdcedaaa; background:linear-gradient(135deg,#d3d9dc99,#56616a88 26%,#121b2499 59%,#8a969f88); box-shadow:0 8px 0 #10171e99,0 10px 10px #0005,inset 0 0 0 3px #bcd9ee24; padding:6px; cursor:pointer; z-index:5; pointer-events:auto; transform:translateZ(8px); }
+.menu[data-turbine-open=false] .hub::before { content:''; position:absolute; inset:-18px; border-radius:50%; }
 .hub span { display:block; width:100%; height:100%; border:2px solid var(--film-accent); border-radius:50%; background:radial-gradient(circle at 35% 28%,#c0dfee30,#27344018 65%,#10192120); box-shadow:0 0 6px var(--film-accent),inset 0 0 7px #0003; }
 .hub i { position:absolute; inset:4px; border-radius:50%; border-top:1px solid #f1f5f7; pointer-events:none; }
 .hub:focus-visible { outline:3px solid var(--film-accent); outline-offset:8px; }
 @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-12px); } }
 @keyframes turbineSpin { from { --turbine-spin:0deg; } to { --turbine-spin:360deg; } }
+@keyframes turbineHoverPulse { 0%,100% { box-shadow:0 0 6px var(--film-accent),inset 0 0 7px #0003; } 50% { box-shadow:0 0 14px var(--film-accent),inset 0 0 11px color-mix(in srgb,var(--film-accent) 24%,transparent); } }
 .menu:has([data-reactor-shock]) .float { animation:turbineJolt .085s linear infinite; }
 @keyframes turbineJolt { 0%,100% { transform:translate(0,0) rotate(-1deg); } 25% { transform:translate(3px,-2px) rotate(2deg); } 50% { transform:translate(-3px,1px) rotate(-2deg); } 75% { transform:translate(2px,2px) rotate(1deg); } }
 /* Small screens: the folded rotor takes the globe's resting size (published by useFilmMenuGlobe as --hatchery-orb-*)
@@ -65,11 +70,12 @@
   .menu[data-turbine-open=true] .legend svg { width:29px; height:29px; }
   .menu[data-turbine-open=true] .rotor { animation-play-state:paused; }
 }
-@media(prefers-reduced-motion:reduce) { .menu,.art,.hoverTarget,.blade,.legend { transition:none; } .float,.rotor { animation:none; } }
+@media(prefers-reduced-motion:reduce) { .menu,.art,.hoverTarget,.blade,.legend { transition:none; } .float,.rotor,.hub span { animation:none; } }
 @media(prefers-reduced-motion:reduce) { .menu:has([data-reactor-shock]) .float { animation:none; } }
 /* Both resting corner instruments share the globe's viewport-derived diameter and baseline. */
 .menu[data-turbine-open=false] { width:var(--hatchery-orb-diameter,120px); height:var(--hatchery-orb-diameter,120px); left:16px; bottom:20px; transform:none; }
 .menu[data-turbine-open=false] .art { left:50%; top:50%; bottom:auto; margin:-150px 0 0 -150px; transform:scale(var(--hatchery-orb-scale,.5333)); }
+.menu[data-turbine-open=false]:hover .art { transform:scale(calc(var(--hatchery-orb-scale,.5333) * 1.22)); }
 .menu[data-turbine-open=false] .hoverTarget { inset:0; width:100%; height:100%; transform:none; }
 .menu[data-turbine-open=false] .float { animation:none; }
 .menu[data-turbine-open=false] .hub { transform:none; }

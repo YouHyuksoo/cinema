@@ -19,12 +19,12 @@ describe('Jarvis Korean voice selection by gender', () => {
     expect(selectJarvisVoice([voice('English Male', 'en-US')])).toBeNull();
     expect(selectJarvisVoice([])).toBeNull();
   });
-  it('applies the low robot register to the male voice and a natural pitch to the female voice', () => {
-    const utterance = { lang: '', voice: null, pitch: 1, rate: 1, volume: 1 } as unknown as SpeechSynthesisUtterance;
+  it('selects the requested voice without changing the browser default pitch or rate', () => {
+    const utterance = { lang: '', voice: null, pitch: 1.2, rate: .8, volume: .9 } as unknown as SpeechSynthesisUtterance;
     configureJarvisSpeech(utterance, [female, male], 'male');
-    expect(utterance).toMatchObject({ lang: 'ko-KR', voice: male, pitch: .72, rate: .94 });
+    expect(utterance).toMatchObject({ lang: 'ko-KR', voice: male, pitch: 1.2, rate: .8, volume: .9 });
     configureJarvisSpeech(utterance, [female, male], 'female');
-    expect(utterance).toMatchObject({ voice: female, pitch: 1 });
+    expect(utterance).toMatchObject({ voice: female, pitch: 1.2, rate: .8, volume: .9 });
   });
   it('maps the two genders onto one realtime voice each and back', () => {
     expect(VOICE_GENDERS.map(option => option.id)).toEqual(['male', 'female']);

@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, type CSSProperties, type Ref } from 'react';
+import { memo, useEffect, useImperativeHandle, useRef, type CSSProperties, type Ref } from 'react';
 import { FilmChapterIcon } from './FilmChapterIcon';
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import styles from './film.module.css';
@@ -16,7 +16,7 @@ const SHORT_LABELS: Partial<Record<FilmId, string>> = {
 };
 
 /** Drag rotates the ring; a click on any tile launches that scene. Keyboard arrows still align, Enter runs the front tile. */
-export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, onExpand, onCollapse, globeButtonRef, onOpened, layout = 'dock' }: {
+export const FilmChapterMenu = memo(function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, onExpand, onCollapse, globeButtonRef, onOpened, layout = 'dock' }: {
   active: FilmId | null; disabled: boolean; onSelect: (id: FilmId) => void;
   menuOpen?: boolean; onExpand?: () => void; onCollapse?: () => void; globeButtonRef?: Ref<HTMLButtonElement>;
   onOpened?: () => void;
@@ -88,4 +88,4 @@ export function FilmChapterMenu({ active, disabled, onSelect, menuOpen = true, o
         faces={globe.faces} ballRef={globe.ball} events={globe.events} blockClick={globe.blockClick} />
     </nav>
   );
-}
+});

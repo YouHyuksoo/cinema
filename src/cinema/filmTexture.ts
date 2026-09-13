@@ -8,6 +8,8 @@ export type FilmTextureStyle = 'none' | 'glass' | 'film' | 'hologram' | 'underwa
 export interface FilmTextureOptions {
   /** Screen-space bloom (a blurred 320x180 copy of the frame). Off for the main backdrop, whose star field gains nothing from it. */
   bloom?: boolean;
+  /** Wall-clock RAF timestamp. Reuse the soft glow between 30 Hz updates. */
+  now?: number;
 }
 
 export interface FilmTextureSettings {
@@ -152,6 +154,7 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
   const filmTint = color('rgba(242,209,153,.018)');
   const bloom = surface(320, 180);
   const bloomContext = bloom.getContext('2d');
+  let previousBloom: { context: CanvasRenderingContext2D; width: number; height: number; time: number; now: number; style: FilmTextureStyle } | null = null;
   const patterns = new WeakMap<CanvasRenderingContext2D, { grain: CanvasPattern | null; scan: CanvasPattern | null }>();
 
   return function drawFilmTexture(ctx: CanvasRenderingContext2D, width: number, height: number,
@@ -186,13 +189,21 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
     }
 
     if (bloomContext && options?.bloom !== false) {
-      bloomContext.clearRect(0, 0, 320, 180);
-      bloomContext.filter = 'blur(3px)';
-      bloomContext.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, 320, 180);
+      const now = options?.now;
+      const refresh = now === undefined || !previousBloom || previousBloom.context !== ctx
+        || previousBloom.width !== width || previousBloom.height !== height || previousBloom.style !== settings.style
+        || t < previousBloom.time || t - previousBloom.time > .2
+        || now < previousBloom.now || now - previousBloom.now >= 1000 / 30;
+      if (refresh) {
+        bloomContext.clearRect(0, 0, 320, 180);
+        bloomContext.filter = 'blur(3px)';
+        bloomContext.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, 320, 180);
+        previousBloom = { context: ctx, width, height, time: t, now: now ?? 0, style: settings.style };
+      }
       ctx.globalCompositeOperation = 'screen';
       ctx.globalAlpha = intensity * (settings.style === 'film' ? .13 : .3);
       ctx.drawImage(bloom, 0, 0, width, height);
-    }
+    } else previousBloom = null;
 
     // Physical pixel dimensions above make the pass independent of scene scale;
     // normalized coordinates below keep material detail consistent across DPRs.

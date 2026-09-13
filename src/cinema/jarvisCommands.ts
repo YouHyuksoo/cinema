@@ -16,7 +16,7 @@ export function jarvisOverview() {
 export function resolveJarvisCommand(input: string): JarvisReply | null {
   const text = input.trim().toLowerCase().replace(/에스\s*피\s*씨/g, 'spc');
   const overview = jarvisOverview();
-  if (/보여|열어|이동|틀어|재생/.test(text)) {
+  if (/보여|열어|이동|전환|틀어|재생/.test(text)) {
     if (/지\s*마|말아|않/.test(text)) return null;
     const targetText = text.split(/말고|대신/).at(-1)!;
     const carRequested = /자동차|레이싱|f1|포뮬러|차량/.test(targetText);
@@ -25,8 +25,10 @@ export function resolveJarvisCommand(input: string): JarvisReply | null {
     const machineSubject: MachineSubject | undefined = carRequested ? 'car' : pcbRequested ? 'pcb' : undefined;
     if (machineSubject) return { reply: `${MACHINE_PRESENTATIONS[machineSubject].title} 연출을 엽니다.`, source: 'local', chapter: 'machine', machineSubject };
     const aliases: [RegExp, FilmId][] = [[/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'], [/cctv|씨씨티비|감시\s*카메라|감시/, 'cctv'],
-      [/기어/, 'gears'], [/분해/i, 'machine'], [/에너지/, 'energy'],
-      [/코너/, 'corners'], [/막대/, 'bars'], [/파이/, 'pie'], [/바이저.*평면/, 'visorPan'], [/바이저/, 'visor']];
+      [/기어/, 'gears'], [/설비\s*스캔|스캔/, 'scan'], [/지표\s*펼침|지표/, 'unfold'], [/변화\s*추적|추적/, 'trace'],
+      [/정보\s*(?:콘솔|창)|콘솔/, 'console'], [/공정망|공정\s*네트워크/, 'network'], [/제품\s*내부\s*검사|내부\s*검사/, 'product'],
+      [/분해/i, 'machine'], [/에너지/, 'energy'], [/코너/, 'corners'], [/막대/, 'bars'], [/파이/, 'pie'],
+      [/바이저.*평면/, 'visorPan'], [/바이저/, 'visor']];
     const id = aliases.find(([pattern]) => pattern.test(targetText))?.[1]
       ?? FILM_CHAPTERS.find(c => targetText.includes(c.title.toLowerCase()))?.id;
     if (id) return { reply: `${FILM_CHAPTERS.find(c => c.id === id)!.title} 연출을 엽니다.`, source: 'local', chapter: id,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FilmControls } from './FilmControls';
 import { FilmChapterMenu } from './FilmChapterMenu';
 import type { FilmPlayback } from './useFilmPlayback';
@@ -6,6 +6,7 @@ import type { FilmCameraMode } from './FilmCameraControls';
 import styles from './film.module.css';
 import mobileStyles from './filmDock.module.css';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
+import type { FilmId } from './filmProgram';
 
 const dockIcon = (name: string, paths: ReactNode) => (
   <svg className={mobileStyles.actionIcon} data-dock-icon={name} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -23,6 +24,8 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   const previousMenuOpen = useRef(menuOpen);
   const focusWasInDock = useRef(false);
   const focusIntent = useRef<'globe' | 'front' | null>(null);
+  const latest = useRef({ player, camera, onMenuOpenChange });
+  latest.current = { player, camera, onMenuOpenChange };
 
   useEffect(() => {
     const changed = previousMenuOpen.current !== menuOpen;
@@ -36,17 +39,17 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
     focusIntent.current = null;
   }, [menuOpen]);
 
-  const collapseMenu = () => {
+  const collapseMenu = useCallback(() => {
     focusIntent.current = 'globe';
     setExpanded(false);
-    onMenuOpenChange(false);
-  };
-  const expandMenu = () => {
+    latest.current.onMenuOpenChange(false);
+  }, []);
+  const expandMenu = useCallback(() => {
     focusIntent.current = 'front';
     setExpanded(false);
-    onMenuOpenChange(true);
-  };
-  const focusOpenedMenu = () => {
+    latest.current.onMenuOpenChange(true);
+  }, []);
+  const focusOpenedMenu = useCallback(() => {
     if (focusIntent.current !== 'front') return;
     const active = document.activeElement;
     const survivingOutsideFocus = active instanceof HTMLElement && active !== document.body && !dock.current?.contains(active);
@@ -54,7 +57,12 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
       dock.current?.querySelector<HTMLButtonElement>('[data-front="true"]')?.focus({ preventScroll: true });
     }
     focusIntent.current = null;
-  };
+  }, []);
+  const selectChapter = useCallback((id: FilmId) => {
+    focusIntent.current = 'globe'; setExpanded(false);
+    const current = latest.current;
+    current.camera.closePreview(); current.player.selectChapter(id); current.onMenuOpenChange(false);
+  }, []);
   const { chapter, localTime } = player.position;
   return (
     <div ref={dock} id="film-dock-panel" className={`${styles.filmDock} ${mobileStyles.dock}`} data-menu-open={menuOpen} data-menu-layout={player.menuLayout ?? 'dock'}
@@ -103,9 +111,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
       </div>
       </div>
       <FilmChapterMenu active={camera.preview ? null : chapter.id} disabled={!player.ready} menuOpen={menuOpen} layout={player.menuLayout ?? 'dock'}
-        onExpand={expandMenu} onCollapse={collapseMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={(id) => {
-          focusIntent.current = 'globe'; setExpanded(false); camera.closePreview(); player.selectChapter(id); onMenuOpenChange(false);
-        }} />
+        onExpand={expandMenu} onCollapse={collapseMenu} globeButtonRef={globeButton} onOpened={focusOpenedMenu} onSelect={selectChapter} />
     </div>
   );
 }

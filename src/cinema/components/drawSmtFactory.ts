@@ -13,6 +13,7 @@ export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
   options: { ground?: boolean } = {}) {
   const project=(p:FactoryPoint)=>factoryProject(p,state);
   const camera=factoryCamera(state);
+  const transform=ctx.getTransform();
   const path=(points:FactoryPoint[],color:string,fill?:string)=>{
     if(fill) fillSpatialPolygon(ctx,camera,points.map(factoryWorld),fill,color);
     else strokeSpatialPath(ctx,camera,points.map(factoryWorld),color,.7);
@@ -39,6 +40,16 @@ export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
     const halfDepth=Math.cos(camera.pitch)*(Math.abs(Math.cos(camera.yaw))*w+Math.abs(Math.sin(camera.yaw))*SMT_FACTORY_DEPTH)/2
       +Math.abs(Math.sin(camera.pitch))*h/2;
     if(depth+halfDepth<camera.near) continue;
+    // Cull whole cabinets (including front labels), before issuing their many hidden paths.
+    // Near-plane crossings still go through the existing polygon clipper.
+    const bounds=[x-w/2-80,x+w/2+80].flatMap(bx=>[-60,h+60].flatMap(by=>[z-SMT_FACTORY_DEPTH-1,z+1]
+      .map(bz=>project({x:bx,y:by,z:bz}))));
+    if(bounds.every(p=>p.visible)) {
+      const pixels=bounds.map(p=>({x:transform.a*p.x+transform.c*p.y+transform.e,
+        y:transform.b*p.x+transform.d*p.y+transform.f}));
+      if(pixels.every(p=>p.x < -2)||pixels.every(p=>p.x > ctx.canvas.width+2)||
+        pixels.every(p=>p.y < -2)||pixels.every(p=>p.y > ctx.canvas.height+2)) continue;
+    }
     const selected=station.key===(state.manualSelection===undefined?state.station.key:state.manualSelection);
     ctx.globalAlpha=state.presence*(selected?1:(1-state.focus*.70)*(state.manualSelection===undefined?smooth(100,230,front.depth):1));
     const heat=selected&&state.manualSelection===undefined&&state.stop.kind==='thermal'?1:0;
@@ -59,6 +70,7 @@ export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
     const corners=[-1,1].flatMap(u=>[-1,1].map(v=>surfaceProject(u*surfaceWidth/2,v*surfaceHeight/2)));
     if(state.cameraZ>z&&corners.every(p=>p.visible)) drawProjectedFilmSurface(ctx,{
       width:surfaceWidth,height:surfaceHeight,project:surfaceProject,
+      cache:{key:`${station.id}:${heat}:${fonts.label}:${fonts.mono}`,time:state.time},
       draw:surface=>{surface.translate(0,h/2);drawSmtEquipment(surface,fonts,station,state.time,heat);},
     });
     else if(state.cameraZ>z) path([

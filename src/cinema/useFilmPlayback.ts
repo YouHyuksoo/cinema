@@ -22,6 +22,7 @@ import { DEFAULT_MACHINE_SUBJECT, isMachineSubject, type MachineSubject } from '
 import { type MenuLayout } from './filmMenuRing';
 import { menuLayoutPreference } from './filmMenuPreference';
 import { readPlaybackPreference, savePlaybackPreference } from './filmPlaybackPreference';
+import { createFilmRenderBudget } from './filmRenderBudget';
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -62,9 +63,11 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
 
   useEffect(() => {
     const node = canvasRef.current;
-    const ctx = node?.getContext('2d');
+    const ctx = node?.getContext('2d', { alpha: false });
     if (!node || !ctx) return;
     const textureRenderers = new Map<FilmThemeId, ReturnType<typeof createFilmTextureRenderer>>();
+    const renderBudget = createFilmRenderBudget();
+    let resizeForBudget = false;
     let frame = 0;
     let previous = performance.now();
     let lastPublished = -Infinity;
@@ -92,7 +95,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     };
     const resize = () => {
       const rect = node.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = renderBudget.ratio(rect.width, rect.height, window.devicePixelRatio || 1);
       node.width = Math.max(1, Math.round(rect.width * dpr));
       node.height = Math.max(1, Math.round(rect.height * dpr));
       syncDockInset();
@@ -108,6 +111,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       setTexture(current.texture); setCharts(current.charts); setMachineSubject(current.machineSubject);
     });
     const render = (now: number) => {
+      if (resizeForBudget) { resize(); lastKey = null; resizeForBudget = false; }
+      const frameMs = now - previous;
       if (!current.paused) {
         const elapsed = Math.min((now - previous) / 1000, .05) * current.speed;
         if (cameraView.current) cameraTime += elapsed;
@@ -125,6 +130,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb') };
       if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }
       lastKey = key;
+      const drawStarted = performance.now();
       themed.setTheme(current.theme);
       if (cameraView.current) {
         const view = beginFilmViewport(themed.ctx, node.width, node.height, viewport);
@@ -141,7 +147,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         drawTexture = createFilmTextureRenderer(current.theme);
         textureRenderers.set(current.theme, drawTexture);
       }
-      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture, { bloom: !cameraView.current });
+      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture, { bloom: !cameraView.current, now });
+      if (renderBudget.sample(now, performance.now() - drawStarted, frameMs)) resizeForBudget = true;
       // Publish the position to React only when the readout would change; the preview freezes film
       // time, and the dock's time display has 0.1s resolution, so identical frames must not re-render.
       if (now - lastPublished > 180 && !cameraView.current) {

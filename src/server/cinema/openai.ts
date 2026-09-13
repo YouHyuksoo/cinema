@@ -32,7 +32,11 @@ export const REALTIME_VOICES = JARVIS_REALTIME_VOICES;
 export function jarvisInstructions(gender: VoiceGender = DEFAULT_VOICE_GENDER) {
   const runtime = resolveAiRuntime();
   const extra = runtime?.instructions.trim();
-  return [renderJarvisPrompt(effectiveJarvisPrompt(runtime?.prompt), gender), extra ? `# 운영자 추가 지시\n${extra}` : '', referenceData()]
+  const commandResponsePolicy = `# 명령 응답 최우선 규칙
+메뉴 열기·닫기, 설정 변경, 화면 전환, 재생·정지, 음성 시작·종료 등 모든 작업 명령은 실행 결과만 한 문장으로 답합니다.
+성공하면 "처리했습니다", "실행했습니다", "반영했습니다" 중 하나처럼 짧게 답하고, 설명·상황 보고·현재값 나열·사용법·다음 단계 안내를 절대 덧붙이지 않습니다.
+사용자가 브리핑·현황·상태 요약을 명시한 경우에만 내용을 설명합니다. 실패할 때만 실패 원인을 짧게 말합니다.`;
+  return [renderJarvisPrompt(effectiveJarvisPrompt(runtime?.prompt), gender), extra ? `# 운영자 추가 지시\n${extra}` : '', referenceData(), commandResponsePolicy]
     .filter(Boolean).join('\n\n');
 }
 function referenceData() {

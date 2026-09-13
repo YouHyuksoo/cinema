@@ -184,13 +184,15 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         }
       }
       if ((currentPhase === 'closed' || orbit) && ball.current) {
-        // Raster the sphere at its full size and scale it with the same factor as the tiles, so both
-        // shrink in lockstep and the per-frame raster cost does not change with the rest size.
+        // Match bitmap detail to the visible sphere, in stable 32px buckets.
+        // CSS still scales the sphere and tiles together; a docked 86px sphere
+        // no longer repaints a full 216px bitmap every frame.
         ball.current.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
         const spin = sphereSpinAngle(angle);
-        if (spin !== rasterSpin || diameter !== rasterSize) {
-          rasterSpin = spin; rasterSize = diameter;
-          drawSoccerSphere(ball.current, diameter, spin);
+        const bitmapSize = Math.min(diameter, Math.max(32, Math.ceil(diameter * sphereScale() * Math.min(window.devicePixelRatio || 1, 2) / 32) * 32));
+        if (spin !== rasterSpin || bitmapSize !== rasterSize) {
+          rasterSpin = spin; rasterSize = bitmapSize;
+          drawSoccerSphere(ball.current, bitmapSize, spin);
         }
       }
       dragDirty = false;

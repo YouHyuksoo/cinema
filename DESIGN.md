@@ -11,7 +11,7 @@
 
 ## 공통 원칙
 
-- 제품 표시 이름은 `HATCHERY`다. 화면·접근성 라벨·브라우저 제목·로고·시작 음성·로컬 및 AI 자기소개에 동일하게 적용한다. 기존 `Jarvis*` 파일/심볼과 `jarvis` 저장 설정 키는 호환성을 위해 유지한다. 이름 변경 영향 경로: src/app/layout.tsx → SignalFilm.tsx / FilmDock.tsx / JarvisMain.tsx / JarvisIdentity.tsx / JarvisIgnition.tsx / JarvisDialogue.tsx / JarvisConversationTrail.tsx → jarvisStartupSound.ts / jarvisAudio.ts / jarvisCommands.ts / useJarvisLocalVoice.ts / robotVoice.ts → src/server/cinema/openai.ts.
+- 제품 표시 이름은 `HATCHERY`다. 화면·접근성 라벨·브라우저 제목·로고·시작 음성·로컬 및 AI 자기소개에 동일하게 적용한다. 기존 `Jarvis*` 파일/심볼과 `jarvis` 저장 설정 키는 호환성을 위해 유지한다. 이름 변경 영향 경로: src/app/layout.tsx → SignalFilm.tsx / FilmDock.tsx / JarvisMain.tsx / JarvisIdentity.tsx / JarvisIgnition.tsx / JarvisDialogue.tsx → jarvisStartupSound.ts / jarvisAudio.ts / jarvisCommands.ts / useJarvisLocalVoice.ts → src/server/cinema/openai.ts.
 
 - 화면 문구는 지표명·수치·단위·기준·상태·데이터 출처·조작 안내만 사용한다. 광고 카피, 비유적 제목, 숫자·차트·카메라가 움직이는 방식을 설명하는 상하단 자막은 넣지 않는다. 장면 메뉴명은 유지하고 설정은 장면명, 접근성 설명은 표시 데이터 항목을 짧게 나열한다.
 
@@ -87,7 +87,7 @@
 
 - 중앙 HUD 프레임·배경·START·선택기는 고정 청록색 대신 공통 `--film-*` 테마를 상속한다. 리액터 본체·코일·평상시 눈·스파크는 기존 Canvas 테마 변환기를 사용한다. 우주선·레이저·폭발·분노한 눈은 원래 연출 색상을 유지한다. 테마 변경은 기존 렌더러 색상만 교체하며 재생 시간·이스터에그·클릭 영역을 초기화하지 않는다. 영향: SignalFilm → JarvisMain → JarvisWave → filmThemeCanvas / drawJarvisVoiceField / components/drawVoiceReactor, jarvisCenterLayout / jarvisCenterBackdrop / jarvisIgnition.module.css. 검증: cinemaCenterTheme.test.ts.
 
-- 목소리 선택창은 남성·여성 두 버튼만 표시한다. 로봇 효과 강도·스타일·개별 음색 목록·음높이/속도 설명은 표시하지 않는다. 기존 음성 처리와 세션 중 Realtime 목소리 변경 제한은 유지한다. 영향: JarvisMain.tsx → JarvisAiVoiceSettings.tsx / JarvisVoiceSettings.tsx → JarvisVoiceGenderToggle.tsx. 검증: cinemaVoiceChoiceMarkup.test.ts.
+- 목소리 선택창은 남성·여성 두 버튼만 표시한다. 로봇 효과 강도·스타일·개별 음색 목록·음높이/속도 설명은 표시하지 않는다. 브라우저와 Realtime의 원본 음성을 변조 없이 사용하며 세션 중 Realtime 목소리 변경 제한은 유지한다. 영향: JarvisMain.tsx → JarvisAiVoiceSettings.tsx / JarvisVoiceSettings.tsx → JarvisVoiceGenderToggle.tsx. 검증: cinemaVoiceChoiceMarkup.test.ts.
 
 - 질문 입력창 강조(2026-09-10): 비어 있는 입력창은 테마 액센트로 2.8초 주기의 느린 테두리·글로우 맥동(`inputGlow`)을 반복해 HUD 배경과 구분한다. 포커스되거나 글자가 있으면 맥동을 멈추고 액센트 테두리 + 고정 글로우로 유지하며, 동작 줄이기 환경에서는 맥동 없이 액센트 테두리만 쓴다. 영향: jarvis.module.css `.input input`. 검증: cinemaChatInputGlow.test.ts.
 
@@ -157,15 +157,14 @@
 
 - 대화 제어는 `JarvisIgnition.tsx` / `jarvisIgnition.module.css`의 원형 START/STOP 시동 버튼이다. 금속 테두리·오목한 중심·전원등과 외곽 회전 아크를 사용하고 옆에 회전 링·움직이는 바늘의 보조 게이지를 둔다. 게이지는 수치 측정값이 아닌 장식이며 실제 연결·응답 상태를 별도 문구와 회전 속도로 표시한다. 기존 시작/종료/응답 중지 이벤트와 기동 음성을 유지한다. 낮거나 좁은 화면에서는 버튼을 축소하고 동작 줄이기 설정은 회전을 정지한다. 영향 경로: JarvisMain.tsx → JarvisIgnition.tsx / jarvisIgnition.module.css.
 
-- 중앙 파동 뒤의 `JarvisConversationTrail.tsx`는 현재 메시지를 제외한 이전 대화 최대 12개를 희미한 원근 텍스트로 위쪽 순환 이동시킨다. 실제 대화만 사용하며 파동 영역 안에서 클리핑한다. 배경 기록 z-index 0 → 중앙 감쇠막 1 → 파동 Canvas 2로 분리하고 포인터 이벤트를 차단하여 버튼·현재 답변·입력 영역을 침범하지 않는다. 동작 줄이기에서는 정지한다. 영향 경로: JarvisMain.tsx → JarvisConversationTrail.tsx / jarvisConversationTrail.module.css → jarvis.module.css.
 
-- 대화 시작은 `jarvisStartupSound.ts`의 약 1.4초 모터 상승음·전자 확인음 뒤 “HATCHERY initializing.”을 영어로 안내한다. Realtime은 연결 후 한 번의 response.create로 선택된 음색·로봇 효과를 사용하며, 안내 종료까지 마이크 전송을 막아 자기 음성을 질문으로 인식하지 않게 한다. 시작 취소·화면 이탈·오류 시 발진기와 연결을 해제한다. AI 미설정 시 기존 브라우저 음성 경로에서 영어 안내 후 인식을 시작한다. 영향 경로: jarvisRealtimeSession.ts / useJarvisLocalVoice.ts → jarvisStartupSound.ts.
+- 대화 시작은 `jarvisStartupSound.ts`의 약 1.4초 모터 상승음·전자 확인음 뒤 “HATCHERY initializing.”을 영어로 안내한다. Realtime은 연결 후 한 번의 response.create로 선택된 기본 음성을 사용하며, 안내 종료까지 마이크 전송을 막아 자기 음성을 질문으로 인식하지 않게 한다. 시작 취소·화면 이탈·오류 시 발진기와 연결을 해제한다. AI 미설정 시 기존 브라우저 음성 경로에서 영어 안내 후 인식을 시작한다. 영향 경로: jarvisRealtimeSession.ts / useJarvisLocalVoice.ts → jarvisStartupSound.ts.
 
 - 좌측 상단 브랜드는 `JarvisIdentity.tsx` / `jarvisIdentity.module.css`의 핑크 네온 HATCHERY 로고다. 12초 주기로 파동 → 수평선 → 글자 형성·유지 → 파동 복귀를 반복하고, 동작 줄이기 환경에서는 글자만 정적으로 표시한다. 기존 브랜드 아래 MANUFACTURING / ASSISTANT 및 메인 메뉴 설명은 제거한다. 이 로고만 고정 핑크 색을 사용하며 주변 HUD 테마는 유지한다.
 
 - 우측 상단 카메라의 연결/끄기/취소 버튼은 영상 프레임 안 우하단에 겹쳐 배치한다. 외부 버튼 행을 없애고 영상 폭을 120px에서 160px로 확대하며 좁은 화면에서는 해당 고정 영역의 폭에 맞춘다. 상태는 영상 안 좌상단에 둔다. 영향 경로: JarvisMainHeader.tsx → jarvisHeader.module.css.
 
-- 목소리 선택: 좌측 `JarvisAiVoiceSettings.tsx`(Realtime)와 `JarvisVoiceSettings.tsx`(브라우저)는 공통 `JarvisVoiceGenderToggle.tsx`로 남성/여성만 고른다(jarvisVoiceGender.ts: 남성=cedar·낮은 음높이 0.72, 여성=marin·음높이 1.0). 스타일 목록과 CEDAR/MARIN/ASH/ECHO 음색 선택은 화면에서 없앴다. 로봇 효과(`robotVoice.ts`)는 기본값 안드로이드형 75%로 고정 적용되며 Realtime 목소리는 세션 종료 후 바꾼다. `robotVoice.ts`가 수신 음성에 필터·링 변조·포화·출력 압축을 적용하고, 단일 Web Audio 출력으로 재생한다. 원본 HTMLAudioElement는 음소거하여 이중 재생을 막고, 처리 후 AnalyserNode를 중앙 파형에 전달한다. 중지 시 발진기·노드·AudioContext를 해제하며 마이크 입력은 가공하지 않는다. 영향 경로: `useJarvisVoice.ts` → `jarvisRealtimeSession.ts` → `robotVoice.ts`; UI `JarvisMain.tsx` → `JarvisAiVoiceSettings.tsx` → `jarvis.module.css`.
+- 목소리 선택: 좌측 `JarvisAiVoiceSettings.tsx`(Realtime)와 `JarvisVoiceSettings.tsx`(브라우저)는 공통 `JarvisVoiceGenderToggle.tsx`로 남성/여성만 고른다(jarvisVoiceGender.ts: 남성=cedar, 여성=marin). 선택값은 AI 서버 설정의 `voiceGender`에 저장하고 `/api/cinema/assistant` 상태 조회로 복원하여 화면 이동과 새로고침 뒤에도 유지한다. 브라우저 음성의 pitch/rate/volume과 Realtime 수신 음성에 별도 변조를 적용하지 않는다. Realtime 원본 음성은 AnalyserNode만 거쳐 단일 Web Audio 출력으로 재생하고 중앙 파형에 사용한다. 중지 시 출력 노드와 AudioContext를 해제한다. 영향 경로: `aiConfig.ts` / `admin/ai/route.ts` / `assistant/route.ts` → `useJarvisVoice.ts` → `jarvisRealtimeSession.ts`; UI `JarvisMain.tsx` → `JarvisAiVoiceSettings.tsx` → `jarvis.module.css`.
 
 - 상단 4개 정보 카드는 사용자가 제공한 첫 번째 HUD 프레임을 참고한 동일한 사선 모서리·이중 외곽선·상하 포인트 바·좌하 분절 표시를 사용한다. `JarvisMetricFrame.tsx`의 장식 SVG를 함께 재사용하며 선 굵기는 vector-effect로 유지한다. 테두리는 현재 테마 색을 따르고 경고 상태도 외곽선 구조를 바꾸지 않는다. 배경은 같은 다각형으로 잘라 사각 잔상이 남지 않게 한다. 영향 경로: JarvisMetricCards.tsx → JarvisMetricFrame.tsx → jarvisMetricCards.module.css.
 
@@ -443,10 +442,10 @@
 - 모바일 구체 둘레 링은 바깥 타일만 가용 공간에 따라 가로 최대 28px, 세로 최대 100px 더 펼친다. 모핑 좌표와 실제 CSS 타일 좌표를 동일하게 적용한다. 터빈 펼침은 최대 290px로 줄인다.
 - 하단 링 모드도 열 때 화면 중앙의 고정 오버레이로 표시한다. 열린 상태의 본문 하단 여백은 닫힌 상태와 같은 32px로 유지하여 본문과 브리핑 위치가 바뀌지 않게 한다.
 - 중앙 대화 이력은 리액터 뒤 흐림 장식에서 중앙 하단 반투명 전경으로 이동한다. 불투명도·원근·흐림을 제거하고 13px 글자로 표시하며 hover 시 자동 스크롤을 멈춘다.
-- 이전 대화 이력은 좌측 스크롤 HISTORY 카드로 이동한다. 리액터 시각 영역 안에는 메시지 패널을 두지 않으며 중앙 영상 크기와 구도를 유지한다.
 
 ### 음성·텍스트 설정 명령
 - screenCommands.ts의 SCREEN_SETTINGS를 화면 조작 도구 목록과 값 검증의 공통 기준으로 사용한다. 메뉴·장면·설정창·배경·테마·질감·재생·검사 대상·차트·카메라·음성·AI 모델 및 생성 설정을 조회/변경한다. 옵션은 기존 화면 선택 목록을 재사용한다.
+- 텍스트·브라우저 음성·Realtime 전사는 `docs/standards/command-map.md`의 한 명령 매핑을 공유한다. 장면 17개와 메인 복귀, 장면·터빈·관리 큐브 메뉴, 화면·재생·차트·카메라·장면 직접 조작·음성·AI 설정을 로컬에서 먼저 판정한다. 영향: jarvisCommands.ts / screenCommands.ts → useScreenCommands.ts / useJarvisVoice.ts → useJarvisLocalVoice.ts / jarvisRealtimeSession.ts.
 - SignalFilm → useScreenCommands → useFilmTurbine → useJarvisVoice가 실제 화면 setter를 연결한다. 설정 변경 후 관측한 값을 비교하여 실패를 성공으로 응답하지 않는다. 카메라 연결은 전역 영상 팝업을 열고 브라우저 권한 결과를 확인한다.
 - 텍스트: useJarvisLocalVoice의 명확한 로컬 명령 → 공통 executor. 자연어는 서버 openai.ts의 control_screen 도구(타 제공자는 검증된 JSON 명령) → 브라우저 executor. 실제 결과로 응답을 대체한다.
 - 실시간 음성: jarvisRealtimeSession의 control_screen → 동일 executor → function_call_output → 후속 응답. 모델/음성 방식 변경은 현재 세션을 유지하고 다음 연결부터 적용한다. 시스템 프롬프트 및 추가 지시도 서버 검증·저장 경로를 이용한다. API 키·비밀번호는 이 도구 카탈로그에 포함하지 않는다.
@@ -468,3 +467,21 @@
 관리 큐브는 메뉴 도크의 이동·변형 좌표계에 포함하지 않고 SignalFilm의 독립 고정 레이어로 둔다. 구체 둘레 링이 열리면 구체 본체와 클릭 영역을 링과 중앙 장면보다 위에 표시하며, 중앙 구체를 누르면 같은 자리에서 링을 접는다. 영향: SignalFilm / FilmDock / filmMenuGlobe.module.css. 검증: cinemaPersistentDock / cinemaMenuGlobeMarkup 테스트.
 
 좌우 Jarvis 스크롤의 모든 직접 카드 배경은 클릭하거나 카드 자체에서 Enter/Space를 누르면 중앙 읽기 패널로 확대된다. 카드 안의 버튼·링크·입력·선택·요약 컨트롤은 기존 기능만 실행한다. 확대본은 원본 DOM을 ID 충돌 없이 복제한 읽기 전용 화면이며, Canvas와 현재 테마 변수를 함께 복사한다. 하나의 body 포털이 배경 클릭·닫기·Escape, 포커스 고정과 복원, 주변 화면 inert 처리를 담당하고 열려 있는 동안 두 스트림의 자동 이동만 보류한다. 영향 경로: JarvisMain → JarvisStream / useDriftScroll → JarvisCardFocus / jarvisCardFocus.
+# Voice input selection
+
+- 음성 명령의 메뉴 이름을 분리한다. `설정메뉴`/`설정 메뉴`/`터빈 메뉴`는 좌측 하단 터빈형 설정 메뉴를 뜻하고, `작업메뉴`/`화면메뉴`/`구체형 네비게이션 메뉴`는 구체형 네비게이션 메뉴를 뜻한다. 후자는 항상 `menuLayout=orbit`을 먼저 적용한 뒤 연다. 영향: screenCommands.ts → useScreenCommands.ts / jarvis 음성·텍스트 경로.
+- 마이크를 직접 끄면 기존 시작음과 같은 음량 기준의 약 0.8초 하강·감쇠 전원 종료음을 재생한다. AI 대화(Realtime/브라우저) 종료와 로컬 받아쓰기 토글 종료에 공통 적용하며, 마이크는 즉시 해제하고 별도 AudioContext에서 효과음만 마친 뒤 자원을 정리한다. 오류·자동 정리에는 재생하지 않는다. 영향: useJarvisVoice.ts / useInputDictation.ts → jarvisShutdownSound.ts.
+- `VOICE / 대화 설정`의 선택값은 중앙 마이크 버튼의 실행 기준이다. `OpenAI Realtime`은 AI 음성 세션을 시작하고, `브라우저 음성`은 입력창의 로컬 받아쓰기만 시작하며 자동 전송하지 않는다.
+- 터빈의 브라우저 AI 음성 대화와 중앙 받아쓰기는 동시에 마이크를 열지 않는다. AI 음성 대화가 활성화된 경우 중앙 마이크는 해당 대화를 먼저 종료한다.
+- 접힌 터빈은 호버나 키보드 포커스로 펼치지 않는다. 호버는 중심 위치를 유지한 채 약 10% 확대하고 표면 광택과 중심 펄스를 표시하며, 투명한 허브 클릭 영역을 넓혀 쉽게 누를 수 있게 한다. 메뉴는 중앙 허브 클릭으로만 펼치거나 접는다.
+- 음성 명령이나 텍스트 모델 응답이 연출 장면을 열어도 현재 Realtime 또는 브라우저 음성 세션을 종료하지 않는다. `보여줘`, `열어줘`, `이동`, `전환`, `틀어줘`, `재생`을 모든 장면의 공통 이동 표현으로 해석한다. 안내 음성이 끝난 뒤 장면만 전환하고 같은 연결에서 듣기를 계속하며, 사용자의 명시적 종료·로그아웃·페이지 이탈 때만 세션을 닫는다. Realtime의 장면 안내 응답 ID가 정해진 뒤 들어오는 `input_audio_buffer.speech_started`는 출력 음성의 마이크 재감지일 수 있으므로 대기 장면을 지우지 않는다. 실제 응답 중단의 `output_audio_buffer.cleared`에서만 대기 장면을 취소한다.
+- 음성 연결이 활성화된 채 연출 장면으로 이동하면 좌측 상단 큐브 자리에 구체 메뉴와 같은 지름의 소형 아크리액터를 표시한다. 메인 화면과 동일한 audioRef를 사용해 연결·듣기·생각·응답 상태와 실제 음성 반응을 이어서 보여주며, 소형 리액터를 누르면 음성 연결을 종료한다.
+
+### 연출 렌더링 비용 관리 (2026-09-13)
+- 축소 구체의 이전 전체 지름 래스터 규칙을 대체한다. CSS 크기·회전·클릭 좌표는 유지하고 공 비트맵만 실제 표시 지름×DPR에 맞춰 32px 단위로 할당한다. FilmDock의 전달 콜백을 고정해 재생 위치 갱신이 메모화된 FilmChapterMenu를 다시 그리지 않도록 한다.
+- useDriftScroll은 범위를 매 프레임 읽지 않고 크기·내용 변경 시 갱신한다. 위치 변경 전에 읽어 강제 레이아웃을 줄인다.
+- filmTexture의 흐린 bloom 레이어만 최대 30Hz로 갱신한다. 본 장면과 합성은 RAF를 유지하며 탐색·크기·테마 변경은 캐시를 무효화한다. 타임스탬프 없는 렌더 호출은 기존 결정적 동작을 유지한다.
+- filmRenderBudget → useFilmPlayback: 불투명 캔버스와 최대 4K 픽셀 예산을 사용한다. 지속적인 그리기 부담에만 내부 해상도를 12.5%씩, 기본의 75%까지 줄이고 여유가 4초 지속되면 복원한다. CSS 좌표·재생 속도·선택 좌표는 유지한다.
+- drawSmtFactory → drawProjectedFilmSurface → projectedSurfaceMesh: 화면 밖 설비를 보수적으로 제외한다. 원근 면은 화면상 중간점 오차 0.5px를 기준으로 최대 12×8까지 분할하며 래스터 크기는 투영 크기에 맞춘다. 같은 설비 그림은 시간·테마·상세 크기가 같을 때 라인 간 재사용하며 최대 24개로 제한한다. 삼각형마다 해당 셀과 보간 여백만 복사하고 투명 경계의 격리 합성은 유지한다.
+- 검증: cinemaProjectedSurface/ProjectedSurfaceMesh/FilmRenderBudget/FilmTextureBloom/MenuGlobeIdle/VoiceCore 단위 검사. 화면 밖 그리기 제외로 달라진 visor 호출 지문 3개를 갱신했다. 호출 지문은 실제 화질·FPS 증명이 아니다. 타입 검사와 프로덕션 빌드는 통과했다. 전체 단위 검사에는 기존 CenterTheme 1건, ScreenExecution 2건, StreamCardFocus 1건의 실패가 남아 있다.
+- 성능 한계: 1920×1080 개발 브라우저에서 온습도·SPC의 일부 구간은 평균 70fps 이상이었으나 복잡한 3D 구간은 계속 60fps 미달이다. 고정 시간대의 네이티브 Canvas 비교에서도 구간별 편차가 커 전체 장면의 60fps 달성을 주장하지 않는다. GPU 개별 면 합성과 패턴 채우기는 실측 이득이 없어 채택하지 않았다.

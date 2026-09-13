@@ -180,13 +180,13 @@ Expected: FAIL on the missing integration.
 
 - [ ] **Step 3: Decorate and activate stream cards**
 
-In `JarvisStream`, keep a content ref and decorate each direct section with `data-stream-card`, `tabIndex=0`, and an extracted accessible label. Observe direct-child changes so conditionally rendered history cards are also decorated. Delegate click and keydown from the content wrapper. Ignore events originating in `CARD_FOCUS_INTERACTIVE` descendants. For keyboard activation, require `event.target === card` as well as `Enter` or `Space`, then prevent the Space scroll default. Pass the source element, resolved label, side, and index to the callback.
+In `JarvisStream`, keep a content ref and decorate each direct section with `data-stream-card`, `tabIndex=0`, and an extracted accessible label. Observe direct-child changes so dynamically rendered cards are also decorated. Delegate click and keydown from the content wrapper. Ignore events originating in `CARD_FOCUS_INTERACTIVE` descendants. For keyboard activation, require `event.target === card` as well as `Enter` or `Space`, then prevent the Space scroll default. Pass the source element, resolved label, side, and index to the callback.
 
 Pass `suspended` into `useDriftScroll`; use `stopped` for `data-paused` while leaving the header toggle text based on the user's `paused` state.
 
 - [ ] **Step 4: Own focus state in `JarvisMain`**
 
-Add `data-card-title` to the `SESSION / CONNECTIONS`, `AI / 모델 선택`, `VOICE / 대화 설정`, and conditional `HISTORY / 이전 대화` title elements. Store `{ source, label, openId } | null`, pass `suspended={focus !== null}` and the same focus callback to both streams, and render one `JarvisCardFocus` after the body. Clear focus on close and unmount.
+Add `data-card-title` to the `SESSION / CONNECTIONS`, `AI / 모델 선택`, and `VOICE / 대화 설정` title elements. Store `{ source, label, openId } | null`, pass `suspended={focus !== null}` and the same focus callback to both streams, and render one `JarvisCardFocus` after the body. Clear focus on close and unmount.
 
 - [ ] **Step 5: Record the interaction rule**
 

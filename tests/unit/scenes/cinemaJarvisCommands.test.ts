@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveJarvisCommand, jarvisOverview } from '@/cinema/jarvisCommands';
 import { GET, POST } from '@/app/api/cinema/assistant/route';
 import { jarvisMainData } from '@/cinema/jarvisMainData';
+import type { FilmId } from '@/cinema/filmProgram';
 
 describe('Jarvis main commands and local endpoint', () => {
   it('summarizes production, process, quality and power while keeping temperature queries specific', () => {
@@ -34,6 +35,15 @@ describe('Jarvis main commands and local endpoint', () => {
     expect(resolveJarvisCommand('바이저 평면 열어줘')?.chapter).toBe('visorPan');
     expect(resolveJarvisCommand('온습도 알려줘')?.chapter).toBeUndefined();
     expect(resolveJarvisCommand('모든 설비 정지해')).toBeNull();
+  });
+  it('maps every visible scene-menu name without relying on the AI model', () => {
+    const menus: [string, FilmId][] = [
+      ['온습도', 'wave'], ['기어', 'gears'], ['설비 스캔', 'scan'], ['지표', 'unfold'], ['변화 추적', 'trace'],
+      ['정보창', 'console'], ['바이저 3D', 'visor'], ['바이저 평면', 'visorPan'], ['막대', 'bars'], ['파이', 'pie'],
+      ['코너', 'corners'], ['PCB 검사', 'machine'], ['공정망', 'network'], ['에너지', 'energy'], ['내부 검사', 'product'],
+      ['SPC', 'spc'], ['CCTV', 'cctv'],
+    ];
+    for (const [name, chapter] of menus) expect(resolveJarvisCommand(`${name} 화면으로 이동해`), name).toMatchObject({ chapter });
   });
   it('does not swallow free AI questions just because they address HATCHERY', () => {
     expect(resolveJarvisCommand('HATCHERY, 생산성을 어떻게 개선할까?')).toBeNull();

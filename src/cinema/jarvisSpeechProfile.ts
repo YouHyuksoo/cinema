@@ -1,7 +1,4 @@
-import { DEFAULT_VOICE_GENDER, voiceGenderOption, type VoiceGender } from './jarvisVoiceGender';
-
-/** The male profile: the deliberate low robot register HATCHERY started with. */
-export const JARVIS_SPEECH_PROFILE = voiceGenderOption('male').speech;
+import { DEFAULT_VOICE_GENDER, type VoiceGender } from './jarvisVoiceGender';
 
 export function koreanSpeechVoices(voices: readonly SpeechSynthesisVoice[]) {
   return voices.filter(voice => /^ko(?:[-_]|$)/i.test(voice.lang));
@@ -38,5 +35,4 @@ export function hasKnownVoice(voices: readonly SpeechSynthesisVoice[], gender: V
 export function configureJarvisSpeech(utterance: SpeechSynthesisUtterance, voices: readonly SpeechSynthesisVoice[], gender: VoiceGender = DEFAULT_VOICE_GENDER) {
   utterance.lang = 'ko-KR';
   utterance.voice = selectJarvisVoice(voices, gender);
-  Object.assign(utterance, voiceGenderOption(gender).speech);
 }

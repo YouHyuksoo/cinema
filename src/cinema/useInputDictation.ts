@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { recognitionConstructor, type JarvisRecognition } from './jarvisAudio';
+import { playJarvisShutdownSound } from './jarvisShutdownSound';
 
 /** Dictation only: never submits a message or starts an AI session. */
 export function useInputDictation(input: string, onInput: (value: string) => void, blocked: boolean) {
@@ -8,15 +9,15 @@ export function useInputDictation(input: string, onInput: (value: string) => voi
   const [error, setError] = useState('');
   const session = useRef<JarvisRecognition | null>(null);
   const latest = useRef({ input, onInput }); latest.current = { input, onInput };
-  const stop = () => { const current = session.current; session.current = null; current?.abort(); setActive(false); };
+  const stop = useCallback(() => { const current = session.current; session.current = null; current?.abort(); setActive(false); }, []);
   useEffect(() => {
     const hide = () => { if (document.hidden) stop(); };
     document.addEventListener('visibilitychange', hide);
     return () => { document.removeEventListener('visibilitychange', hide); session.current?.abort(); session.current = null; };
-  }, []);
-  useEffect(() => { if (blocked) stop(); }, [blocked]);
+  }, [stop]);
+  useEffect(() => { if (blocked) stop(); }, [blocked, stop]);
   const toggle = () => {
-    if (session.current) { stop(); return; }
+    if (session.current) { stop(); playJarvisShutdownSound(); return; }
     if (blocked) return;
     const Recognition = recognitionConstructor();
     if (!Recognition) { setError('이 브라우저는 음성 입력을 지원하지 않습니다.'); return; }
@@ -37,5 +38,5 @@ export function useInputDictation(input: string, onInput: (value: string) => voi
     setError('');
     try { recognition.start(); } catch { session.current = null; setActive(false); setError('음성 입력을 시작하지 못했습니다.'); }
   };
-  return { active, error, toggle };
+  return { active, error, toggle, stop };
 }

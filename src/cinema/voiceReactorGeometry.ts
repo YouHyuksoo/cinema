@@ -3,6 +3,9 @@ import { createLensProjection } from './filmLens';
 
 export interface ReactorPoint { x: number; y: number; z: number }
 const TAU = Math.PI * 2;
+let cachedPitch = Number.NaN, cachedCosPitch = 1, cachedSinPitch = 0;
+let cachedRotation = Number.NaN, cachedYaw = Number.NaN;
+let cachedCosRotation = 1, cachedSinRotation = 0, cachedCosYaw = 1, cachedSinYaw = 0;
 
 /** One pose's projector: the lens trig is computed once, then applied to any number of points. */
 export function reactorProjector(pitch = .27) {
@@ -10,8 +13,18 @@ export function reactorProjector(pitch = .27) {
   const view = createLensProjection({ lens: 900, pitch: tilt, centerX: VOICE_CORE_VIEW.x, centerY: VOICE_CORE_VIEW.y });
   return (p: ReactorPoint): ReactorPoint => { const s = view(p.x, p.y, p.z); return { x: s.x, y: s.y, z: s.depth }; };
 }
-export function projectReactor(p: ReactorPoint, pitch = .27) {
-  return reactorProjector(pitch)(p);
+export function projectReactor(p: ReactorPoint, pitch = .27): ReactorPoint {
+  // This is the hot path used by every reactor polygon. Keep the same lens
+  // projection as reactorProjector without allocating a closure and six trig
+  // values for every point on every frame.
+  pitch = Number.isFinite(pitch) ? pitch : .27;
+  if (pitch !== cachedPitch) {
+    cachedPitch = pitch; cachedCosPitch = Math.cos(pitch); cachedSinPitch = Math.sin(pitch);
+  }
+  const tiltedY = p.y * cachedCosPitch - p.z * cachedSinPitch;
+  const depth = p.y * cachedSinPitch + p.z * cachedCosPitch;
+  const perspective = 900 / (900 + depth);
+  return { x: VOICE_CORE_VIEW.x + p.x * perspective, y: VOICE_CORE_VIEW.y + tiltedY * perspective, z: depth };
 }
 
 /** One pose's rotator: the rotation and yaw trig is computed once, then applied to any number of points. */
@@ -25,7 +38,15 @@ export function reactorRotator(rotation: number, yaw = -.36) {
 }
 /** The entire solid reactor turns around its tilted axis, including attached sparks. */
 export function rotateReactorPoint(p: ReactorPoint, rotation: number, yaw = -.36): ReactorPoint {
-  return reactorRotator(rotation, yaw)(p);
+  // Avoid allocating a rotator closure for each disc/glyph point.
+  if (rotation !== cachedRotation || yaw !== cachedYaw) {
+    cachedRotation = rotation; cachedYaw = yaw;
+    cachedCosRotation = Math.cos(rotation); cachedSinRotation = Math.sin(rotation);
+    cachedCosYaw = Math.cos(yaw); cachedSinYaw = Math.sin(yaw);
+  }
+  const x = p.x * cachedCosRotation - p.y * cachedSinRotation;
+  const y = p.x * cachedSinRotation + p.y * cachedCosRotation;
+  return { x: x * cachedCosYaw + p.z * cachedSinYaw, y, z: p.z * cachedCosYaw - x * cachedSinYaw };
 }
 
 export function reactorDiscPoint(angle: number, radius: number, depth: number, rotation = 0, yaw = -.36): ReactorPoint {

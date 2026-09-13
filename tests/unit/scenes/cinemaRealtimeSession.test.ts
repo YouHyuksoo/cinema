@@ -19,7 +19,9 @@ beforeEach(() => {
   vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: media } });
   vi.stubGlobal('RTCPeerConnection', class { constructor() { return peer; } });
   vi.stubGlobal('Audio', class { autoplay = true; srcObject = null; pause() {} play() { return Promise.resolve(); } });
-  vi.stubGlobal('AudioContext', class { resume = async () => {}; close = async () => {}; createAnalyser = () => ({ fftSize: 0 }); createMediaStreamSource = () => ({ connect() {} }); });
+  vi.stubGlobal('AudioContext', class { destination = {}; resume = async () => {}; close = async () => {};
+    createAnalyser = () => ({ fftSize: 0, connect() {}, disconnect() {} });
+    createMediaStreamSource = () => ({ connect() {}, disconnect() {} }); });
   vi.stubGlobal('fetch', vi.fn(async () => new Response('v=0\r\nanswer')));
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -79,7 +81,7 @@ describe('Realtime lifecycle', () => {
     const pending = session.start('cedar'); await Promise.resolve(); session.stop(); grant(stream); await pending;
     expect(stopTrack).toHaveBeenCalledOnce(); expect(fetch).not.toHaveBeenCalled();
   });
-  it('waits for audible output to finish before navigating', async () => {
+  it('waits for audible output to finish before navigating and keeps the voice session connected', async () => {
     const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');
     const event = (data: unknown) => channel.onmessage?.({ data: JSON.stringify(data) });
     event({ type: 'response.done', response: { status: 'completed', output: [{ type: 'function_call', name: 'open_scene', call_id: 'c1', arguments: '{"chapter":"spc"}' }] } });
@@ -88,7 +90,44 @@ describe('Realtime lifecycle', () => {
     event({ type: 'output_audio_buffer.started', response_id: 'ack' });
     event({ type: 'output_audio_buffer.stopped' });
     expect(cb.chapter).toHaveBeenCalledWith('spc');
-    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    expect(cb.phase).toHaveBeenLastCalledWith('listening');
+    session.stop(); expect(stopTrack).toHaveBeenCalledOnce();
+  });
+  it('keeps the pending scene when acknowledgement audio is detected by the microphone', async () => {
+    const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');
+    const event = (data: unknown) => channel.onmessage?.({ data: JSON.stringify(data) });
+    event({ type: 'response.done', response: { status: 'completed', output: [{ type: 'function_call', name: 'open_scene', call_id: 'c1', arguments: '{"chapter":"wave"}' }] } });
+    event({ type: 'response.created', response: { id: 'ack-wave' } });
+    event({ type: 'output_audio_buffer.started', response_id: 'ack-wave' });
+    event({ type: 'input_audio_buffer.speech_started' });
+    event({ type: 'output_audio_buffer.stopped', response_id: 'ack-wave' });
+    expect(cb.chapter).toHaveBeenCalledExactlyOnceWith('wave');
+    session.stop();
+  });
+  it('opens a spoken scene command as soon as realtime transcription completes', async () => {
+    const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');
+    const event = (data: unknown) => channel.onmessage?.({ data: JSON.stringify(data) });
+    event({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '온습도 화면으로 전환해' });
+    expect(cb.chapter).toHaveBeenCalledExactlyOnceWith('wave');
+    event({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'echo', transcript: '온습도 화면으로 전환합니다' });
+    expect(cb.chapter).toHaveBeenCalledOnce();
+    event({ type: 'response.done', response: { status: 'completed', output: [{ type: 'function_call', name: 'open_scene', call_id: 'c1', arguments: '{"chapter":"wave"}' }] } });
+    event({ type: 'response.created', response: { id: 'ack-wave' } });
+    event({ type: 'output_audio_buffer.stopped', response_id: 'ack-wave' });
+    expect(cb.chapter).toHaveBeenCalledOnce();
+    session.stop();
+  });
+  it('executes spoken main and settings menu commands without waiting for a model tool call', async () => {
+    const screen = vi.fn(async () => ({ ok: true, message: '적용 완료' }));
+    const session = new JarvisRealtimeSession({ ...callbacks(), screen }); await session.start('cedar');
+    channel.onmessage?.({ data: JSON.stringify({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '메인 메뉴로 가' }) });
+    await Promise.resolve(); await Promise.resolve();
+    expect(screen).toHaveBeenCalledWith({ action: 'set', key: 'home', value: 'true' });
+    channel.onmessage?.({ data: JSON.stringify({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u2', transcript: '연출 설정 열어줘' }) });
+    await Promise.resolve(); await Promise.resolve();
+    expect(screen).toHaveBeenCalledWith({ action: 'set', key: 'settings', value: 'true' });
+    session.stop();
   });
   it('does not navigate when a pre-tool spoken preamble ends before the tool acknowledgement', async () => {
     const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');

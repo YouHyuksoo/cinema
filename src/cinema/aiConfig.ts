@@ -52,6 +52,8 @@ export interface AiConfig {
   /** OpenAI realtime voice model; ignored by other providers. */
   realtimeModel: string;
   voiceMode: AiVoiceMode;
+  /** Shared male/female choice for browser speech and OpenAI realtime voice. */
+  voiceGender: import('./jarvisVoiceGender').VoiceGender;
   /** Keys saved earlier for the other providers, so the main screen can switch back without re-entering them. */
   apiKeys?: Partial<Record<AiProviderId, string>>;
 }
@@ -61,6 +63,7 @@ export const AI_LIMITS = { temperature: { min: 0, max: 2 }, maxOutputTokens: { m
 export const DEFAULT_AI_CONFIG: AiConfig = {
   provider: 'openai', model: 'gpt-4.1-mini', apiKey: '', temperature: 0.7, maxOutputTokens: 800, instructions: '', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini',
   voiceMode: 'realtime',
+  voiceGender: 'male',
 };
 export const isAiVoiceMode = (value: unknown): value is AiVoiceMode => AI_VOICE_MODES.some(mode => mode.id === value);
 
@@ -71,7 +74,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | { ok: false; reason: string } {
   if (!isRecord(input)) return { ok: false, reason: 'AI 설정은 객체여야 합니다.' };
-  const { provider, model, apiKey, temperature, maxOutputTokens, instructions, prompt, realtimeModel, voiceMode, apiKeys } = input;
+  const { provider, model, apiKey, temperature, maxOutputTokens, instructions, prompt, realtimeModel, voiceMode, voiceGender, apiKeys } = input;
   if (!isAiProvider(provider)) return { ok: false, reason: `지원하지 않는 AI 프로바이더입니다: ${String(provider)}` };
   if (typeof model !== 'string' || !model.trim()) return { ok: false, reason: '모델 이름이 필요합니다.' };
   if (!/^[\w.:/-]{1,120}$/.test(model.trim())) return { ok: false, reason: '모델 이름에 쓸 수 없는 문자가 있습니다.' };
@@ -86,6 +89,7 @@ export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | 
   if (apiKey !== undefined && typeof apiKey !== 'string') return { ok: false, reason: 'API 키는 문자열이어야 합니다.' };
   if (realtimeModel !== undefined && typeof realtimeModel !== 'string') return { ok: false, reason: '실시간 음성 모델은 문자열이어야 합니다.' };
   if (voiceMode !== undefined && !isAiVoiceMode(voiceMode)) return { ok: false, reason: `지원하지 않는 음성 방식입니다: ${String(voiceMode)}` };
+  if (voiceGender !== undefined && voiceGender !== 'male' && voiceGender !== 'female') return { ok: false, reason: `지원하지 않는 목소리 성별입니다: ${String(voiceGender)}` };
   if (apiKeys !== undefined && !isRecord(apiKeys)) return { ok: false, reason: '보관 키 목록은 객체여야 합니다.' };
   const vault = compactKeys(Object.fromEntries(Object.entries(apiKeys ?? {}).filter(([id, key]) => isAiProvider(id) && typeof key === 'string').map(([id, key]) => [id, (key as string).trim()])));
   return { ok: true, config: {
@@ -95,6 +99,7 @@ export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | 
     prompt: typeof prompt === 'string' ? prompt.trim() : '',
     realtimeModel: typeof realtimeModel === 'string' && realtimeModel.trim() ? realtimeModel.trim() : DEFAULT_AI_CONFIG.realtimeModel,
     voiceMode: isAiVoiceMode(voiceMode) ? voiceMode : DEFAULT_AI_CONFIG.voiceMode,
+    voiceGender: voiceGender === 'female' ? 'female' : DEFAULT_AI_CONFIG.voiceGender,
     ...(vault ? { apiKeys: vault } : {}),
   } };
 }

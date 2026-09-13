@@ -17,11 +17,16 @@ export function useScreenCommands(context: {
   const snapshot = () => {
     const { player: p, camera: c, menuOpen, settingsOpen, preview } = latest.current;
     return { menu: menuOpen, menuLayout: menuLayoutPreference.getSnapshot(), settings: settingsOpen, home: preview,
+      turbineMenu: document.querySelector('[data-turbine-hub]')?.getAttribute('aria-expanded') === 'true',
+      cubeMenu: document.querySelector('[data-cube-control]')?.getAttribute('aria-expanded') === 'true',
       scene: p.position.chapter.id, theme: p.theme, background: centerBackgroundPreference.getSnapshot(), texture: p.texture.style,
       intensity: p.texture.intensity * 100, speed: p.speed, playing: p.playing, mode: p.mode, seek: p.position.localTime,
       machine: p.machineSubject, barsDimension: p.charts.bars.dimension, barsDepth: p.charts.bars.depthScale * 100,
       pieDimension: p.charts.pie.dimension, pieDepth: p.charts.pie.depthScale * 100,
-      camera: c.status === 'on', cameraPopup: Boolean(document.querySelector('[role="dialog"][aria-label="내 영상"]')), mirror: c.mirror, zoom: c.zoom, blur: c.blur };
+      camera: c.status === 'on', cameraPopup: Boolean(document.querySelector('[role="dialog"][aria-label="내 영상"]')), mirror: c.mirror, zoom: c.zoom, blur: c.blur,
+      cctvMode: p.cctv.manual ? 'manual' : 'auto', cctvCamera: p.cctv.camera === null ? undefined : String(p.cctv.camera + 1),
+      factoryMode: p.factory.manual ? 'manual' : 'auto', factoryStation: p.factory.selectedKey ?? undefined,
+      environmentZone: p.environment.selectedId ?? 'auto' };
   };
   const execute: ScreenExecutor = async input => {
     const command = validateScreenCommand(input);
@@ -31,8 +36,11 @@ export function useScreenCommands(context: {
     const { player: p, camera: c, menu, settings, home } = latest.current;
     if (!p.ready) return { ok: false, message: '화면을 준비 중입니다. 잠시 후 다시 요청해주세요.' };
     const n = Number(value), on = value === 'true';
+    let actionOnly = false;
     try { switch (key) {
       case 'menu': menu(on); break;
+      case 'turbineMenu': window.dispatchEvent(new CustomEvent('cinema-turbine-menu', { detail: on })); break;
+      case 'cubeMenu': window.dispatchEvent(new CustomEvent('cinema-cube-menu', { detail: on })); break;
       case 'menuLayout': p.changeMenuLayout(value as 'dock' | 'orbit'); break;
       case 'settings': settings(on); break;
       case 'home': home(on); break;
@@ -43,6 +51,7 @@ export function useScreenCommands(context: {
       case 'intensity': p.changeTextureIntensity(n / 100); break;
       case 'speed': p.changeSpeed(n); break;
       case 'playing': if (on) p.play(); else p.pause(); break;
+      case 'restart': p.restart(); actionOnly = true; break;
       case 'mode': p.changeMode(value as 'chapter' | 'sequence'); break;
       case 'seek': if (n > p.position.chapter.duration) return { ok: false, message: `현재 장면은 ${p.position.chapter.duration}초까지입니다.` }; p.seek(n); break;
       case 'machine': p.changeMachineSubject(value as 'pcb' | 'car'); break;
@@ -53,8 +62,16 @@ export function useScreenCommands(context: {
       case 'mirror': c.setMirror(on); break;
       case 'zoom': c.setZoom(n); break;
       case 'blur': c.setBlur(n); break;
+      case 'cctvMode': if (value === 'manual') p.cctv.begin(); else p.resumeTour(); break;
+      case 'cctvCamera': home(false); p.selectChapter('cctv'); p.cctv.select(n - 1); break;
+      case 'factoryMode': if (value === 'manual') p.factory.begin(); else p.resumeTour(); break;
+      case 'factoryStation': home(false); p.selectChapter('visor'); p.factory.select(value!); break;
+      case 'factoryFocus': p.factory.focus(); actionOnly = true; break;
+      case 'factoryReset': home(false); p.selectChapter('visor'); p.factory.reset(); actionOnly = true; break;
+      case 'environmentZone': home(false); p.selectChapter('wave'); if (value === 'auto') p.environment.clear(); else { p.seek(10); p.environment.select(value!); } break;
       default: return { ok: false, message: '이 설정은 현재 화면에 연결되지 않았습니다.' };
     } } catch { return { ok: false, message: '설정 실행에 실패했습니다. 현재 상태를 확인해주세요.', state: snapshot() }; }
+    if (actionOnly) return { ok: true, message: `${SCREEN_SETTINGS.find(s => s.key === key)?.label ?? key} 실행을 완료했습니다.`, state: snapshot() };
     // React commits and external stores settle before checking the actual value.
     await new Promise(resolve => window.setTimeout(resolve, 220));
     const state = snapshot();

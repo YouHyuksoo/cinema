@@ -129,5 +129,6 @@ describe('CCTV surveillance scene', () => {
     expect(resolveJarvisCommand('CCTV 보여줘')).toMatchObject({ chapter: 'cctv' });
     expect(resolveJarvisCommand('감시 카메라 열어줘')).toMatchObject({ chapter: 'cctv' });
     expect(resolveJarvisCommand('온습도 보여줘')).toMatchObject({ chapter: 'wave' });
+    expect(resolveJarvisCommand('온습도 화면으로 전환해')).toMatchObject({ chapter: 'wave' });
   });
 });

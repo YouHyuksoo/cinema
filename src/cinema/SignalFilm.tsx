@@ -20,6 +20,7 @@ import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
 import { useScreenCommands } from './useScreenCommands';
 import { JarvisCameraPopup } from './JarvisCameraPopup';
+import { JarvisVoiceIndicator } from './JarvisVoiceIndicator';
 
 export function SignalFilm() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -33,7 +34,7 @@ export function SignalFilm() {
   const cameraMode = {
     ...camera, preview,
     openPreview() { if (player.factory.manual || player.cctv.manual) player.resumeTour(); player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
-    closePreview() { turbine.voice.stop(); camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
+    closePreview() { camera.stop(); cameraView.current = false; setPreview(false); setMenuOpen(false); },
     enable() { player.environment.clear(); cameraView.current = true; setPreview(true); setMenuOpen(true); },
   };
   const screenCommands = useScreenCommands({ player, camera, menuOpen, settingsOpen, preview,
@@ -81,6 +82,8 @@ export function SignalFilm() {
       {preview && <FilmMenuCube links={{ admin: '/cinema/admin', ai: '/cinema/ai' }} />}
       <JarvisCameraPopup camera={camera} host />
       {settingsOpen && <FilmSettingsDialog player={player} camera={cameraMode} onClose={() => setSettingsOpen(false)} />}
+      {!preview && turbine.voice.active && <JarvisVoiceIndicator audio={turbine.voice.audioRef} phase={turbine.voice.phase}
+        theme={player.theme} onStop={turbine.voice.stop} />}
       <FilmTurbineMenu ready={player.ready} playing={player.playing} voiceActive={turbine.voice.active} onCommand={turbine.command}/>
       {preview && <ReactorMenuPrank/>}
     </main>

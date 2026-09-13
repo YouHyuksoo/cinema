@@ -25,8 +25,8 @@ describe('folded globe idle cost', () => {
     expect(source).not.toMatch(/previousTime = time;\s*rect = element\.getBoundingClientRect\(\);/);
     expect(source).toContain('if (nav && orbitVars !== publishedOrbitVars) {');
     expect(source).toContain('const spin = sphereSpinAngle(angle);');
-    expect(source).toContain('if (spin !== rasterSpin || diameter !== rasterSize) {');
-    expect(source).toContain('drawSoccerSphere(ball.current, diameter, spin);');
+    expect(source).toContain('if (spin !== rasterSpin || bitmapSize !== rasterSize) {');
+    expect(source).toContain('drawSoccerSphere(ball.current, bitmapSize, spin);');
   });
   it('bobs with CSS; tiles follow the live spin every frame and only the sphere raster snaps', () => {
     const source = readFileSync('src/cinema/useFilmMenuGlobe.ts', 'utf8');

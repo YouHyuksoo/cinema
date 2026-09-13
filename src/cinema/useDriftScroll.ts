@@ -43,15 +43,22 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     const host: HTMLElement | null = hostRef.current ?? viewport;
     if (!viewport || !host) return;
     const scrollKey = axis === 'x' ? 'scrollLeft' : 'scrollTop';
-    const extent = () => axis === 'x' ? viewport.scrollWidth - viewport.clientWidth : viewport.scrollHeight - viewport.clientHeight;
+    let maxExtent = 0, extentDirty = true;
+    const extent = () => {
+      if (extentDirty) {
+        maxExtent = Math.max(0, axis === 'x' ? viewport.scrollWidth - viewport.clientWidth : viewport.scrollHeight - viewport.clientHeight);
+        extentDirty = false;
+      }
+      return maxExtent;
+    };
     let hovered = host.matches(':hover'), focused = host.contains(document.activeElement);
     let manualUntil = 0, holdUntil = performance.now() + initialHoldMs, last = 0, manualTimer = 0, retryTimer = 0;
     let position = viewport[scrollKey], direction = 1;
     const tick = (now: number) => {
       const delta = last ? Math.min((now - last) / 1000, .05) : 0;
       last = now;
-      frameCallback.current?.(now, viewport);
       const max = Math.max(0, extent());
+      frameCallback.current?.(now, viewport);
       const stopped = paused || suspended || hovered || focused || reduced.reduced || document.hidden || now < manualUntil;
       // Nothing to drift: drop the frame loop. The events that end the hold wake it again, and a
       // viewport without overflow re-checks once a second for content that arrives later.
@@ -66,6 +73,7 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     const loop = createFrameLoop(tick);
     const wake = () => {
       window.clearTimeout(retryTimer);
+      extentDirty = true;
       if (loop.running) return;
       // Rest after a hold ends before drifting again, as the old per-frame hold did.
       holdUntil = Math.max(holdUntil, performance.now() + resumeMs); loop.start();
@@ -82,6 +90,13 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     };
     // While the loop is down, hand scrolling still poses the panels.
     const onScroll = () => { if (!loop.running) frameCallback.current?.(performance.now(), viewport); };
+    // Measure overflow only after actual layout/content changes, before panel
+    // transforms are written. Per-frame scrollWidth forced synchronous layout.
+    const resized = new ResizeObserver(wake);
+    resized.observe(viewport);
+    if (viewport.firstElementChild) resized.observe(viewport.firstElementChild);
+    const contentChanged = new MutationObserver(wake);
+    contentChanged.observe(viewport, { childList: true, subtree: true, characterData: true });
     host.addEventListener('pointerenter', enter);
     host.addEventListener('pointerleave', leave);
     host.addEventListener('focusin', focus);
@@ -92,6 +107,7 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     loop.start();
     return () => {
       loop.stop(); reduced.stop(); unwatchVisibility();
+      resized.disconnect(); contentChanged.disconnect();
       window.clearTimeout(manualTimer); window.clearTimeout(retryTimer);
       host.removeEventListener('pointerenter', enter);
       host.removeEventListener('pointerleave', leave);

@@ -1,13 +1,13 @@
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
 import type { JarvisPhase } from './jarvisAudio';
-import { createRobotVoice, DEFAULT_ROBOT_VOICE, type RobotVoiceSettings } from './robotVoice';
 import { JARVIS_STARTUP_MESSAGE, playJarvisStartupSound } from './jarvisStartupSound';
 import { SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from './hatcheryTargets';
 import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { SceneDataResult } from './sceneDataDocument';
 import { isMachineSubject, MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 import { cinemaApiUrl } from './cinemaApi';
-import { SCREEN_CONTROL_TOOL, type ScreenExecutor } from './screenCommands';
+import { resolveScreenCommands, SCREEN_CONTROL_TOOL, type ScreenExecutor } from './screenCommands';
+import { resolveJarvisCommand } from './jarvisCommands';
 
 export interface RealtimeCallbacks {
   screen?: ScreenExecutor;
@@ -43,8 +43,7 @@ export class JarvisRealtimeSession {
   private audio: HTMLAudioElement | null = null;
   private inputMeter: AnalyserNode | null = null;
   private outputMeter: AnalyserNode | null = null;
-  private robotVoice: ReturnType<typeof createRobotVoice> | null = null;
-  private robotSettings: RobotVoiceSettings = DEFAULT_ROBOT_VOICE;
+  private outputSource: MediaStreamAudioSourceNode | null = null;
   private abort: AbortController | null = null;
   private connectTimer?: ReturnType<typeof setTimeout>;
   private sessionTimer?: ReturnType<typeof setTimeout>;
@@ -53,6 +52,7 @@ export class JarvisRealtimeSession {
   private playing = false;
   private pendingChapter?: FilmId;
   private pendingMachineSubject?: MachineSubject;
+  private handledChapter?: FilmId;
   private chapterReplyId = '';
   private ignoredResponses = new Set<string>();
   private responseId = '';
@@ -77,7 +77,7 @@ export class JarvisRealtimeSession {
       this.context.createMediaStreamSource(stream).connect(this.inputMeter);
       await this.context.resume(); if (this.closed) return;
       const peer = new RTCPeerConnection(); this.peer = peer;
-      // Keep the WebRTC media element alive but mute its raw output to avoid doubling.
+      // Keep the WebRTC media element alive while Web Audio plays the unmodified remote voice once.
       const audio = new Audio(); audio.autoplay = true; audio.muted = true; this.audio = audio;
       peer.ontrack = event => {
         if (this.closed) return;
@@ -85,10 +85,11 @@ export class JarvisRealtimeSession {
         audio.srcObject = remote;
         if (this.context) {
           try {
-            this.robotVoice?.dispose();
-            this.robotVoice = createRobotVoice(this.context, this.context.createMediaStreamSource(remote), this.robotSettings);
-            this.outputMeter = this.robotVoice.analyser;
-          } catch { this.fail('음성 효과를 준비하지 못했습니다. 대화를 다시 시작해 주세요.'); return; }
+            this.outputSource?.disconnect(); this.outputMeter?.disconnect();
+            const source = this.context.createMediaStreamSource(remote), analyser = this.context.createAnalyser();
+            analyser.fftSize = 1024; source.connect(analyser); analyser.connect(this.context.destination);
+            this.outputSource = source; this.outputMeter = analyser;
+          } catch { this.fail('음성 출력을 준비하지 못했습니다. 대화를 다시 시작해 주세요.'); return; }
         }
         void audio.play().catch(() => { if (!this.closed) this.callbacks.error('브라우저에서 소리 재생이 차단됐습니다. 사이트의 소리 권한을 허용하고 대화를 다시 시작해 주세요.'); });
       };
@@ -112,7 +113,7 @@ export class JarvisRealtimeSession {
         this.startupTimer = setTimeout(() => this.fail('시작 음성 안내가 지연되었습니다. 대화를 다시 시작해 주세요.'), 20000);
         this.responding = true;
         this.send({ type: 'response.create', response: {
-          instructions: `Speak exactly this English startup announcement and nothing else: "${JARVIS_STARTUP_MESSAGE}". Use a calm, low, precise machine-assistant delivery. Do not translate it or call tools.`,
+          instructions: `Speak exactly this English startup announcement and nothing else: "${JARVIS_STARTUP_MESSAGE}". Use a calm, clear, natural voice. Do not translate it or call tools.`,
           tool_choice: 'none',
         } });
         this.sessionTimer = setTimeout(() => this.fail('10분 대화가 종료되었습니다. 계속하려면 대화 시작을 눌러 주세요.'), 600000);
@@ -140,10 +141,6 @@ export class JarvisRealtimeSession {
         ? '마이크 권한을 허용해 주세요.' : error instanceof Error ? error.message : '음성 연결에 실패했습니다.');
     }
   }
-  setRobotVoice(settings: RobotVoiceSettings) {
-    this.robotSettings = { ...settings };
-    this.robotVoice?.update(this.robotSettings);
-  }
   private send(event: object) {
     if (this.closed || this.channel?.readyState !== 'open') return false;
     this.channel.send(JSON.stringify(event)); return true;
@@ -161,10 +158,27 @@ export class JarvisRealtimeSession {
     if (event.response_id && this.ignoredResponses.has(event.response_id)) return;
     switch (event.type) {
       case 'input_audio_buffer.speech_started':
-        this.pendingChapter = undefined; this.toPhase('listening'); break;
+        // Once the tool acknowledgement has started, its own audio can leak back through the mic.
+        // Keep the validated destination until playback finishes; a real interruption emits
+        // output_audio_buffer.cleared, which clears it explicitly below.
+        if (!this.playing && !this.responding) this.handledChapter = undefined;
+        if (!this.chapterReplyId) this.pendingChapter = undefined;
+        this.toPhase('listening'); break;
       case 'input_audio_buffer.speech_stopped': this.toPhase('thinking'); break;
       case 'conversation.item.input_audio_transcription.completed':
-        if (event.transcript?.trim()) { this.callbacks.transcript(event.transcript); this.callbacks.message('user', event.transcript, event.item_id ?? 'input'); }
+        if (event.transcript?.trim()) {
+          this.callbacks.transcript(event.transcript); this.callbacks.message('user', event.transcript, event.item_id ?? 'input');
+          const screenCommands = resolveScreenCommands(event.transcript);
+          if (screenCommands && this.callbacks.screen) {
+            for (const command of screenCommands) await this.callbacks.screen(command);
+          }
+          const direct = resolveJarvisCommand(event.transcript);
+          if (direct?.chapter && this.handledChapter !== direct.chapter) {
+            this.handledChapter = direct.chapter;
+            if (direct.machineSubject) this.callbacks.chapter(direct.chapter, direct.machineSubject);
+            else this.callbacks.chapter(direct.chapter);
+          }
+        }
         break;
       case 'conversation.item.input_audio_transcription.failed':
         this.callbacks.error('음성 자막을 생성하지 못했습니다.'); break;
@@ -178,7 +192,9 @@ export class JarvisRealtimeSession {
         this.playing = false;
         if (this.pendingChapter && this.chapterReplyId && (event.response_id ?? this.responseId) === this.chapterReplyId) {
           const chapter = this.pendingChapter, subject = this.pendingMachineSubject;
-          this.stop(); if (subject) this.callbacks.chapter(chapter, subject); else this.callbacks.chapter(chapter);
+          this.pendingChapter = undefined; this.pendingMachineSubject = undefined; this.chapterReplyId = '';
+          if (subject) this.callbacks.chapter(chapter, subject); else this.callbacks.chapter(chapter);
+          if (!this.closed) this.toPhase('listening');
         }
         else this.toPhase('listening');
         break;
@@ -217,7 +233,7 @@ export class JarvisRealtimeSession {
           try { const args = JSON.parse(call.arguments ?? '{}'); chapter = args.chapter; subject = args.subject; } catch { chapter = undefined; }
           const scene = call.name === 'open_scene' && (subject === undefined || isMachineSubject(subject)) ? FILM_CHAPTERS.find(c => c.id === chapter) : undefined;
           const machineSubject = scene?.id === 'machine' ? isMachineSubject(subject) ? subject : 'pcb' : undefined;
-          if (scene) { this.pendingChapter = scene.id; this.pendingMachineSubject = machineSubject; this.chapterReplyId = ''; }
+          if (scene && this.handledChapter !== scene.id) { this.pendingChapter = scene.id; this.pendingMachineSubject = machineSubject; this.chapterReplyId = ''; }
           this.send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: call.call_id,
             output: JSON.stringify(scene ? { ok: true, title: machineSubject ? MACHINE_PRESENTATIONS[machineSubject].title : scene.title, instruction: '이 title의 대상을 한 문장으로 안내하세요. 음성 안내가 끝나면 화면을 전환합니다.' } : { ok: false, error: '허용되지 않은 연출입니다.' }) } });
         }
@@ -271,7 +287,8 @@ export class JarvisRealtimeSession {
     if (this.peer) { this.peer.ontrack = null; this.peer.onconnectionstatechange = null; this.peer.close(); this.peer = null; }
     this.microphone?.getTracks().forEach(track => track.stop()); this.microphone = null;
     if (this.audio) { this.audio.pause(); this.audio.srcObject = null; this.audio = null; }
-    this.robotVoice?.dispose(); this.robotVoice = null; this.outputMeter = null;
+    this.outputSource?.disconnect(); this.outputSource = null;
+    this.outputMeter?.disconnect(); this.outputMeter = null;
     if (this.context) void this.context.close().catch(() => {});
     this.context = null; this.pendingChapter = undefined; this.pendingMachineSubject = undefined;
     this.callbacks.analyser(null); this.callbacks.phase('idle'); this.callbacks.ended();

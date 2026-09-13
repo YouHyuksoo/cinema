@@ -62,6 +62,11 @@ export function FilmMenuCube({ onSelect, links = {} }: {
   const float = useRef<HTMLDivElement>(null);
   const cube = useRef<HTMLDivElement>(null);
   const control = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const controlMenu = (event: Event) => setOpen(Boolean((event as CustomEvent<boolean>).detail));
+    window.addEventListener('cinema-cube-menu', controlMenu);
+    return () => window.removeEventListener('cinema-cube-menu', controlMenu);
+  }, []);
 
   useLayoutEffect(() => {
     const overlay = layer.current, floating = float.current, body = cube.current, button = control.current;

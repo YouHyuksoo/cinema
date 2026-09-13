@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 export function GET() {
   const configured = openAiConfigured();
   const saved = savedAiConfig();
-  const voiceMode = saved?.voiceMode ?? 'realtime';
+  const voiceMode = saved?.voiceMode ?? DEFAULT_AI_CONFIG.voiceMode;
+  const voiceGender = saved?.voiceGender ?? DEFAULT_AI_CONFIG.voiceGender;
   const realtimeAvailable = realtimeRuntime() !== null;
   const envKey = Boolean(process.env.OPENAI_API_KEY?.trim());
   // The selection is what the operator picked, even when that provider cannot answer yet (no key, no login).
@@ -16,7 +17,7 @@ export function GET() {
   return Response.json({ selectedProvider: selected.provider, selectedModel: selected.model,
     providers: aiProviderOptions(aiProviderReadiness(saved, envKey, codexLoginStatus().ok)), aiConfigured: configured, mode: configured ? aiProviderId() : 'local', provider: configured ? aiProviderId() : null,
     providerLabel: configured ? aiProvider(aiProviderId()).label : null, textModel: textModel(), realtimeModel: realtimeAvailable ? realtimeModel() : null,
-    realtimeAvailable, voiceMode, /** true when the browser should open the realtime voice session instead of its own speech engine */
+    realtimeAvailable, voiceMode, voiceGender, /** true when the browser should open the realtime voice session instead of its own speech engine */
     useRealtime: configured && realtimeAvailable && voiceMode === 'realtime' },
   { headers: { 'Cache-Control': 'no-store' } });
 }

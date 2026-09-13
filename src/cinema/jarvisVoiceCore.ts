@@ -12,6 +12,15 @@ export function voiceCoreCanvasTransform(cssWidth: number, cssHeight: number, dp
   const scale = cssScale * pixel;
   return { scale, x: width * pixel / 2 - VOICE_CORE_VIEW.x * scale, y: height * pixel / 2 - VOICE_CORE_VIEW.y * scale };
 }
+
+/** Crop tightly around the same reactor geometry for the corner voice indicator. */
+export function compactVoiceCoreCanvasTransform(cssWidth: number, cssHeight: number, dpr = 1) {
+  const width = Number.isFinite(cssWidth) ? Math.max(1, cssWidth) : 1;
+  const height = Number.isFinite(cssHeight) ? Math.max(1, cssHeight) : 1;
+  const pixel = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+  const scale = Math.min(width, height) / 240 * pixel;
+  return { scale, x: width * pixel / 2 - VOICE_CORE_VIEW.x * scale, y: height * pixel / 2 - VOICE_CORE_VIEW.y * scale };
+}
 export const VOICE_CORE_COLORS = { cyan: '#6be5ff', ice: '#d9faff', pink: '#ff79c6', violet: '#b5a2ff' } as const;
 const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 

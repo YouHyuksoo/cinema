@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useJarvisVoice } from './useJarvisVoice';
 import { JarvisWave } from './JarvisWave';
 import type { FilmThemeId } from './filmThemes';
-import { JarvisConversationTrail } from './JarvisConversationTrail';
 import { JarvisMainHeader } from './JarvisMainHeader';
 import { JarvisCenterLayout } from './JarvisCenterLayout';
 import { JarvisAiStatus } from './JarvisAiStatus';
@@ -30,6 +29,7 @@ import type { HatcheryActions } from './hatcheryTargets';
 import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
 import type { FeedPollSummary } from './feedPolling';
+import { useInputDictation } from './useInputDictation';
 
 const overview = jarvisOverview();
 interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; themeSettings?: ReactNode; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null }
@@ -42,6 +42,8 @@ function ConnectedJarvisMain(props: JarvisMainProps) {
 }
 function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
   const [input, setInput] = useState('');
+  const dictation = useInputDictation(input, setInput, voice.active || voice.voiceMode !== 'browser' || voice.switching);
+  useEffect(() => voice.registerInputStopper(dictation.stop), [dictation.stop, voice.registerInputStopper]);
   const [cardFocus, setCardFocus] = useState<{ source:HTMLElement; label:string; openId:number } | null>(null);
   const nextFocusId = useRef(0);
   const focusCard = useCallback(({ source, label }: JarvisStreamFocusRequest) => {
@@ -69,7 +71,7 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
     <section className={styles.left}>
       <div className={styles.sectionTitle} data-card-title>SESSION / CONNECTIONS</div>
       <JarvisAiStatus connection={voice.aiConnection} />
-      <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? '연결 중' : '꺼짐'}</dd>
+      <dl className={styles.connections}><dt>음성 입력</dt><dd>{voice.active ? 'AI 대화 중' : dictation.active ? '로컬 입력 중' : '꺼짐'}</dd>
         <dt>음성 인식</dt><dd>{voice.realtime ? 'OpenAI Realtime' : voice.supported === null ? '확인 중' : voice.supported ? '브라우저' : '미지원'}</dd>
         <dt>현장 명령</dt><dd>사용 가능</dd><dt>현장 데이터</dt><dd>시연 모드</dd></dl>
     </section>
@@ -81,20 +83,16 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
     <section className={styles.left}>
       <div className={styles.sectionTitle} data-card-title>VOICE / 대화 설정</div>
       {voice.configured && <JarvisVoiceModeToggle mode={voice.voiceMode} realtimeAvailable={voice.realtimeAvailable} busy={voice.active || voice.switching}
-        onChange={mode => void voice.setVoiceMode(mode)} />}
+        onChange={mode => { dictation.stop(); void voice.setVoiceMode(mode); }} />}
       {voice.realtime ? <JarvisAiVoiceSettings gender={voice.voiceGender} active={voice.active}
         onGender={voice.setVoiceGender} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
-      <p className={styles.notice}>{voice.realtime ? '대화 시작을 누르면 AI 음성으로 듣고 답합니다. 답변 중에도 말을 걸어 끼어들 수 있습니다. 입력창만 사용하면 글로 답합니다.' : voice.configured ? '대화 시작을 누르면 브라우저 음성으로 듣고, 텍스트 모델의 답을 브라우저 목소리로 읽어 줍니다.' : '대화 시작을 누르고 HATCHERY에게 말을 걸어보세요.'}</p>
+      <p className={styles.notice}>{voice.realtime ? '중앙 마이크를 누르면 Realtime AI 음성 대화를 시작합니다.' : voice.configured ? '중앙 마이크는 로컬 받아쓰기로 입력창만 채웁니다. 터빈의 AI 음성 대화는 텍스트 모델 답변을 브라우저 목소리로 읽습니다.' : '중앙 마이크로 로컬 음성입력을 사용할 수 있습니다.'}</p>
       <p className={styles.notice}>최근 질문: {voice.transcript || '아직 입력한 질문이 없습니다.'}</p>
       {(voice.error || voice.statusError || camera.error) && <p className={styles.error} role="alert">{voice.error || voice.statusError || camera.error}</p>}
       <div className={styles.quick}>{['현장 요약', '살아 있는 공정망 보여줘', '에너지 보여줘', 'SPC 분석 보여줘'].map(q =>
         <button key={q} disabled={busy} onClick={() => void voice.ask(q)}>{q}</button>)}</div>
       <p className={styles.notice}>{voice.realtime ? 'AI 생성 음성입니다. 대화 중 마이크 음성·질문·시연 정보가 OpenAI로 전송되며 사용량에 따라 과금됩니다. 세션은 최대 10분이며 종료·화면 이탈 시 연결을 닫습니다. 카메라는 화면에만 표시합니다.' : voice.configured ? `카메라는 화면에만 표시합니다. 음성 인식·합성은 브라우저 서비스를 이용하고, 질문 텍스트와 시연 정보만 ${voice.providerLabel ?? 'AI'}로 전송됩니다.` : '카메라는 화면에만 표시합니다. 음성 인식은 브라우저 서비스를 이용합니다. 자유 대화 AI는 미연결 상태입니다.'}</p>
     </section>
-    {voice.messages.length > 1 && <section className={styles.left}>
-      <div className={styles.sectionTitle} data-card-title>HISTORY / 이전 대화</div>
-      <JarvisConversationTrail messages={voice.messages} />
-    </section>}
     <JarvisHelp />
     </JarvisStream>
     <JarvisCenterLayout camera={camera} heading={
@@ -105,7 +103,18 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
       </div>
     } form={
       <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
-        <JarvisChatTools camera={camera} input={input} onInput={setInput} voiceActive={voice.active} />
+        <JarvisChatTools camera={camera} input={input} onInput={setInput} mic={(() => {
+          const realtime = voice.voiceMode === 'realtime';
+          const browserConversation = !realtime && voice.active;
+          const active = realtime ? voice.active : browserConversation || dictation.active;
+          const label = realtime ? (voice.active ? 'OpenAI Realtime 대화 종료' : 'OpenAI Realtime 대화 시작')
+            : browserConversation ? '브라우저 AI 대화 종료' : dictation.active ? '로컬 음성입력 종료' : '로컬 음성입력 시작';
+          const unavailable = realtime && !voice.realtimeAvailable;
+          return { active, disabled: voice.voiceMode === null || voice.switching || unavailable,
+            label, title: unavailable ? 'AI 설정에서 OpenAI Realtime API 키를 확인하세요.' : label,
+            error: dictation.error,
+            toggle() { if (browserConversation || (realtime && voice.active)) voice.stop(); else if (realtime) void voice.start(); else dictation.toggle(); } };
+        })()} />
         <label className={styles.srOnly} htmlFor="jarvis-message">HATCHERY에게 질문</label>
         <input id="jarvis-message" placeholder="HATCHERY에게 질문 또는 명령 입력" maxLength={1200} value={input} onChange={e => setInput(e.target.value)} />
         <button type="submit" disabled={busy || !input.trim()}>보내기 ↗</button>

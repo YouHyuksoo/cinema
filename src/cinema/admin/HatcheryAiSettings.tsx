@@ -50,6 +50,7 @@ export function HatcheryAiSettings() {
   };
   const payload = (): AiConfig => ({ provider: draft.provider, model: draft.model, apiKey: draft.apiKey, temperature: draft.temperature,
     maxOutputTokens: draft.maxOutputTokens, instructions: draft.instructions, realtimeModel: draft.realtimeModel, voiceMode: draft.voiceMode,
+    voiceGender: draft.voiceGender,
     // An unchanged prompt is stored empty so later built-in improvements still apply.
     prompt: draft.prompt.trim() === DEFAULT_JARVIS_PROMPT.trim() ? '' : draft.prompt });
   const promptText = draft.prompt || DEFAULT_JARVIS_PROMPT;

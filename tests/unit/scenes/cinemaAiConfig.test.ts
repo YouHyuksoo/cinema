@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const saved: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'sk-ant-secret', temperature: 0.4, maxOutputTokens: 600,
-  instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' };
+  instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', voiceGender: 'male' };
 
 describe('AI settings model', () => {
   it('lists five providers, OpenAI API alone realtime-capable and the ChatGPT subscription keyless', () => {
@@ -28,7 +28,7 @@ describe('AI settings model', () => {
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', maxOutputTokens: 10 })).toMatchObject({ ok: false });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', instructions: 'x'.repeat(4001) })).toMatchObject({ ok: false });
     const parsed = parseAiConfig({ provider: 'anthropic', model: ' claude-sonnet-5 ', apiKey: ' k ', temperature: '0.456', maxOutputTokens: 900, instructions: ' 짧게 ' });
-    expect(parsed).toEqual({ ok: true, config: { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'k', temperature: 0.46, maxOutputTokens: 900, instructions: '짧게', prompt: '', realtimeModel: DEFAULT_AI_CONFIG.realtimeModel, voiceMode: 'realtime' } });
+    expect(parsed).toEqual({ ok: true, config: { provider: 'anthropic', model: 'claude-sonnet-5', apiKey: 'k', temperature: 0.46, maxOutputTokens: 900, instructions: '짧게', prompt: '', realtimeModel: DEFAULT_AI_CONFIG.realtimeModel, voiceMode: 'realtime', voiceGender: 'male' } });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', prompt: ' # 역할\n짧게. ' })).toMatchObject({ ok: true, config: { prompt: '# 역할\n짧게.' } });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', prompt: 'x'.repeat(12001) })).toMatchObject({ ok: false });
     expect(parseAiConfig({ provider: 'openai', model: 'gpt-5', apiKeys: { anthropic: ' sk-a ', gemini: '', cohere: 'x', openai: 7 } })).toMatchObject({ ok: true, config: { apiKeys: { anthropic: 'sk-a' } } });
@@ -38,7 +38,7 @@ describe('AI settings model', () => {
   });
   it('masks the key and reports where it comes from', () => {
     expect(maskAiConfig(saved, true)).toEqual({ provider: 'anthropic', model: 'claude-sonnet-5', temperature: 0.4, maxOutputTokens: 600,
-      instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', hasApiKey: true, keySource: 'config' });
+      instructions: '세 문장 이내로 답할 것.', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', voiceGender: 'male', hasApiKey: true, keySource: 'config' });
     expect(JSON.stringify(maskAiConfig({ ...saved, apiKeys: { gemini: 'AIza-secret' } }, true))).not.toContain('AIza-secret');
     expect(maskAiConfig({ ...saved, provider: 'chatgpt', apiKey: '' }, true, true)).toMatchObject({ hasApiKey: true, keySource: 'codex' });
     expect(maskAiConfig({ ...saved, provider: 'chatgpt', apiKey: '' }, true, false)).toMatchObject({ hasApiKey: false, keySource: 'none' });

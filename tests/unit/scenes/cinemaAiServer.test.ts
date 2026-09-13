@@ -56,6 +56,12 @@ describe('AI settings API', () => {
     await patchAi(request('PATCH', { voiceMode: 'realtime' }));
     expect(readConfig().config.ai?.voiceMode).toBe('realtime');
   });
+  it('persists the selected voice gender and returns it after a status reload', async () => {
+    expect(await (await patchAi(request('PATCH', { voiceGender: 'neutral' }))).status).toBe(400);
+    expect(await (await patchAi(request('PATCH', { voiceGender: 'female' }))).json()).toMatchObject({ ai: { voiceGender: 'female' } });
+    expect(readConfig().config.ai?.voiceGender).toBe('female');
+    expect(await (await assistantStatus()).json()).toMatchObject({ voiceGender: 'female' });
+  });
   it('switches the provider from the main screen only among providers with credentials, keeping every key in the vault', async () => {
     expect(await (await patchAi(request('PATCH', {}))).status).toBe(400);
     expect(await (await patchAi(request('PATCH', { provider: 'cohere' }))).status).toBe(400);
@@ -94,7 +100,7 @@ describe('AI settings API', () => {
     expect(realtimeConfiguration('cedar').instructions).toContain('남성 목소리');
     await putAi(request('PUT', { provider: 'openai', model: 'gpt-4.1-mini', prompt: '# 역할\n{{목소리}}로 한 문장씩만 답한다.', instructions: '존댓말.' }));
     const custom = realtimeConfiguration('cedar').instructions;
-    expect(custom.startsWith('# 역할\n낮고 차분한 남성 목소리로 한 문장씩만 답한다.')).toBe(true);
+    expect(custom.startsWith('# 역할\n차분하고 자연스러운 남성 목소리로 한 문장씩만 답한다.')).toBe(true);
     expect(custom).not.toContain('# 성격과 말투');
     expect(custom).toContain('# 운영자 추가 지시\n존댓말.');
     expect(custom.indexOf('존댓말.')).toBeLessThan(custom.indexOf('# 참고 데이터'));
@@ -103,7 +109,7 @@ describe('AI settings API', () => {
     expect(realtimeConfiguration('cedar').instructions).toContain(DEFAULT_JARVIS_PROMPT.split('\n')[1]);
   });
   it('leaves the saved AI block alone when the data-source screen writes sources and feeds', () => {
-    writeConfig({ sources: [], feeds: [], ai: { ...anthropic, provider: 'anthropic', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' } });
+    writeConfig({ sources: [], feeds: [], ai: { ...anthropic, provider: 'anthropic', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', voiceGender: 'male' } });
     writeConfig({ ...readConfig().config, sources: [], feeds: [] });
     expect(readConfig().config.ai?.apiKey).toBe('sk-ant-secret');
   });
@@ -111,7 +117,7 @@ describe('AI settings API', () => {
     expect(resolveAiRuntime()).toBeNull();
     vi.stubEnv('OPENAI_API_KEY', 'env-key'); vi.stubEnv('OPENAI_TEXT_MODEL', 'env-model');
     expect(resolveAiRuntime()).toMatchObject({ provider: 'openai', model: 'env-model', apiKey: 'env-key', keySource: 'env' });
-    writeConfig({ sources: [], feeds: [], ai: { ...anthropic, provider: 'anthropic', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime' } });
+    writeConfig({ sources: [], feeds: [], ai: { ...anthropic, provider: 'anthropic', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini', voiceMode: 'realtime', voiceGender: 'male' } });
     expect(resolveAiRuntime()).toMatchObject({ provider: 'anthropic', apiKey: 'sk-ant-secret', keySource: 'config' });
   });
   it('tests a draft against the provider, falling back to the saved key, and reports failures without throwing', async () => {

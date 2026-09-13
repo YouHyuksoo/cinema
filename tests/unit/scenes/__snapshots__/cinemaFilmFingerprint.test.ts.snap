@@ -84,11 +84,11 @@ exports[`film draw-call fingerprint > unfold at 28s 1`] = `"7897 calls · 5aa757
 
 exports[`film draw-call fingerprint > unfold at 31.5s 1`] = `"7897 calls · d928c153ad18e4704beeb2a1b9a2678ff3b0cda9"`;
 
-exports[`film draw-call fingerprint > visor at 0.6s 1`] = `"7614 calls · 52395c0cdd41caeb2c9535c171be9bbd6c95a166"`;
+exports[`film draw-call fingerprint > visor at 0.6s 1`] = `"4851 calls · 35125cbc9551fa4e2d03c814b0059870bc43caa2"`;
 
-exports[`film draw-call fingerprint > visor at 1.5s 1`] = `"7614 calls · f2fb6d617dcbe1c206e6440bd034a950232144fc"`;
+exports[`film draw-call fingerprint > visor at 1.5s 1`] = `"4851 calls · 3e5fb98f880c4f58c6526747f1cf64c31df9efa6"`;
 
-exports[`film draw-call fingerprint > visor at 6.5s 1`] = `"5031 calls · 216cfdef102e044bdf72b5dac9d16b56ba4962e2"`;
+exports[`film draw-call fingerprint > visor at 6.5s 1`] = `"3571 calls · d488f5e8dfe6e4a461a45e768f162bee0b21ae7e"`;
 
 exports[`film draw-call fingerprint > visorPan at 0.6s 1`] = `"3892 calls · 892d7988f576ab50ef8a3b351133ca370574c56c"`;
 

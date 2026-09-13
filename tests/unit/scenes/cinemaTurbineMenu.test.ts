@@ -51,6 +51,14 @@ describe('five-blade turbine commands', () => {
     expect(html).toContain('inert=""');
     expect(html).not.toMatch(/<img|<image|\.png/);
   });
+  it('slightly enlarges around the same center on hover and expands the folded hub hit area', () => {
+    const css = readFileSync('src/cinema/filmTurbineMenu.module.css', 'utf8');
+    expect(css).toContain('.menu[data-turbine-open=false]:hover .art');
+    expect(css).toContain('transform:scale(calc(var(--hatchery-orb-scale,.5333) * 1.22))');
+    expect(css).toContain('.menu[data-turbine-open=false] .hub::before');
+    expect(css).toContain('inset:-18px');
+    expect(css).toContain('animation:turbineHoverPulse 1.5s ease-in-out infinite;');
+  });
   it('routes each command explicitly and never starts camera or voice on menu open', () => {
     const actions = { home: vi.fn(), briefing: vi.fn(), settings: vi.fn(), logout: vi.fn(), conversation: vi.fn() };
     for (const command of ['home', 'briefing', 'settings', 'logout', 'conversation'] as const) {

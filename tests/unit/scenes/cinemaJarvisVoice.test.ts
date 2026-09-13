@@ -92,8 +92,8 @@ describe('Jarvis explicit voice session ownership', () => {
     await voice.ask('현장 요약');
     expect(Recognition.instances[0].abort).toHaveBeenCalledOnce();
     expect(voice.audioRef.current.phase).toBe('speaking');
-    expect(speak.mock.calls[0][0].pitch).toBe(.72);
-    expect(speak.mock.calls[0][0].rate).toBe(.94);
+    expect(speak.mock.calls[0][0].pitch).toBe(1);
+    expect(speak.mock.calls[0][0].rate).toBe(1);
     expect(Recognition.instances).toHaveLength(1);
     speak.mock.calls[0][0].onend?.();
     expect(Recognition.instances).toHaveLength(2);
@@ -127,14 +127,17 @@ describe('Jarvis explicit voice session ownership', () => {
     expect(requestMedia).not.toHaveBeenCalled();
     expect(voice.audioRef.current.phase).toBe('error');
   });
-  it('opens a validated scene after its reply and releases the conversation session', async () => {
+  it('opens a validated scene after its reply and keeps listening in the same session', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ reply: 'SPC를 엽니다', source: 'local', chapter: 'spc' }));
     const open = vi.fn(), voice = useJarvisVoice(open);
     await voice.start(); await voice.ask('SPC 분석 보여줘');
     expect(open).not.toHaveBeenCalled();
     speak.mock.calls[0][0].onend?.();
     expect(open).toHaveBeenCalledExactlyOnceWith('spc');
-    expect(stopTrack).toHaveBeenCalledOnce();
+    expect(stopTrack).not.toHaveBeenCalled();
+    expect(Recognition.instances).toHaveLength(2);
+    expect(voice.audioRef.current.phase).toBe('listening');
+    voice.stop(); expect(stopTrack).toHaveBeenCalledOnce();
   });
   it('forwards an explicit car subject from text replies without starting a microphone', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ reply: '자동차 분석을 엽니다', source: 'local', chapter: 'machine', machineSubject: 'car' }));
