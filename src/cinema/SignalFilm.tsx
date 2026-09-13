@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useFilmPlayback } from './useFilmPlayback';
 import { FilmDock } from './FilmDock';
+import { FilmMenuCube } from './FilmMenuCubeView';
 import { FilmSceneSettings, FilmThemeSettings } from './FilmControls';
 import { FilmSettingsDialog } from './FilmSettingsDialog';
 import { FilmTurbineMenu } from './FilmTurbineMenu';
@@ -77,6 +78,7 @@ export function SignalFilm() {
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmBriefing text={turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''} source={turbine.voice.source}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
+      {preview && <FilmMenuCube links={{ admin: '/cinema/admin', ai: '/cinema/ai' }} />}
       <JarvisCameraPopup camera={camera} host />
       {settingsOpen && <FilmSettingsDialog player={player} camera={cameraMode} onClose={() => setSettingsOpen(false)} />}
       <FilmTurbineMenu ready={player.ready} playing={player.playing} voiceActive={turbine.voice.active} onCommand={turbine.command}/>

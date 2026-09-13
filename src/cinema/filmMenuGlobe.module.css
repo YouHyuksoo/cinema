@@ -11,6 +11,9 @@
 }
 .hit { position:fixed; inset:0; z-index:5; pointer-events:none; }
 .hit .expand { pointer-events:auto; }
+/* The open orbit globe is the visible fold control, so it must sit above the ring and scene canvas. */
+.shell:has(.expand[aria-label="메뉴 접기"]) .layer { z-index:6; }
+.shell:has(.expand[aria-label="메뉴 접기"]) .hit { z-index:7; }
 .float { position:absolute; inset:0; transform-style:preserve-3d; }
 .layer[data-phase=closed] .float,.shell:has(.layer[data-phase=closed]) .hit { animation:globeFloat 4.8s ease-in-out infinite; }
 @keyframes globeFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }

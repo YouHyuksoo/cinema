@@ -2,17 +2,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { FilmDock } from '@/cinema/FilmDock';
-import { FILM_CHAPTERS } from '@/cinema/filmProgram';
+import { FilmMenuCube } from '@/cinema/FilmMenuCubeView';
 import { CUBE_FACES, CUBE_STICKERS_PER_FACE } from '@/cinema/filmMenuCube';
-import type { FilmPlayback } from '@/cinema/useFilmPlayback';
-import type { FilmCameraMode } from '@/cinema/FilmCameraControls';
 
-function renderDock(menuOpen: boolean) {
-  const player = { position: { chapter: FILM_CHAPTERS[0], localTime: 0 }, ready: true,
-    playing: true, factory: { manual: false } } as FilmPlayback;
-  const camera = { preview: true } as FilmCameraMode;
-  return renderToStaticMarkup(createElement(FilmDock, { player, camera, menuOpen, onMenuOpenChange() {} }));
+function renderCube() {
+  return renderToStaticMarkup(createElement(FilmMenuCube));
 }
 
 describe('management cube markup', () => {
@@ -29,7 +23,7 @@ describe('management cube markup', () => {
   });
 
   it('renders a 3x3 sticker Rubik cube with six faces and a single management control', () => {
-    const html = renderDock(false);
+    const html = renderCube();
     for (const face of CUBE_FACES) {
       expect(html.match(new RegExp(`data-cube-face="${face.id}"`, 'g'))).toHaveLength(9);
       expect(html).toContain(face.label);
@@ -46,7 +40,7 @@ describe('management cube markup', () => {
   });
 
   it('renders a closed six-item menu the cube control expands', () => {
-    const html = renderDock(false);
+    const html = renderCube();
     expect(html).toMatch(/<button[^>]*aria-label="메뉴 관리"[^>]*aria-haspopup="menu"[^>]*aria-expanded="false"/);
     expect(html).toMatch(/role="menu"[^>]*aria-label="관리 메뉴"[^>]*data-open="false"/);
     expect(html.match(/role="menuitem"/g)).toHaveLength(7);
@@ -54,13 +48,11 @@ describe('management cube markup', () => {
     for (const face of CUBE_FACES) expect(html).toContain(`data-cube-menu="${face.id}"`);
   });
 
-  it('stays available while the scene ring is open or collapsed', () => {
-    for (const menuOpen of [false, true]) {
-      const html = renderDock(menuOpen);
-      expect(html).toContain('aria-label="메뉴 관리"');
-      expect(html).toContain('data-cube-control="true"');
-      expect(html.match(/<button[^>]*aria-label="메뉴 관리"[^>]*>/)?.[0] ?? '').not.toContain('hidden=');
-    }
+  it('stays available independently from the scene ring state', () => {
+    const html = renderCube();
+    expect(html).toContain('aria-label="메뉴 관리"');
+    expect(html).toContain('data-cube-control="true"');
+    expect(html.match(/<button[^>]*aria-label="메뉴 관리"[^>]*>/)?.[0] ?? '').not.toContain('hidden=');
   });
 
   it('keeps the cube overlay from stealing the rest of the viewport', () => {

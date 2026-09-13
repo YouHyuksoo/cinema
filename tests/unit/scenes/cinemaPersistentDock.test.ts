@@ -50,10 +50,21 @@ describe('auto-collapsing scene dock', () => {
     }
     expect(html).toContain('연출 장면 선택');
     expect(html).not.toContain('aria-label="메뉴 축소"');
-    if (preview) expect(html).toContain('HATCHERY 메인 메뉴');
+    if (preview) {
+      expect(html).toContain('HATCHERY 메인 메뉴');
+      expect(html).not.toContain('data-cube-layer="true"');
+    }
     if (preview) expect(html).not.toContain('연출 설정');
     else expect(html).toContain('연출 설정');
     for (const chapter of FILM_CHAPTERS) expect(html).toContain(chapter.title);
+  });
+
+  it('keeps the fixed management cube outside the transformable dock container', () => {
+    const signalSource = readFileSync(new URL('../../../src/cinema/SignalFilm.tsx', import.meta.url), 'utf8');
+    const dockSource = readFileSync(new URL('../../../src/cinema/FilmDock.tsx', import.meta.url), 'utf8');
+    expect(signalSource).toContain("import { FilmMenuCube } from './FilmMenuCubeView'");
+    expect(signalSource).toMatch(/<FilmDock[^>]*\/>\s*\{preview && <FilmMenuCube/);
+    expect(dockSource).not.toContain('<FilmMenuCube');
   });
 
   it('folds by choosing a scene or Escape instead of a dedicated collapse control', () => {

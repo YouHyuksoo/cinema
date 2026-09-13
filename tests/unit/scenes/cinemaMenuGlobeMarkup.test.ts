@@ -69,4 +69,11 @@ describe('collapsed chapter globe accessibility', () => {
     expect(globeCss).toMatch(/\.ball\s*{[^}]*border-radius:50%/);
     expect(globeCss).not.toMatch(/\[data-phase=closed\] \.face>:first-child/);
   });
+
+  it('raises the open orbit globe and its fold control above the ring and scene canvas', () => {
+    const globeCss = readFileSync(new URL('../../../src/cinema/filmMenuGlobe.module.css', import.meta.url), 'utf8')
+      .replace(/\s+/g, ' ');
+    expect(globeCss).toMatch(/\.shell:has\(\.expand\[aria-label=["']메뉴 접기["']\]\) \.layer\s*{[^}]*z-index:6/);
+    expect(globeCss).toMatch(/\.shell:has\(\.expand\[aria-label=["']메뉴 접기["']\]\) \.hit\s*{[^}]*z-index:7/);
+  });
 });

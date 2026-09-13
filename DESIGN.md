@@ -465,4 +465,6 @@
 
 우측 구체 호버는 위치와 지름을 유지하며 밝기와 테두리 발광으로 표시한다. 구체 둘레 링 클릭 시 화면 중앙으로 즉시 이동한 뒤 펼침을 진행한다. 호버 확대 상태 계산은 useFilmMenuGlobe에서 제거했다.
 
+관리 큐브는 메뉴 도크의 이동·변형 좌표계에 포함하지 않고 SignalFilm의 독립 고정 레이어로 둔다. 구체 둘레 링이 열리면 구체 본체와 클릭 영역을 링과 중앙 장면보다 위에 표시하며, 중앙 구체를 누르면 같은 자리에서 링을 접는다. 영향: SignalFilm / FilmDock / filmMenuGlobe.module.css. 검증: cinemaPersistentDock / cinemaMenuGlobeMarkup 테스트.
+
 좌우 Jarvis 스크롤의 모든 직접 카드 배경은 클릭하거나 카드 자체에서 Enter/Space를 누르면 중앙 읽기 패널로 확대된다. 카드 안의 버튼·링크·입력·선택·요약 컨트롤은 기존 기능만 실행한다. 확대본은 원본 DOM을 ID 충돌 없이 복제한 읽기 전용 화면이며, Canvas와 현재 테마 변수를 함께 복사한다. 하나의 body 포털이 배경 클릭·닫기·Escape, 포커스 고정과 복원, 주변 화면 inert 처리를 담당하고 열려 있는 동안 두 스트림의 자동 이동만 보류한다. 영향 경로: JarvisMain → JarvisStream / useDriftScroll → JarvisCardFocus / jarvisCardFocus.
