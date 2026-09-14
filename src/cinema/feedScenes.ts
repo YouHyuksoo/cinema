@@ -13,7 +13,9 @@ export function feedToSceneDocuments(feedId: string, data: Record<string, unknow
   const document = (scene: FilmId, payload: unknown): SceneDataDocument => ({ scene, version: 1, source: envelope.source, at: envelope.at, data: payload });
   switch (feedId) {
     case 'production':
-      return [document('bars', { unit: data.unit, target: data.target, ...(data.selectedId !== undefined ? { selectedId: data.selectedId } : {}), lines: list(data.lines) })];
+      return [document('pie', { unit: data.unit, target: data.target, ...(data.selectedId !== undefined ? { selectedId: data.selectedId } : {}), lines: list(data.lines) })];
+    case 'equipment':
+      return data.metrics ? [document('bars', { name: data.mounterLineName ?? data.mounterName ?? 'SMT MOUNTER LINE', metrics: list(data.metrics) })] : [];
     case 'environment':
       return [document('wave', { title: data.title, ...(data.historyEnd !== undefined ? { historyEnd: data.historyEnd } : {}),
         zones: list(data.zones).map(zone => ({ ...zone, name: zone.name ?? zone.label })) })];

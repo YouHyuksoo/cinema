@@ -155,8 +155,8 @@ DB 뷰는 장면 단위가 아니라 **도메인 피드** 단위로 만든다. �
 
 | scene | 현재 | 목표 | 데이터 키 | 이관 시 손대는 파일 | 비고 |
 |---|---|---|---|---|---|
-| bars | L2 | L3 | production | drawBarFilm.ts, productionSnapshot.ts | 기준 구현 |
-| pie | L0 | L2 | production | drawPieFilm.ts, chartData.ts | 같은 스냅샷을 읽도록 이관 |
+| bars | L2 | L3 | mounter | drawMounterAnalysisFilm.ts, mounterAnalysis.ts | 마운터 진단 지표 전용 |
+| pie | L2 | L3 | production | drawMultiChartFilm.ts, drawPieFilm.ts, productionSnapshot.ts | 차트 분석과 기존 파이 연출 |
 | wave | L2 | L3 | environment | zoneEnvironment.ts, environmentLayout.ts | 최대 10구역, 초과분 생략 |
 | network | L2 | L3 | network | processNetwork.ts, drawProcessNetworkFilm.ts | 노드 `position`은 데이터 소유. `index===2` 특수 처리 제거 필요 |
 | spc | L2 | L3 | spc | spcData.ts, spcScene.ts | 통계는 개수 무관, 연출 타이밍은 40초 고정 |

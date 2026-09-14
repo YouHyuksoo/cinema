@@ -28,10 +28,12 @@ export const SCREEN_SETTINGS: readonly Setting[] = [
   { key: 'mode', label: '재생 방식', options: [{ value: 'sequence', label: '전체 연속' }, { value: 'chapter', label: '현재 장면 반복' }] },
   { key: 'seek', label: '재생 위치 초', min: 0, max: 3600 },
   { key: 'machine', label: '검사 대상', options: [{ value: 'pcb', label: 'PCB' }, { value: 'car', label: '자동차' }] },
-  ...(['bars', 'pie'] as const).flatMap(kind => [
-    { key: `${kind}Dimension`, label: `${kind === 'bars' ? '막대' : '파이'} 형태`, options: [{ value: '2d', label: '평면' }, { value: '3d', label: '입체' }] },
-    { key: `${kind}Depth`, label: `${kind === 'bars' ? '막대' : '파이'} 두께 퍼센트`, min: 40, max: 160 },
-  ]),
+  { key: 'pieStyle', label: '차트 분석 형식', options: [
+    { value: 'auto', label: '자동 순환' }, { value: 'bar', label: '막대' }, { value: 'line', label: '선' },
+    { value: 'area', label: '영역' }, { value: 'scatter', label: '산포' }, { value: 'pie', label: '파이' },
+  ] },
+  { key: 'pieDimension', label: '차트 분석 형태', options: [{ value: '2d', label: '평면' }, { value: '3d', label: '입체' }] },
+  { key: 'pieDepth', label: '차트 분석 두께 퍼센트', min: 40, max: 160 },
   { key: 'camera', label: '카메라 연결', options: onOff },
   { key: 'cameraPopup', label: '영상 창', options: onOff },
   { key: 'mirror', label: '거울 모드', options: onOff },
@@ -146,8 +148,9 @@ export function resolveScreenCommands(text: string): ScreenCommand[] | null {
     machine: /검사대상|pcb|자동차/, mirror: /거울|미러/, zoom: /얼굴확대|카메라줌/, blur: /블러|흐림/, voiceGender: /목소리|음성성별/,
     voiceMode: /음성방식|실시간음성|리얼타임|브라우저음성/, provider: /ai제공자|프로바이더|openai|chatgpt|anthropic|gemini|mistral/,
     temperature: /응답다양성|temperature/, maxOutputTokens: /최대출력토큰|출력토큰/,
-    barsDimension: /막대.*(?:형태|평면|입체|2d|3d)/, pieDimension: /파이.*(?:형태|평면|입체|2d|3d)/,
-    barsDepth: /막대.*두께/, pieDepth: /파이.*두께/ };
+    pieStyle: /(?:(?:통합|분석)?차트|차트분석).*(?:자동|막대|선|영역|산포|파이)/,
+    pieDimension: /(?:(?:통합|분석)?차트|차트분석).*(?:형태|평면|입체|2d|3d)|파이.*(?:형태|평면|입체|2d|3d)/,
+    pieDepth: /(?:(?:통합|분석)?차트|차트분석).*두께|파이.*두께/ };
   if (!/바꿔|변경|설정|해줘|켜|꺼|끄기|재생|정지|열|확대|블러|알려|확인/.test(t)) return null;
   for (const s of SCREEN_SETTINGS) {
     if (!t.includes(s.label.replace(/\s|퍼센트|초/g, '').toLowerCase()) && !aliases[s.key]?.test(t)) continue;

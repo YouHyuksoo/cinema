@@ -85,7 +85,7 @@ describe('feed to scene documents', () => {
   const envelope = { source: 'mes' as const, at: '2026-09-08T09:00:00+09:00' };
   it('converts the generated examples of migrated feeds into documents the store accepts', () => {
     const store = createSceneDataStore();
-    for (const [feedId, scene] of [['production', 'bars'], ['environment', 'wave'], ['process', 'network'], ['quality', 'spc'], ['energy', 'energy'], ['inspection', 'product']] as const) {
+    for (const [feedId, scene] of [['production', 'pie'], ['equipment', 'bars'], ['environment', 'wave'], ['process', 'network'], ['quality', 'spc'], ['energy', 'energy'], ['inspection', 'product']] as const) {
       const example = feedExample(domainFeed(feedId)!).data as Record<string, unknown>;
       const documents = feedToSceneDocuments(feedId, example, envelope);
       expect(documents.map(document => document.scene), feedId).toEqual([scene]);
@@ -93,9 +93,10 @@ describe('feed to scene documents', () => {
       expect(result.ok, `${feedId}: ${!result.ok ? result.reason : ''}`).toBe(true);
     }
     expect(store.provenance('production')).toEqual(envelope);
+    expect(store.provenance('mounter')).toEqual(envelope);
   });
   it('produces nothing for feeds whose scenes are not migrated yet', () => {
-    for (const feedId of ['equipment', 'workOrder', 'machine']) expect(feedToSceneDocuments(feedId, feedExample(domainFeed(feedId)!).data as Record<string, unknown>, envelope)).toEqual([]);
+    for (const feedId of ['workOrder', 'machine']) expect(feedToSceneDocuments(feedId, feedExample(domainFeed(feedId)!).data as Record<string, unknown>, envelope)).toEqual([]);
     expect(feedToSceneDocuments('energy', { name: 'x', readings: [] }, envelope)).toEqual([]);
   });
 });

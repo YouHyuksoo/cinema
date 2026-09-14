@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "hatchery/feeds/production",
   "title": "라인 생산 실적 (production)",
-  "description": "막대·파이가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다. 갱신: 10~30초 폴링. 장면: bars, pie, corners, unfold.",
+  "description": "파이 상세가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다. 갱신: 10~30초 폴링. 장면: pie, corners, unfold.",
   "type": "object",
   "properties": {
     "unit": {

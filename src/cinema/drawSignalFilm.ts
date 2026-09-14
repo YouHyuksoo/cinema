@@ -5,7 +5,8 @@ import { drawUnfoldFilm } from './drawUnfoldFilm';
 import { drawTraceFilm } from './drawTraceFilm';
 import { drawConsoleFilm } from './drawConsoleFilm';
 import { drawVisorFilm, drawPlanarVisorFilm } from './drawVisorFilm';
-import { drawBarFilm } from './drawBarFilm';
+import { drawMultiChartFilm } from './drawMultiChartFilm';
+import { drawMounterAnalysisFilm } from './drawMounterAnalysisFilm';
 import { drawPieFilm } from './drawPieFilm';
 import { drawCornerFilm } from './drawCornerFilm';
 import { drawTransparentMachineFilm } from './drawTransparentMachineFilm';
@@ -35,9 +36,11 @@ const renderers: Record<FilmId, Renderer> = {
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
   console: drawConsoleFilm, visor: (ctx, width, height, time, fonts, insets, _charts, factory) => drawVisorFilm(ctx, width, height, time, fonts, 'space', insets, factory),
   visorPan: drawPlanarVisorFilm,
-  bars: (ctx, width, height, time, fonts, insets, charts, _factory, _environment, data) =>
-    drawBarFilm(ctx, width, height, time, fonts, charts.bars, insets, data.production),
-  pie: (ctx, width, height, time, fonts, insets, charts) => drawPieFilm(ctx, width, height, time, fonts, charts.pie, insets),
+  bars: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) =>
+    drawMounterAnalysisFilm(ctx, width, height, time, fonts, insets, data.mounter),
+  pie: (ctx, width, height, time, fonts, insets, charts, _factory, _environment, data) =>
+    charts.pie.style === 'pie' ? drawPieFilm(ctx, width, height, time, fonts, charts.pie, insets, data.production)
+      : drawMultiChartFilm(ctx, width, height, time, fonts, charts.pie, insets, data.production),
   corners: drawCornerFilm,
   machine: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data, machine) =>
     drawTransparentMachineFilm(ctx, width, height, time, fonts, insets, machine.subject, data.pcb, machine.provenance),

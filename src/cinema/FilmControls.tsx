@@ -58,8 +58,8 @@ function SceneFields({ player, camera }: { player: FilmPlayback; camera: FilmCam
       </div>
       {!camera.preview && chapter.id === 'machine' && <FilmMachineControls subject={player.machineSubject}
         disabled={!player.ready} onChange={player.changeMachineSubject} />}
-      {!camera.preview && (chapter.id === 'bars' || chapter.id === 'pie') && (
-        <FilmChartControls kind={chapter.id} presentation={player.charts[chapter.id]} disabled={!player.ready}
+      {!camera.preview && chapter.id === 'pie' && (
+        <FilmChartControls kind="pie" presentation={player.charts.pie} disabled={!player.ready}
           onChange={player.changeChartPresentation} />
       )}
       <div className={styles.controlRow}>

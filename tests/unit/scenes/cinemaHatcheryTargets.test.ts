@@ -13,36 +13,37 @@ const patchOf = (input: string, source = data) => {
 };
 
 describe('HATCHERY target resolution', () => {
-  it('finds objects by id, label, code or number reference ignoring case, spaces and hyphens', () => {
-    expect(resolveHatcheryTarget(data, 'bars', 'line-02')?.id).toBe('LINE-02');
-    expect(resolveHatcheryTarget(data, 'bars', 'LINE 02')?.id).toBe('LINE-02');
-    expect(resolveHatcheryTarget(data, 'bars', 'line02')?.id).toBe('LINE-02');
+  it('finds objects by id, label or code ignoring case, spaces and hyphens', () => {
+    expect(resolveHatcheryTarget(data, 'bars', 'M01-pickup-rate')?.id).toBe('M01-pickup-rate');
+    expect(resolveHatcheryTarget(data, 'bars', 'MOUNTER 01 픽업률')?.id).toBe('M01-pickup-rate');
+    expect(resolveHatcheryTarget(data, 'bars', 'M03 인식오류율')?.id).toBe('M03-recognition-error');
     expect(resolveHatcheryTarget(data, 'wave', 'zone 3')?.id).toBe('ZONE 03');
     expect(resolveHatcheryTarget(data, 'wave', '리플로우')?.id).toBe('ZONE 05');
     expect(resolveHatcheryTarget(data, 'network', 'REFLOW')?.id).toBe('reflow');
     expect(resolveHatcheryTarget(data, 'network', '광학 검사')?.id).toBe('aoi');
     expect(resolveHatcheryTarget(data, 'spc', 'sg 18')?.id).toBe('SG-18');
-    expect(resolveHatcheryTarget(data, 'bars', 'LINE-42')).toBeUndefined();
+    expect(resolveHatcheryTarget(data, 'bars', 'unknown-metric')).toBeUndefined();
   });
 
   it('resolves against injected data, not the defaults', () => {
-    const injected = mergeFilmSceneData(data, { production: { unit: 'EA', target: 500,
-      lines: [{ id: 'SMT-A', label: 'SMT A', value: 420 }, { id: 'SMT-B', label: 'SMT B', value: 510 }] } });
-    expect(resolveHatcheryTarget(injected, 'bars', 'smt b')?.id).toBe('SMT-B');
-    expect(resolveHatcheryTarget(injected, 'bars', 'LINE-02')).toBeUndefined();
-    expect(patchOf('SMT B 470으로', injected).patch.objects[0]).toEqual({ id: 'SMT-B', value: 470 });
+    const injected = mergeFilmSceneData(data, { mounter: { name: 'MOUNTER X', metrics: [
+      { id: 'MX-pick', label: '픽업 성능', machineId: 'MX', machineLabel: 'MOUNTER X', value: 98, target: 99, unit: '%', direction: 'higher' },
+      { id: 'MX-vision', label: '비전 오류', machineId: 'MX', machineLabel: 'MOUNTER X', value: .4, target: .2, unit: '%', direction: 'lower' }] } });
+    expect(resolveHatcheryTarget(injected, 'bars', 'MOUNTER X 비전 오류')?.id).toBe('MX-vision');
+    expect(resolveHatcheryTarget(injected, 'bars', '픽업률')).toBeUndefined();
+    expect(patchOf('MOUNTER X 비전 오류 0.3으로', injected).patch.objects[0]).toEqual({ id: 'MX-vision', value: .3 });
   });
 });
 
 describe('HATCHERY value commands (local, client side)', () => {
-  it('changes a production line value from spoken forms and opens the bar scene', () => {
-    for (const input of ['라인 2 470으로', '2번 라인 생산량 470', 'LINE 02 실적을 470개로 바꿔', 'line-02 470']) {
+  it('changes a mounter metric value and opens the analysis scene', () => {
+    for (const input of ['마운터 1 로스율 0.4로', 'M01-loss-rate 현재값 0.4', 'MOUNTER 01 로스율 값을 0.4로 바꿔']) {
       const command = patchOf(input);
-      expect(command.patch).toMatchObject({ scene: 'bars', source: 'hatchery', objects: [{ id: 'LINE-02', value: 470 }] });
+      expect(command.patch).toMatchObject({ scene: 'bars', source: 'hatchery', objects: [{ id: 'M01-loss-rate', value: .4 }] });
       expect(parseSceneObjectPatch(command.patch).ok).toBe(true);
       expect(command.chapter).toBe('bars');
-      expect(command.reply).toContain('LINE 02');
-      expect(command.reply).toContain('470');
+      expect(command.reply).toContain('로스율');
+      expect(command.reply).toContain('0.4');
     }
   });
 
@@ -74,8 +75,8 @@ describe('HATCHERY value commands (local, client side)', () => {
   it('leaves questions, unknown targets and commands without a number to the other handlers', () => {
     expect(resolveHatcheryValueCommand('ZONE 6 온도 얼마야?', data)).toBeNull();
     expect(resolveHatcheryValueCommand('3번 구역 온도 알려줘', data)).toBeNull();
-    expect(resolveHatcheryValueCommand('라인 9 470으로', data)).toBeNull();
-    expect(resolveHatcheryValueCommand('라인 2 올려줘', data)).toBeNull();
+    expect(resolveHatcheryValueCommand('알 수 없는 지표 470으로', data)).toBeNull();
+    expect(resolveHatcheryValueCommand('마운터 1 픽업률 올려줘', data)).toBeNull();
     expect(resolveHatcheryValueCommand('SPC 분석 보여줘', data)).toBeNull();
     expect(resolveHatcheryValueCommand('현장 요약', data)).toBeNull();
   });
@@ -90,18 +91,18 @@ describe('HATCHERY tool contract', () => {
   });
 
   it('turns valid tool arguments into a patch, resolving labels to ids', () => {
-    const result = toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE 02', field: 'value', value: 470 }, { id: 'LINE-03', field: 'value', value: 900 }] }, data);
+    const result = toolCallToPatch({ scene: 'bars', objects: [{ id: 'MOUNTER 01 픽업률', field: 'value', value: 99.7 }, { id: 'M02-loss-rate', field: 'value', value: .4 }] }, data);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.patch.objects).toEqual([{ id: 'LINE-02', value: 470 }, { id: 'LINE-03', value: 900 }]);
+    if (result.ok) expect(result.patch.objects).toEqual([{ id: 'M01-pickup-rate', value: 99.7 }, { id: 'M02-loss-rate', value: .4 }]);
     const list = toolCallToPatch({ scene: 'spc', objects: [{ id: 'SG-01', field: 'values', values: [1, 2, 3, 4, 5] }] }, data);
     expect(list.ok && list.patch.objects[0]).toEqual({ id: 'SG-01', values: [1, 2, 3, 4, 5] });
   });
 
   it('rejects unknown scenes, fields, ids and non-numeric values', () => {
     expect(toolCallToPatch({ scene: 'energy', objects: [{ id: 'power', field: 'value', value: 1 }] }, data).ok).toBe(false);
-    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE-01', field: 'humidity', value: 1 }] }, data).ok).toBe(false);
-    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE-99', field: 'value', value: 1 }] }, data).ok).toBe(false);
-    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE-01', field: 'value', value: 'high' }] }, data).ok).toBe(false);
+    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'M01-pickup-rate', field: 'humidity', value: 1 }] }, data).ok).toBe(false);
+    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'unknown', field: 'value', value: 1 }] }, data).ok).toBe(false);
+    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'M01-pickup-rate', field: 'value', value: 'high' }] }, data).ok).toBe(false);
     expect(toolCallToPatch({ scene: 'bars', objects: [] }, data).ok).toBe(false);
     expect(toolCallToPatch(null, data).ok).toBe(false);
   });
@@ -109,7 +110,7 @@ describe('HATCHERY tool contract', () => {
   it('lists ids, labels and fields for the assistant instructions', () => {
     const catalog = hatcheryObjectCatalog(data);
     expect(catalog).toContain('bars');
-    expect(catalog).toContain('LINE-02');
+    expect(catalog).toContain('M01-pickup-rate');
     expect(catalog).toContain('ZONE 05');
     expect(catalog).toContain('reflow');
     expect(catalog).toContain('capacityPerHour');
@@ -126,12 +127,12 @@ describe('HATCHERY fields derive from scene field descriptors', () => {
   });
   it('formats replies and the catalog with descriptor units and ranges', () => {
     expect(patchOf('존 3 온도 31.5로').reply).toContain('31.5°C');
-    expect(patchOf('라인 2 470으로').reply).toContain('470EA');
+    expect(patchOf('마운터 1 로스율 0.4로').reply).toContain('0.40%');
     expect(hatcheryObjectCatalog(data)).toContain('°C');
     expect(hatcheryObjectCatalog(data)).toContain('범위 0~100');
   });
   it('rejects tool values outside the declared range', () => {
     expect(toolCallToPatch({ scene: 'wave', objects: [{ id: 'ZONE 01', field: 'humidity', value: 120 }] }, data).ok).toBe(false);
-    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'LINE-01', field: 'value', value: -1 }] }, data).ok).toBe(false);
+    expect(toolCallToPatch({ scene: 'bars', objects: [{ id: 'M01-pickup-rate', field: 'value', value: -1 }] }, data).ok).toBe(false);
   });
 });

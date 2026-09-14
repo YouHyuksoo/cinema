@@ -6,6 +6,7 @@ import { DEFAULT_PRODUCT_DATA, type ProductInspectionData } from './productInspe
 import { DEFAULT_SPC_DATA } from './spcData';
 import type { SpcData } from './spcTypes';
 import { DEFAULT_PCB_INSPECTION_DATA, type PcbInspectionData } from './pcbInspectionData';
+import { DEFAULT_MOUNTER_ANALYSIS, type MounterAnalysisData } from './mounterAnalysis';
 
 /** Everything a film frame reads from outside: one entry per data-driven scene family. */
 export interface FilmSceneData {
@@ -16,6 +17,7 @@ export interface FilmSceneData {
   product: ProductInspectionData;
   spc: SpcData;
   pcb: PcbInspectionData;
+  mounter: MounterAnalysisData;
 }
 export type FilmSceneDataKey = keyof FilmSceneData;
 
@@ -27,6 +29,7 @@ export const DEFAULT_FILM_SCENE_DATA: FilmSceneData = {
   product: DEFAULT_PRODUCT_DATA,
   spc: DEFAULT_SPC_DATA,
   pcb: DEFAULT_PCB_INSPECTION_DATA,
+  mounter: DEFAULT_MOUNTER_ANALYSIS,
 };
 
 /** Keys absent or undefined in the change keep their current data. */

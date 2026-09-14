@@ -52,7 +52,7 @@ describe('feed runner', () => {
     const result = await runFeed(config, 'production', { query });
     expect(result.ok).toBe(true);
     expect(result.documents).toHaveLength(1);
-    expect(result.documents[0]).toMatchObject({ scene: 'bars', source: 'mes', data: { unit: 'EA', target: 1150, lines: [{ id: '01', label: 'S01', value: 860 }, { id: '02', value: 720 }] } });
+    expect(result.documents[0]).toMatchObject({ scene: 'pie', source: 'mes', data: { unit: 'EA', target: 1150, lines: [{ id: '01', label: 'S01', value: 860 }, { id: '02', value: 720 }] } });
     expect(result.counts.lines).toEqual({ rows: 3, kept: 2 });
     expect(result.issues).toHaveLength(1);
     expect(result.sample).toHaveLength(3);
@@ -118,7 +118,7 @@ describe('admin and feed routes', () => {
     const polled = await (await pollFeeds(request('GET'))).json();
     expect(polled.database).toMatchObject({total:1,connected:1});
     expect(JSON.stringify(polled.database)).not.toMatch(/secret|reader|PDB/);
-    expect(polled.documents[0]).toMatchObject({ scene: 'bars' });
+    expect(polled.documents[0]).toMatchObject({ scene: 'pie' });
     expect(polled.feeds[0]).toMatchObject({ feed: 'production', ok: true });
     expect(polled.nextInSeconds).toBeGreaterThan(0);
   });

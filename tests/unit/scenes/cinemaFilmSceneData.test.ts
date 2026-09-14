@@ -14,14 +14,16 @@ describe('film scene data injection', () => {
     expect(DEFAULT_FILM_SCENE_DATA.production.lines).toHaveLength(5);
   });
 
-  it('routes injected production lines into the bar scene', () => {
-    const data: FilmSceneData = mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, { production: { unit: 'EA', target: 800,
-      lines: [{ id: 'SMT-A', label: 'SMT A', value: 640 }, { id: 'SMT-B', label: 'SMT B', value: 910 }] } });
+  it('routes injected line and mounter metrics into the mounter analysis scene', () => {
+    const data: FilmSceneData = mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, { mounter: { name: 'MOUNTER X', metrics: [
+      { id: 'MX-pickup', label: '픽업률 TEST', machineId: 'MX', machineLabel: 'MOUNTER X1', value: 98.5, target: 99.5, unit: '%', direction: 'higher' },
+      { id: 'MX-loss', label: '로스율 TEST', machineId: 'MX', machineLabel: 'MOUNTER X1', value: .4, target: .5, unit: '%', direction: 'lower' }] } });
     const fixture = canvasFixture();
     drawSignalFilm(fixture.ctx, 1280, 720, chapterStart('bars') + 8, undefined, undefined, undefined, null, null, data);
     const drawn = fixture.texts.map(text => text.value);
-    expect(drawn).toContain('SMT A');
-    expect(drawn).toContain('02 CHANNELS');
+    expect(drawn).toContain('픽업률 TEST');
+    expect(drawn).toContain('MOUNTER X1');
+    expect(drawn).toContain('로스율 TEST');
     expect(drawn).not.toContain('LINE 01');
     expect(fixture.stack).toHaveLength(0);
   });
@@ -29,7 +31,7 @@ describe('film scene data injection', () => {
   it('draws the default snapshot when no data is passed', () => {
     const fixture = canvasFixture();
     drawSignalFilm(fixture.ctx, 1280, 720, chapterStart('bars') + 8);
-    expect(fixture.texts.map(text => text.value)).toContain('05 CHANNELS');
+    expect(fixture.texts.map(text => text.value)).toContain('SMT LINE 03 / MOUNTER ANALYSIS');
   });
 });
 

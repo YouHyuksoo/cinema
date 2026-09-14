@@ -3,7 +3,7 @@ sources:
   - src/cinema/domainFeeds.ts
   - src/cinema/sceneFields.ts
   - src/cinema/productionLineFields.ts
-verifiedCommit: ac3956a
+verifiedCommit: 0952ea6
 ---
 
 # 도메인 피드 — DB가 보내야 하는 기대값
@@ -16,8 +16,8 @@ verifiedCommit: ac3956a
 
 | 피드 | 이름 | 갱신 | 상태 | 컬렉션 | 소비 장면 |
 | --- | --- | --- | --- | --- | --- |
-| `production` | 라인 생산 실적 | 보통 폴링 (10~30초 폴링) | 연결됨 | `lines` | bars, pie, corners, unfold |
-| `equipment` | 설비 마스터 · 상태 | 빠른 폴링 (5~10초 폴링 또는 상태 변경 푸시) | 이관 예정 | `stations` | visor, visorPan, scan, gears, console, cctv |
+| `production` | 라인 생산 실적 | 보통 폴링 (10~30초 폴링) | 연결됨 | `lines` | pie, corners, unfold |
+| `equipment` | 설비 마스터 · 상태 | 빠른 폴링 (5~10초 폴링 또는 상태 변경 푸시) | 일부 연결 | `stations`, `metrics` | bars, visor, visorPan, scan, gears, console, cctv |
 | `process` | 공정 처리능력 · 대기 | 보통 폴링 (10~30초 폴링) | 일부 연결 | `nodes`, `links` | network, corners, unfold |
 | `environment` | 환경 구역 온습도 | 빠른 폴링 (30~60초 폴링 또는 센서 푸시) | 연결됨 | `zones` | wave |
 | `quality` | 품질 SPC 측정 | 이벤트 (부분군 완성 시 이벤트, 또는 1~5분 폴링) | 일부 연결 | `subgroups` | spc, corners, unfold |
@@ -28,7 +28,7 @@ verifiedCommit: ac3956a
 
 ## 라인 생산 실적 — `production`
 
-막대·파이가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다.
+파이 상세가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다.
 
 - 갱신: 보통 폴링 · 10~30초 폴링
 - 상태: 연결됨
@@ -54,10 +54,10 @@ verifiedCommit: ac3956a
 
 ## 설비 마스터 · 상태 — `equipment`
 
-바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다.
+마운터 분석은 한 라인의 마운터를 최대 5대까지 묶어 옆으로 순회하며 각 설비의 픽업률·로스율·인식 오류율·사이클타임·노즐·헤더 불량을 읽는다. 다른 설비 장면은 순차 이관한다.
 
 - 갱신: 빠른 폴링 · 5~10초 폴링 또는 상태 변경 푸시
-- 상태: 이관 예정
+- 상태: 일부 연결
 - 스키마: `public/cinema/data/schemas/equipment.schema.json` · 예시: `equipment.example.json`
 
 ### 헤더
@@ -65,6 +65,7 @@ verifiedCommit: ac3956a
 | 컬럼 | 종류 | 단위 | 범위 | 필수 | 설명 |
 | --- | --- | --- | --- | --- | --- |
 | `lines` | 숫자 |  | 1~ | 필수 | 라인 수 |
+| `mounterLineName` | 문자열 |  |  | 선택 | 마운터 라인 이름 |
 
 ### 설비 — `stations[]` (객체 타입 `station`)
 
@@ -79,6 +80,20 @@ verifiedCommit: ac3956a
 | `status` | 문자열 |  |  | 선택 | 가동 상태 — running \| idle \| alarm \| maintenance |
 | `temperature` | 숫자 | °C |  | 선택 | 공정 온도 (패치 가능) |
 | `fan` | 숫자 | % | 0~100 | 선택 | 냉각 팬 (패치 가능) |
+
+### 마운터별 분석 지표 — `metrics[]` (객체 타입 `mounterMetric`)
+
+| 컬럼 | 종류 | 단위 | 범위 | 필수 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 문자열 |  |  | 필수 | 도메인 코드(자연키), 목록 안에서 유일 |
+| `label` | 문자열 |  |  | 필수 | 표시 이름 |
+| `value` | 숫자 |  | 0~ | 필수 | 현재값 (패치 가능) |
+| `target` | 숫자 |  | 0~ | 필수 | 기준값 |
+| `unit` | 문자열 |  |  | 필수 | 단위 |
+| `direction` | 문자열 |  |  | 필수 | 판정 방향 |
+| `machineId` | 구조 |  |  | 필수 | 마운터 id (JSON Schema 참조) |
+| `machineLabel` | 구조 |  |  | 필수 | 마운터 이름 (JSON Schema 참조) |
+| `color` | 구조 |  |  | 선택 | 표시 색 (JSON Schema 참조) |
 
 ## 공정 처리능력 · 대기 — `process`
 

@@ -6,6 +6,7 @@ import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import { SMT_LINE } from './smtLine';
 import { TRACE_WORK_ORDER } from './workOrderTrace';
 import { RACE_DIAGNOSTICS } from './raceCar';
+import { MOUNTER_METRIC_FIELDS } from './mounterAnalysis';
 
 /**
  * Domain feeds: what a database view has to deliver, declared once from the demo data shapes.
@@ -51,23 +52,26 @@ export const DOMAIN_FEEDS: readonly DomainFeed[] = [
       text('selectedId', '강조 라인 id', { optional: true, description: '없으면 목표 미달 중 달성률 최저 라인을 강조' })],
     objects: [{ type: 'productionLine', collection: 'lines', label: '생산 라인', fields: PRODUCTION_LINE_FIELDS,
       extra: { color: { label: '표시 색', schema: { type: 'string' }, optional: true }, accent: { label: '강조 표시', schema: { type: 'boolean' }, optional: true } } }],
-    scenes: ['bars', 'pie', 'corners', 'unfold'], status: 'live',
-    note: '막대·파이가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다.',
+    scenes: ['pie', 'corners', 'unfold'], status: 'live',
+    note: '파이 상세가 읽는다. 코너·펼침의 생산 달성·잔여와 상단 지표 카드도 이 피드에서 파생될 예정이다.',
     example: data => ({ ...data.production }),
   },
   {
     feed: 'equipment', label: '설비 마스터 · 상태', refresh: 'fast', refreshHint: '5~10초 폴링 또는 상태 변경 푸시',
-    header: [number('lines', '라인 수', { min: 1 })],
+    header: [number('lines', '라인 수', { min: 1 }), text('mounterLineName', '마운터 라인 이름', { optional: true })],
     objects: [{ type: 'station', collection: 'stations', label: '설비', fields: [
       text('english', '영문 이름', { optional: true }), number('line', '라인 번호', { min: 1, decimals: 0 }), number('order', '공정 순서', { min: 1, decimals: 0 }),
       text('kind', '설비 종류', { optional: true, description: 'transport | production | quality | thermal' }),
       text('status', '가동 상태', { optional: true, description: 'running | idle | alarm | maintenance' }),
       number('temperature', '공정 온도', { unit: '°C', decimals: 1, optional: true, patchable: true, aliases: /온도/ }),
       number('fan', '냉각 팬', { unit: '%', min: 0, max: 100, decimals: 0, optional: true, patchable: true, aliases: /팬|냉각/ }),
-    ] }],
-    scenes: ['visor', 'visorPan', 'scan', 'gears', 'console', 'cctv'], status: 'planned',
-    note: '바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다.',
-    example: () => ({ lines: 5, stations: Array.from({ length: 5 }, (_, line) => SMT_LINE.map((station, order) => ({
+    ] }, { type: 'mounterMetric', collection: 'metrics', label: '마운터별 분석 지표', fields: MOUNTER_METRIC_FIELDS,
+      extra: { machineId: { label: '마운터 id', schema: { type: 'string' } }, machineLabel: { label: '마운터 이름', schema: { type: 'string' } },
+        color: { label: '표시 색', schema: { type: 'string' }, optional: true } } }],
+    scenes: ['bars', 'visor', 'visorPan', 'scan', 'gears', 'console', 'cctv'], status: 'partial',
+    note: '마운터 분석은 한 라인의 마운터를 최대 5대까지 묶어 옆으로 순회하며 각 설비의 픽업률·로스율·인식 오류율·사이클타임·노즐·헤더 불량을 읽는다. 다른 설비 장면은 순차 이관한다.',
+    example: data => ({ lines: 5, mounterLineName: data.mounter.name, metrics: data.mounter.metrics,
+      stations: Array.from({ length: 5 }, (_, line) => SMT_LINE.map((station, order) => ({
       id: `L${line + 1}-${station.id}`, label: `L${line + 1} ${station.label}`, english: station.english, line: line + 1, order: order + 1,
       kind: STATION_KINDS[station.id], status: 'running',
       ...(station.id === 'reflow' ? { temperature: 78.2, fan: 62 } : {}) }))).flat() }),

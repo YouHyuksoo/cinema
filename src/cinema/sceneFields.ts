@@ -1,6 +1,6 @@
-import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 import type { SceneFieldDescriptor } from './sceneField';
 import { PCB_COMPONENT_FIELDS } from './pcbInspectionFields';
+import { MOUNTER_METRIC_FIELDS } from './mounterAnalysis';
 
 /** Scenes whose objects accept patches (contract level L2). */
 export const PATCHABLE_SCENES = ['bars', 'wave', 'network', 'spc', 'machine'] as const;
@@ -11,7 +11,7 @@ export type PatchableScene = typeof PATCHABLE_SCENES[number];
  * commands and tool schemas, and value formatting. Object types own their own list (bars).
  */
 export const SCENE_FIELDS: Record<PatchableScene, readonly SceneFieldDescriptor[]> = {
-  bars: PRODUCTION_LINE_FIELDS,
+  bars: MOUNTER_METRIC_FIELDS,
   machine: PCB_COMPONENT_FIELDS,
   wave: [
     { field: 'temperature', label: '온도', kind: 'number', unit: '°C', decimals: 1, patchable: true, aliases: /온도/, default: true },

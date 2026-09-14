@@ -2,13 +2,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "hatchery/feeds/equipment",
   "title": "설비 마스터 · 상태 (equipment)",
-  "description": "바이저 3D(라인 5개 × 설비 8대), 바이저 평면(리플로우 냉각), 설비 스캔, 기어, 정보 콘솔이 같은 설비 목록과 온도·냉각 값을 읽도록 이관한다. 배치 좌표는 화면이 순서(line·order)로 계산한다. 갱신: 5~10초 폴링 또는 상태 변경 푸시. 장면: visor, visorPan, scan, gears, console, cctv.",
+  "description": "마운터 분석은 한 라인의 마운터를 최대 5대까지 묶어 옆으로 순회하며 각 설비의 픽업률·로스율·인식 오류율·사이클타임·노즐·헤더 불량을 읽는다. 다른 설비 장면은 순차 이관한다. 갱신: 5~10초 폴링 또는 상태 변경 푸시. 장면: bars, visor, visorPan, scan, gears, console, cctv.",
   "type": "object",
   "properties": {
     "lines": {
       "description": "라인 수",
       "type": "number",
       "minimum": 1
+    },
+    "mounterLineName": {
+      "description": "마운터 라인 이름",
+      "type": "string",
+      "minLength": 1
     },
     "stations": {
       "type": "array",
@@ -69,11 +74,77 @@
           "order"
         ]
       }
+    },
+    "metrics": {
+      "type": "array",
+      "description": "마운터별 분석 지표",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "value": {
+            "description": "현재값",
+            "type": "number",
+            "minimum": 0
+          },
+          "target": {
+            "description": "기준값",
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "description": "단위",
+            "type": "string",
+            "minLength": 1
+          },
+          "direction": {
+            "description": "판정 방향",
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "higher",
+              "lower"
+            ]
+          },
+          "machineId": {
+            "description": "마운터 id",
+            "type": "string"
+          },
+          "machineLabel": {
+            "description": "마운터 이름",
+            "type": "string"
+          },
+          "color": {
+            "description": "표시 색",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "value",
+          "target",
+          "unit",
+          "direction",
+          "machineId",
+          "machineLabel"
+        ]
+      }
     }
   },
   "required": [
     "lines",
-    "stations"
+    "stations",
+    "metrics"
   ],
   "additionalProperties": true
 }

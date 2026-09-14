@@ -12,6 +12,7 @@ import { SCENE_FIELDS } from './sceneFields';
 import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
 import { validatePcbInspectionData } from './pcbInspection';
 import type { PcbInspectionData } from './pcbInspectionData';
+import { MOUNTER_METRIC_FIELDS, type MounterAnalysisData } from './mounterAnalysis';
 
 export interface SceneDataPatchResult<K extends FilmSceneDataKey> { data: FilmSceneData[K]; applied: number; ignored: string[]; error?: string }
 export interface SceneDataEntry<K extends FilmSceneDataKey = FilmSceneDataKey> {
@@ -65,6 +66,15 @@ const production: SceneDataEntry<'production'> = {
   patch: patchCollection<'production', 'lines'>('lines', SCENE_FIELDS.bars),
 };
 
+const mounter: SceneDataEntry<'mounter'> = {
+  key: 'mounter',
+  normalize: data => isRecord(data) && isText(data.name)
+    && listOf(data.metrics, metric => isText(metric.id) && isText(metric.label) && isText(metric.machineId) && isText(metric.machineLabel)
+      && validateSceneObjectFields(MOUNTER_METRIC_FIELDS, metric, { required: true }).ok)
+    ? data as unknown as MounterAnalysisData : undefined,
+  patch: patchCollection<'mounter', 'metrics'>('metrics', MOUNTER_METRIC_FIELDS),
+};
+
 const environment: SceneDataEntry<'environment'> = {
   key: 'environment',
   normalize: data => isRecord(data) && isText(data.title)
@@ -114,7 +124,7 @@ const pcb: SceneDataEntry<'pcb'> = {
 };
 
 export const SCENE_DATA_REGISTRY: Partial<Record<FilmId, SceneDataEntry>> = {
-  bars: production, pie: production, wave: environment, network, spc, energy, product, machine: pcb,
+  bars: mounter, pie: production, wave: environment, network, spc, energy, product, machine: pcb,
 };
 
 export function sceneDataEntry(scene: string): SceneDataEntry | undefined {

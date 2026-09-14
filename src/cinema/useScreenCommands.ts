@@ -21,7 +21,7 @@ export function useScreenCommands(context: {
       cubeMenu: document.querySelector('[data-cube-control]')?.getAttribute('aria-expanded') === 'true',
       scene: p.position.chapter.id, theme: p.theme, background: centerBackgroundPreference.getSnapshot(), texture: p.texture.style,
       intensity: p.texture.intensity * 100, speed: p.speed, playing: p.playing, mode: p.mode, seek: p.position.localTime,
-      machine: p.machineSubject, barsDimension: p.charts.bars.dimension, barsDepth: p.charts.bars.depthScale * 100,
+      machine: p.machineSubject, pieStyle: p.charts.pie.style ?? 'auto',
       pieDimension: p.charts.pie.dimension, pieDepth: p.charts.pie.depthScale * 100,
       camera: c.status === 'on', cameraPopup: Boolean(document.querySelector('[role="dialog"][aria-label="내 영상"]')), mirror: c.mirror, zoom: c.zoom, blur: c.blur,
       cctvMode: p.cctv.manual ? 'manual' : 'auto', cctvCamera: p.cctv.camera === null ? undefined : String(p.cctv.camera + 1),
@@ -55,8 +55,9 @@ export function useScreenCommands(context: {
       case 'mode': p.changeMode(value as 'chapter' | 'sequence'); break;
       case 'seek': if (n > p.position.chapter.duration) return { ok: false, message: `현재 장면은 ${p.position.chapter.duration}초까지입니다.` }; p.seek(n); break;
       case 'machine': p.changeMachineSubject(value as 'pcb' | 'car'); break;
-      case 'barsDimension': case 'pieDimension': p.changeChartPresentation(key === 'barsDimension' ? 'bars' : 'pie', { dimension: value as '2d' | '3d' }); break;
-      case 'barsDepth': case 'pieDepth': p.changeChartPresentation(key === 'barsDepth' ? 'bars' : 'pie', { depthScale: n / 100 }); break;
+      case 'pieStyle': p.changeChartPresentation('pie', { style: value as 'auto' | 'bar' | 'line' | 'area' | 'scatter' | 'pie' }); break;
+      case 'pieDimension': p.changeChartPresentation('pie', { dimension: value as '2d' | '3d' }); break;
+      case 'pieDepth': p.changeChartPresentation('pie', { depthScale: n / 100 }); break;
       case 'camera': if (on) { window.dispatchEvent(new CustomEvent('cinema-camera-popup', { detail: true })); await c.start(); } else c.stop(); break;
       case 'cameraPopup': window.dispatchEvent(new CustomEvent('cinema-camera-popup', { detail: on })); break;
       case 'mirror': c.setMirror(on); break;

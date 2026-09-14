@@ -11,9 +11,9 @@ export type HatcheryField = SceneFieldDescriptor & { aliases: RegExp };
 const commandField = (field: SceneFieldDescriptor): field is HatcheryField => Boolean(field.patchable && field.aliases);
 export const HATCHERY_FIELDS: Record<HatcheryPatchScene, readonly HatcheryField[]> = Object.fromEntries(
   PATCHABLE_SCENES.map(scene => [scene, SCENE_FIELDS[scene].filter(commandField)])) as unknown as Record<HatcheryPatchScene, readonly HatcheryField[]>;
-export const HATCHERY_SCENE_LABELS: Record<HatcheryPatchScene, string> = { bars: '막대', wave: '환경', network: '공정망', spc: 'SPC', machine: 'PCB 검사' };
+export const HATCHERY_SCENE_LABELS: Record<HatcheryPatchScene, string> = { bars: '마운터 분석', wave: '환경', network: '공정망', spc: 'SPC', machine: 'PCB 검사' };
 const NUMBER_REFERENCES: Record<HatcheryPatchScene, RegExp[]> = {
-  bars: [/(?:라인|line)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*라인/g],
+  bars: [/(?:mounter|마운터)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*마운터/g],
   wave: [/(?:zone|존|구역)[\s\-_]*0?(\d{1,2})(?!\d)/gi, /(?<!\d)0?(\d{1,2})\s*번?\s*구역/g],
   network: [],
   machine: [],
@@ -33,7 +33,12 @@ const aliasPattern = (alias: string) => new RegExp(escape(alias.trim()).replace(
 export function hatcheryObjects(data: FilmSceneData, scene: HatcheryPatchScene): HatcheryObject[] {
   switch (scene) {
     case 'machine': return data.pcb.components.map(component => ({ id: component.id, label: component.label, aliases: [component.id, component.label] }));
-    case 'bars': return data.production.lines.map(line => ({ id: line.id, label: line.label, aliases: [line.id, line.label], number: trailingNumber(line.id) ?? trailingNumber(line.label) }));
+    case 'bars': return data.mounter.metrics.map(metric => {
+      const number = Number(metric.machineId.match(/\d+$/)?.[0]) || undefined;
+      return { id: metric.id, label: `${metric.machineLabel} ${metric.label}`,
+        aliases: [metric.id, `${metric.machineLabel} ${metric.label}`, `${metric.machineId} ${metric.label}`,
+          ...(number ? [`마운터 ${number} ${metric.label}`] : [])], number };
+    });
     case 'wave': return data.environment.zones.map(zone => ({ id: zone.id, label: `${zone.id} ${zone.name}`, aliases: [zone.id, zone.name], number: trailingNumber(zone.id) }));
     case 'network': return data.network.nodes.map(node => ({ id: node.id, label: node.label, aliases: [node.id, node.label, node.code] }));
     case 'spc': return data.spc.subgroups.map(group => ({ id: group.id, label: group.id, aliases: [group.id], number: trailingNumber(group.id) }));
@@ -110,6 +115,8 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
   }));
   let candidates = findCandidates(text, data);
   if (!candidates.length) return null;
+  if (/(?:mounter|마운터)/i.test(text) && candidates.some(candidate => candidate.scene === 'bars'))
+    candidates = candidates.filter(candidate => candidate.scene === 'bars');
   if (fieldHits.length) candidates = candidates.filter(candidate => fieldHits.some(hit => hit.scene === candidate.scene));
   if (!candidates.length) return null;
   const scenes = [...new Set(candidates.map(candidate => candidate.scene))];
@@ -127,7 +134,7 @@ export function resolveHatcheryValueCommand(input: string, data: FilmSceneData):
   const numbers = (remaining.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter(Number.isFinite);
   const value = field.kind === 'text' ? enumValue(field, remaining) : field.kind === 'number[]' ? numbers : numbers[numbers.length - 1];
   if (value === undefined || (Array.isArray(value) && !value.length)) return null;
-  const unit = scene === 'bars' ? data.production.unit : scene === 'spc' ? data.spc.unit : '';
+  const unit = scene === 'bars' ? data.mounter.metrics.find(metric => metric.id === target.object.id)?.unit ?? '' : scene === 'spc' ? data.spc.unit : '';
   const patch = hatcheryPatch(scene, [{ id: target.object.id, [field.field]: value }]);
   return { kind: 'patch', patch, chapter: scene, label: target.object.label, field,
     reply: `${target.object.label} ${field.label}를 ${valueText(field, value, unit)}로 갱신했습니다. 시연 데이터이며 실제 설비는 바뀌지 않습니다.` };
