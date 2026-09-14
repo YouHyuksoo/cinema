@@ -53,7 +53,7 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
   return <section className={styles.main} data-external-briefing={externalBriefing} aria-label="HATCHERY 메인 메뉴">
-    <JarvisMainHeader feedStatus={feedStatus} />
+    <JarvisMainHeader feedStatus={feedStatus} onFocusMetric={focusCard} />
     <div className={styles.body}>
     <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15} suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
     {themeSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="테마 설정">

@@ -23,7 +23,7 @@ export function drawMultiChartFilm(ctx: CanvasRenderingContext2D, width: number,
   const style = activeChartStyle(presentation.style, time);
   const release = 1 - smooth(25.5, 28, time);
   const reveal = smooth(.45, 1.7, time) * release;
-  const phaseTime = auto ? ((Math.max(0, time - 1.5) % 5.1) + .8) : time;
+  const phaseTime = auto ? (Math.max(0, time - 1.5) % 5.1) : time;
   const data = state.lines.map((line, index) => ({ ...line, chartValue: state.target > 0 ? line.value / state.target * 100 : 0,
     display: `${line.value.toLocaleString('ko-KR')} ${state.unit}`, color: line.color ?? signalColor(index / Math.max(1, state.lines.length - 1), 1) }));
 
@@ -55,12 +55,12 @@ function drawCartesian(ctx: CanvasRenderingContext2D, fonts: FilmFonts,
   data: { label: string; chartValue: number; display: string; color: string }[],
   style: Exclude<ChartStyle, 'auto' | 'pie'>, presentation: ChartPresentation, time: number, opacity: number) {
   const x = 116, y = 275, w = 800, h = 300, baseline = y + h;
-  const cap = 120, target = 100;
+  const cap = Math.max(120, Math.ceil(Math.max(...data.map(item => item.chartValue)) / 20) * 20), target = 100;
   const depth = presentation.dimension === '3d' ? 18 * presentation.depthScale : 0;
   const progress = smooth(.2, 1.45, time);
   const points = data.map((item, index) => ({
     x: x + (index + .5) * w / data.length,
-    y: baseline - item.chartValue / cap * h * progress,
+    y: baseline - item.chartValue / cap * h * (style === 'bar' ? smooth(index * .16, index * .16 + .9, time) : 1),
     item,
   }));
   ctx.save(); ctx.globalAlpha = opacity;
@@ -91,7 +91,15 @@ function drawCartesian(ctx: CanvasRenderingContext2D, fonts: FilmFonts,
       ctx.strokeStyle = point.item.color; ctx.strokeRect(left + .5, point.y + .5, barW - 1, height - 1);
     }
   } else {
-    if (depth) {
+    ctx.save();
+    // Each grammar reveals its final geometry differently; data coordinates never drift.
+    if (style === 'line' || style === 'area') {
+      ctx.beginPath();
+      if (style === 'line') ctx.rect(x - 12, y - depth - 12, (w + depth + 24) * progress, h + depth + 24);
+      else ctx.rect(x - 12, baseline - (h + depth + 12) * progress, w + depth + 24, (h + depth + 24) * progress);
+      ctx.clip();
+    }
+    if (depth && style !== 'scatter') {
       ctx.beginPath(); points.forEach((point, index) => index ? ctx.lineTo(point.x + depth, point.y - depth) : ctx.moveTo(point.x + depth, point.y - depth));
       ctx.strokeStyle = signalColor(0, .18); ctx.lineWidth = 7; ctx.stroke();
     }
@@ -106,15 +114,18 @@ function drawCartesian(ctx: CanvasRenderingContext2D, fonts: FilmFonts,
       ctx.strokeStyle = signalColor(0, .9); ctx.lineWidth = 2.2; ctx.shadowColor = signalColor(0, .7); ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
     }
     points.forEach((point, index) => {
-      const radius = style === 'scatter' ? 7 + (point.item.chartValue / cap) * 10 : 5;
+      const appear = style === 'scatter' ? smooth(index * .22, index * .22 + .55, time) : 1;
+      const radius = style === 'scatter' ? (7 + (point.item.chartValue / cap) * 10) * appear : 5;
+      if (appear === 0) return;
       ctx.beginPath(); ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = point.item.color; ctx.globalAlpha = opacity * (style === 'scatter' ? .72 : 1); ctx.fill();
+      ctx.fillStyle = point.item.color; ctx.globalAlpha = opacity * (style === 'scatter' ? .72 * appear : 1); ctx.fill();
       ctx.globalAlpha = opacity; ctx.strokeStyle = '#e9fdff'; ctx.lineWidth = 1; ctx.stroke();
       if (style === 'scatter') {
         ctx.beginPath(); ctx.arc(point.x, point.y, radius + 7 + Math.sin(time * 2 + index) * 2, 0, Math.PI * 2);
         ctx.strokeStyle = signalColor(index / Math.max(1, data.length - 1), .24); ctx.stroke();
       }
     });
+    ctx.restore();
   }
   points.forEach(point => {
     filmText(ctx, fonts, point.item.label, point.x, baseline + 28, 12, opacity * .72, true, 'center');

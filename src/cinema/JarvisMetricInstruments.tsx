@@ -1,9 +1,9 @@
-import { jarvisMainData as data, type JarvisMetricKind } from './jarvisMainData';
-import { DEFAULT_ENVIRONMENT_DATA, environmentReadingStatus } from './zoneEnvironment';
+import type { HatcheryMainData, JarvisMetricKind } from './jarvisMainData';
+import { environmentReadingStatus, type EnvironmentZone } from './zoneEnvironment';
 import { PRODUCT_ZONES, inspectProductMeasurement } from './productInspection';
 import styles from './jarvisMetricCards.module.css';
 
-function ProductionInstrument() {
+function ProductionInstrument({data}:{data:HatcheryMainData}) {
   const ratio = Math.min(1, Math.max(0, data.energy.production.value / data.energy.production.capacity));
   return <svg viewBox="0 0 180 64" aria-hidden="true">
     <path d="M8 46 24 56h140l10-10M8 16h164" className={styles.trace} />
@@ -18,7 +18,7 @@ function ProductionInstrument() {
   </svg>;
 }
 
-function ProcessInstrument() {
+function ProcessInstrument({data}:{data:HatcheryMainData}) {
   const points = data.process.nodes.map((_, i) => ({ x: 14 + i * 30, y: i % 2 ? 43 : 22 }));
   const line = points.map(p => `${p.x},${p.y}`).join(' ');
   return <svg viewBox="0 0 180 64" aria-hidden="true">
@@ -33,7 +33,7 @@ function ProcessInstrument() {
   </svg>;
 }
 
-function QualityInstrument() {
+function QualityInstrument({data}:{data:HatcheryMainData}) {
   const q = data.quality;
   if (!q.valid) return <svg viewBox="0 0 180 64" aria-hidden="true"><text x="90" y="34" textAnchor="middle">NO DATA</text></svg>;
   const values = q.xbar.values;
@@ -51,7 +51,7 @@ function QualityInstrument() {
   </svg>;
 }
 
-function PowerInstrument() {
+function PowerInstrument({data}:{data:HatcheryMainData}) {
   const ratio = Math.min(1, Math.max(0, data.energy.power.value / data.energy.power.capacity));
   const angle = Math.PI * (1 - ratio);
   return <svg viewBox="0 0 180 64" aria-hidden="true">
@@ -67,7 +67,7 @@ function PowerInstrument() {
 }
 
 
-function EfficiencyInstrument() {
+function EfficiencyInstrument({data}:{data:HatcheryMainData}) {
   const ratio = data.energy.efficiency.value / data.energy.efficiency.capacity;
   return <svg viewBox="0 0 180 64" aria-hidden="true">
     <circle cx="45" cy="32" r="23" fill="none" stroke="currentColor" opacity=".15" strokeWidth="5" />
@@ -77,7 +77,7 @@ function EfficiencyInstrument() {
     {Array.from({length:8},(_,i)=><path key={i} d={`M${85+i*10} 52V${48-i*5}`} stroke="currentColor" strokeWidth="6" opacity={i / 8 < ratio ? .8 : .15} />)}
   </svg>;
 }
-function InspectionInstrument() {
+function InspectionInstrument({data}:{data:HatcheryMainData}) {
   const results = PRODUCT_ZONES.map(zone => { const measurement = data.product.measurements.find(item => item.zone === zone); return measurement ? inspectProductMeasurement(measurement).verdict : 'unavailable'; });
   return <svg viewBox="0 0 180 64" aria-hidden="true">
     {results.map((result, i) => <g key={i} transform={`translate(${30 + i * 60} 30)`}>
@@ -86,8 +86,7 @@ function InspectionInstrument() {
     </g>)}
   </svg>;
 }
-function EnvironmentInstrument({kind}: {kind:'temperature'|'humidity'}) {
-  const zones = DEFAULT_ENVIRONMENT_DATA.zones;
+function EnvironmentInstrument({kind,zones}: {kind:'temperature'|'humidity';zones:readonly EnvironmentZone[]}) {
   const readings = zones.map(zone => zone[kind]).filter((value):value is number=>value !== null && Number.isFinite(value));
   if (!readings.length) return <svg viewBox="0 0 180 64" aria-hidden="true"><text x="90" y="32">NO DATA</text></svg>;
   const min=Math.min(...readings), span=Math.max(...readings)-min||1;
@@ -106,8 +105,8 @@ function EnvironmentInstrument({kind}: {kind:'temperature'|'humidity'}) {
 }
 const instruments = {production:ProductionInstrument,process:ProcessInstrument,quality:QualityInstrument,power:PowerInstrument,
   efficiency:EfficiencyInstrument,inspection:InspectionInstrument};
-export function JarvisMetricInstrument({kind}:{kind:JarvisMetricKind}) {
-  if(kind==='temperature'||kind==='humidity') return <EnvironmentInstrument kind={kind}/>;
+export function JarvisMetricInstrument({kind,data,zones}:{kind:JarvisMetricKind;data:HatcheryMainData;zones:readonly EnvironmentZone[]}) {
+  if(kind==='temperature'||kind==='humidity') return <EnvironmentInstrument kind={kind} zones={zones}/>;
   const Instrument=instruments[kind];
-  return <Instrument/>;
+  return <Instrument data={data}/>;
 }

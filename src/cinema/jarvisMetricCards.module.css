@@ -71,3 +71,6 @@
   .card svg { height:16px; }
   .card footer { font-size:7px; }
 }
+
+.card[role="button"] { cursor:pointer; }
+.card[role="button"]:focus-visible { outline:2px solid var(--film-accent); outline-offset:2px; }

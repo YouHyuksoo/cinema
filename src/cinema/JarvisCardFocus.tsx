@@ -112,7 +112,7 @@ export function JarvisCardFocus({ source, label, openId, onClose }: JarvisCardFo
         <i /><i /><i /><i /><i />
         <b className={styles.vanishingLines}><i /><i /><i /><i /><i /><i /><i /><i /></b>
       </span>
-      <div ref={panelRef} className={styles.panel} role="dialog" aria-modal="true" aria-label={`${label} 확대 보기`} onKeyDown={onDialogKeyDown}>
+      <div ref={panelRef} className={styles.panel} data-source-kind={source.dataset.kind ? 'metric' : 'stream'} role="dialog" aria-modal="true" aria-label={`${label} 확대 보기`} onKeyDown={onDialogKeyDown}>
         <span className={styles.frameRail} aria-hidden="true" />
         <span className={styles.frameNode} aria-hidden="true" />
         <div className={styles.glass}>

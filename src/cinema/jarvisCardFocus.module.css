@@ -23,6 +23,7 @@
 .vanishingLines>i:nth-child(7) { transform:rotate(197deg); opacity:.55; }
 .vanishingLines>i:nth-child(8) { transform:rotate(211deg); }
 .panel { position:relative; z-index:1; width:min(700px,calc(100vw - 44px)); max-height:calc(100dvh - 58px); padding:0; color:var(--film-ink,#e6f3f6); background:rgb(0 35 66 / .08); border:2px solid #25dfff; box-shadow:0 0 10px rgb(30 217 255 / .72),0 0 42px rgb(0 161 255 / .34),0 28px 80px rgb(0 0 0 / .66); clip-path:polygon(0 24px,24px 0,43% 0,45% 4px,65% 4px,67% 0,calc(100% - 34px) 0,100% 34px,100% calc(100% - 22px),calc(100% - 22px) 100%,62% 100%,60% calc(100% - 4px),30% calc(100% - 4px),28% 100%,22px 100%,0 calc(100% - 22px)); transform-origin:center; transform-style:preserve-3d; animation:panelFloat 12s ease-in-out infinite; will-change:transform,translate,rotate,scale; }
+.panel[data-source-kind=metric] { width:min(720px,calc(100vw - 56px)); }
 .panel::before,.panel::after,.frameRail,.frameNode { display:none; }
 .glass { position:relative; overflow:hidden; max-height:calc(100dvh - 52px); background:radial-gradient(ellipse at 50% 14%,rgb(11 101 161 / .12),transparent 46%),linear-gradient(120deg,rgb(0 17 41 / .42),rgb(0 31 62 / .28) 54%,rgb(0 13 35 / .45)); box-shadow:0 0 48px rgb(0 116 190 / .1) inset; clip-path:inherit; }
 .glass::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 12%,rgb(57 218 255 / .045) 25%,transparent 40%); }
@@ -35,6 +36,14 @@
 .scroll { position:relative; z-index:1; max-height:calc(100dvh - 100px); overflow:auto; overscroll-behavior:contain; scrollbar-color:color-mix(in srgb,var(--film-accent,#62e8ff) 45%,transparent) transparent; }
 .cloneContent { padding:24px; perspective:none; mask-image:none; }
 .cloneContent>section { margin:0!important; transform:none!important; transform-origin:center!important; opacity:1!important; background:transparent!important; border:0!important; box-shadow:none!important; clip-path:none!important; font-size:clamp(12px,1.65vw,16px); }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] { min-height:min(300px,calc(100dvh - 150px)); box-sizing:border-box; display:grid; grid-template-rows:auto auto minmax(110px,1fr) auto; align-content:stretch; padding:clamp(20px,3vw,30px) clamp(24px,4vw,40px)!important; animation:none; transform:none; }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] h2 { padding-left:0; margin-bottom:10px; font-size:clamp(13px,1.45vw,20px); letter-spacing:.08em; }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] .reading { gap:12px; }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] .reading strong { font-size:clamp(36px,4vw,52px); line-height:1; }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] .reading span { font-size:clamp(13px,1.5vw,19px); }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] svg { align-self:center; width:100%; height:clamp(110px,18vh,160px); }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] svg text { font-size:9px; }
+.panel[data-source-kind=metric] .cloneContent>article[data-kind] footer { align-self:end; margin-top:12px; font-size:clamp(12px,1.35vw,18px); }
 .cloneContent>section::before,.cloneContent>section::after { display:none!important; }
 .cloneContent :where(button,input,select,textarea,a,summary,label,[role="button"],[role="link"]) { cursor:default!important; }
 @keyframes panelFloat {
@@ -44,5 +53,5 @@
   75% { translate:2px 4px 14px; rotate:y -1.8deg; scale:1; }
 }
 @keyframes spaceDrift { 0%,100% { translate:8px -2px; opacity:.72; } 50% { translate:-9px 4px; opacity:1; } }
-@media(max-width:600px) { .backdrop { padding:8px; }.panel { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }.glass { max-height:calc(100dvh - 18px); }.topbar { padding-left:15px; }.scroll { max-height:calc(100dvh - 68px); }.cloneContent { padding:15px 10px 18px; } }
+@media(max-width:600px) { .backdrop { padding:8px; }.panel,.panel[data-source-kind=metric] { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }.glass { max-height:calc(100dvh - 18px); }.topbar { padding-left:15px; }.scroll { max-height:calc(100dvh - 68px); }.cloneContent { padding:15px 10px 18px; }.panel[data-source-kind=metric] .cloneContent>article[data-kind] { min-height:min(300px,calc(100dvh - 112px)); padding:24px 20px!important; }.panel[data-source-kind=metric] .cloneContent>article[data-kind] svg { height:clamp(110px,20vh,160px); } }
 @media(prefers-reduced-motion:reduce) { .backdrop,.panel,.spaceDepth { animation:none!important; transition:none!important; } }

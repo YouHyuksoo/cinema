@@ -11,7 +11,7 @@ import { pad2 } from './filmMath';
 
 const SHORT_LABELS: Partial<Record<FilmId, string>> = {
   wave: '온습도', gears: '기어', scan: '설비 스캔', unfold: '지표', trace: '변화 추적',
-  console: '정보창', bars: '막대', pie: '파이',
+  console: '정보창',
   machine: 'PCB 검사', network: '공정망', energy: '에너지', product: '내부 검사', spc: 'SPC', cctv: 'CCTV',
 };
 
