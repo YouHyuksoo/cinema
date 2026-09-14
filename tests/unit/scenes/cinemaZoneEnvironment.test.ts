@@ -186,14 +186,14 @@ describe('ten-zone temperature and humidity scene', () => {
     expect(heatmap.historyPhase).toBe(0);
     expect(heatmap.zones.every(z => z.chartReveal === 0 && z.cardOpacity === 0)).toBe(true);
     expect(heatmap.heatmapReveal).toBe(1);
-    expect(zoneEnvironmentState(51).heatmapReveal).toBeCloseTo(.5);
+    expect(zoneEnvironmentState(ENVIRONMENT_TIMING.heatmapOut + 1).heatmapReveal).toBeCloseTo(.5);
     expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).heatmapReveal).toBe(0);
   });
 
-  it('extends the full tour to 52 seconds and keeps selection and looping aligned', () => {
-    expect(FILM_CHAPTERS[0]).toMatchObject({ id: 'wave', title: '온습도 모니터링', duration: 52, previewAt: 30 });
-    expect(chapterAt(51.999).chapter.id).toBe('wave');
-    expect(chapterAt(52).chapter.id).toBe('gears');
-    expect(chapterAt(advanceFilm(51.9, .2, 'chapter')).localTime).toBeCloseTo(.1);
+  it('allows every hotspot to dwell and keeps selection and looping aligned', () => {
+    expect(FILM_CHAPTERS[0]).toMatchObject({ id: 'wave', title: '온습도 모니터링', duration: ENVIRONMENT_FILM_SECONDS, previewAt: 30 });
+    expect(chapterAt(ENVIRONMENT_FILM_SECONDS - .001).chapter.id).toBe('wave');
+    expect(chapterAt(ENVIRONMENT_FILM_SECONDS).chapter.id).toBe('gears');
+    expect(chapterAt(advanceFilm(ENVIRONMENT_FILM_SECONDS - .1, .2, 'chapter')).localTime).toBeCloseTo(.1);
   });
 });

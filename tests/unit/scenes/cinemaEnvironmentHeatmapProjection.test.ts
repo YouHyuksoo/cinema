@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENVIRONMENT_HEATMAP_BOUNDS, environmentHeatmap } from '@/cinema/environmentHeatmap';
-import { environmentHeatmapLabels, environmentHeatmapProjection } from '@/cinema/environmentHeatmapProjection';
+import { environmentHeatmapLabels, environmentHeatmapProjection, environmentHotspotOrder, ENVIRONMENT_HOTSPOT_DWELL } from '@/cinema/environmentHeatmapProjection';
 import { factoryCamera, factoryProject, SMT_FACTORY_DEPTH, SMT_FACTORY_LINES, SMT_FACTORY_PITCH, SMT_FACTORY_STATIONS } from '@/cinema/smtFactory';
 import { SMT_LINE_WIDTH } from '@/cinema/smtLine';
 import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING } from '@/cinema/zoneEnvironment';
@@ -57,29 +57,39 @@ describe('overhead heatmap descending into the VISOR factory space', () => {
     }
   });
 
-  it('descends from the plan, flies along the equipment, then banks across the lines and rises', () => {
-    expect([36, 40, 44, 48, 51].map(elapsed => environmentHeatmapProjection(elapsed).phase)).toEqual([
-      '상공 평면', '라인 입구로 하강', '설비 사이 전진', '라인 선회', '상공 복귀',
-    ]);
-    const entry = environmentHeatmapProjection(42).camera;
-    const forward = environmentHeatmapProjection(46).camera;
-    const turn = environmentHeatmapProjection(50).camera;
-    const exit = environmentHeatmapProjection(52).camera;
-    expect(entry).toMatchObject({ x: 300, y: 540, z: -320 });
-    expect(forward).toMatchObject({ x: 300, y: 380, z: 850 });
-    expect(turn).toMatchObject({ x: 1370, y: 620, z: 1670 });
-    expect(exit).toMatchObject({ x: 1750, y: 780, z: 1300 });
-    expect(entry.pitch).toBeLessThan(Math.PI / 3);
-    expect(forward.z).toBeGreaterThan(entry.z);
-    expect(turn.yaw).toBeLessThan(-Math.PI / 2);
-    expect(exit.y).toBeGreaterThan(turn.y);
+  it('visits every valid sensor hottest first and holds it in the center for reading', () => {
+    const rooms = environmentHeatmap(DEFAULT_ENVIRONMENT_DATA.zones).rooms;
+    const ranked = [...rooms].sort((a, b) => b.temperature! - a.temperature!);
+    ranked.forEach((room, index) => {
+      const at = ENVIRONMENT_TIMING.heatmapFull + index * ENVIRONMENT_HOTSPOT_DWELL + 1.5;
+      const projection = environmentHeatmapProjection(at, rooms);
+      expect(projection.activeRoom?.key).toBe(room.key);
+      expect(projection.rank).toBe(index + 1);
+      expect(projection.phase).toBe('측면에서 온도 확인');
+      expect(projection.camera.y).toBe(220);
+      expect(projection.camera.pitch).toBeLessThan(Math.PI / 6);
+      const pin = projection.point(room.pin.x, room.pin.y);
+      expect(pin.visible).toBe(true);
+      expect(pin.x).toBeCloseTo(640, 8); expect(pin.y).toBeCloseTo(360, 8);
+      expect(environmentHeatmapProjection(at + 1, rooms).camera).toEqual(projection.camera);
+    });
+    const returned = environmentHeatmapProjection(ENVIRONMENT_TIMING.heatmapOut).camera;
+    const initial = environmentHeatmapProjection(35).camera;
+    for (const field of ['x', 'y', 'z', 'yaw', 'pitch'] as const) expect(returned[field]).toBeCloseTo(initial[field], 10);
   });
 
-  it('keeps the camera above every equipment body and tower throughout a finite continuous flight', () => {
+  it('enters the aisles at eye height and clears equipment while moving between lines', () => {
     const maximumHeight = Math.max(...SMT_FACTORY_STATIONS.map(station => station.height + 45));
     for (let elapsed = ENVIRONMENT_TIMING.heatmapStart; elapsed <= ENVIRONMENT_FILM_SECONDS; elapsed += .05) {
       const projection = environmentHeatmapProjection(elapsed);
-      expect(projection.camera.y).toBeGreaterThan(maximumHeight);
+      expect(projection.camera.y).toBeGreaterThanOrEqual(220);
+      if (projection.camera.y <= maximumHeight) {
+        for (const station of SMT_FACTORY_STATIONS) {
+          const inside = projection.camera.x > station.z - SMT_FACTORY_DEPTH - 10 && projection.camera.x < station.z + 10
+            && projection.camera.z > station.x - station.width / 2 - 10 && projection.camera.z < station.x + station.width / 2 + 10;
+          expect(inside).toBe(false);
+        }
+      }
       expect(Object.values(projection.camera).every(Number.isFinite)).toBe(true);
       expect(projection.camera.pitch).toBeGreaterThan(0);
       expect(projection.camera.pitch).toBeLessThanOrEqual(Math.PI / 2);
@@ -88,7 +98,7 @@ describe('overhead heatmap descending into the VISOR factory space', () => {
         expect([point.x, point.y, point.scale, point.depth].every(Number.isFinite)).toBe(true);
       }
     }
-    for (const boundary of [38, 42, 46, 50]) {
+    for (const boundary of Array.from({ length: 11 }, (_, i) => 38 + i * ENVIRONMENT_HOTSPOT_DWELL)) {
       const before = environmentHeatmapProjection(boundary - .00001).camera;
       const after = environmentHeatmapProjection(boundary + .00001).camera;
       for (const field of ['x', 'y', 'z', 'yaw', 'pitch'] as const) {
@@ -97,22 +107,33 @@ describe('overhead heatmap descending into the VISOR factory space', () => {
     }
   });
 
-  it('banks by rotating the view without collapsing into a vertical look-down or changing the flight position', () => {
-    let previous = environmentHeatmapProjection(42).camera;
-    for (let elapsed = 42; elapsed <= 52; elapsed += .05) {
-      const camera = environmentHeatmapProjection(elapsed).camera;
-      expect(camera.pitch).toBeLessThan(.9);
-      expect(Math.abs(camera.yaw - previous.yaw)).toBeLessThan(.07);
-      previous = camera;
+  it('backs away from each sensor before entering the next, including the final stop', () => {
+    for (let index = 0; index < 10; index++) {
+      const start = 38 + index * ENVIRONMENT_HOTSPOT_DWELL;
+      const hold = environmentHeatmapProjection(start + 3.5);
+      const backing = environmentHeatmapProjection(start + 4.2);
+      const exit = environmentHeatmapProjection(start + 4.79);
+      expect(backing.phase).toBe('뒤로 빠지며 완만하게 상승');
+      expect(backing.activeRoom?.key).toBe(hold.activeRoom?.key);
+      expect(backing.camera.z).toBeLessThan(hold.camera.z - 100);
+      expect(exit.camera.z).toBeLessThan(backing.camera.z - 100);
+      expect(exit.camera.x).toBe(hold.camera.x);
+      expect(backing.camera.y).toBeGreaterThan(hold.camera.y);
+      expect(exit.camera.y).toBeGreaterThan(backing.camera.y);
+      expect((exit.camera.y - hold.camera.y) / (hold.camera.z - exit.camera.z)).toBeLessThan(.35);
+      expect(backing.camera.pitch).toBeLessThan(hold.camera.pitch);
     }
-    const before = environmentHeatmapProjection(46).camera;
-    const midway = environmentHeatmapProjection(48).camera;
-    const after = environmentHeatmapProjection(50).camera;
-    expect(midway).toMatchObject({ x: 835, y: 500, z: 1260 });
-    expect(midway.yaw).toBeCloseTo((before.yaw + after.yaw) / 2, 10);
-    expect(midway.pitch).toBeCloseTo((before.pitch + after.pitch) / 2, 10);
-    expect(midway.pitch).toBeGreaterThan(.5);
-    expect(midway.pitch).toBeLessThan(.6);
+  });
+
+  it('uses supplied temperatures, preserves ties and excludes missing readings without mutating rooms', () => {
+    const rooms = environmentHeatmap(DEFAULT_ENVIRONMENT_DATA.zones).rooms.slice(0, 4)
+      .map((room, i) => ({ ...room, temperature: [20, 32, 32, null][i] }));
+    const before = rooms.map(room => room.key);
+    expect(environmentHotspotOrder(rooms).map(room => room.key)).toEqual([rooms[1].key, rooms[2].key, rooms[0].key]);
+    expect(rooms.map(room => room.key)).toEqual(before);
+    expect(environmentHeatmapProjection(40, rooms).activeRoom?.key).toBe(rooms[1].key);
+    expect(environmentHeatmapProjection(50, []).activeRoom).toBeNull();
+    expect(environmentHeatmapProjection(50, []).camera).toEqual(environmentHeatmapProjection(35).camera);
   });
 
   it('reproduces the same flight after reverse seeking and clamps unavailable scene times', () => {
@@ -128,7 +149,7 @@ describe('overhead heatmap descending into the VISOR factory space', () => {
     for (const elapsed of [NaN, Infinity, -Infinity, -1, 0, 34]) {
       expect(environmentHeatmapProjection(elapsed).camera).toEqual(environmentHeatmapProjection(35).camera);
     }
-    expect(environmentHeatmapProjection(100).camera).toEqual(environmentHeatmapProjection(52).camera);
+    expect(environmentHeatmapProjection(100).camera).toEqual(environmentHeatmapProjection(ENVIRONMENT_FILM_SECONDS).camera);
   });
 });
 

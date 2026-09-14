@@ -1,9 +1,9 @@
-import { ENVIRONMENT_HEATMAP_BOUNDS } from './environmentHeatmap';
+import { ENVIRONMENT_HEATMAP_BOUNDS, environmentHeatmap, type EnvironmentHeatmapRoom } from './environmentHeatmap';
 import { smooth } from './filmDrawing';
 import type { InspectionCamera, Point3D } from './inspectionSpace';
 import { factoryProject, smtFactoryState, SMT_FACTORY_DEPTH, SMT_FACTORY_LINES, SMT_FACTORY_PITCH, type FactoryState } from './smtFactory';
 import { SMT_LINE_WIDTH } from './smtLine';
-import { ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING } from './zoneEnvironment';
+import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING } from './zoneEnvironment';
 
 export interface EnvironmentHeatmapPoint { x: number; y: number }
 export interface EnvironmentHeatmapLabel extends EnvironmentHeatmapPoint { width: number; height: number }
@@ -42,17 +42,42 @@ export function environmentHeatmapLabels(points: readonly EnvironmentHeatmapPoin
 
 const factoryCenterX = ((SMT_FACTORY_LINES - 1) * SMT_FACTORY_PITCH - SMT_FACTORY_DEPTH) / 2;
 const factoryCenterZ = SMT_LINE_WIDTH / 2;
-const FLIGHT_STOPS = [
-  { at: 38, eye: { x: factoryCenterX, y: 3500, z: factoryCenterZ }, target: { x: factoryCenterX, y: 0, z: factoryCenterZ } },
-  { at: 42, eye: { x: 300, y: 540, z: -320 }, target: { x: 300, y: 70, z: 500 } },
-  { at: 46, eye: { x: 300, y: 380, z: 850 }, target: { x: 300, y: 70, z: 1320 } },
-  { at: 50, eye: { x: 1370, y: 620, z: 1670 }, target: { x: 1250, y: 50, z: 700 } },
-  { at: 52, eye: { x: 1750, y: 780, z: 1300 }, target: { x: 1050, y: 50, z: 650 } },
-] as const;
+export const ENVIRONMENT_HOTSPOT_DWELL = 4.8;
+const overview = { eye: { x: factoryCenterX, y: 3500, z: factoryCenterZ },
+  target: { x: factoryCenterX, y: 0, z: factoryCenterZ } };
+const defaultRooms = environmentHeatmap(DEFAULT_ENVIRONMENT_DATA.zones).rooms;
+
+/** Stable ties retain installation order; unknown sensor values are never ranked as temperatures. */
+export function environmentHotspotOrder(rooms: readonly EnvironmentHeatmapRoom[]) {
+  return rooms.filter(room => room.temperature !== null && Number.isFinite(room.temperature))
+    .sort((a, b) => b.temperature! - a.temperature!);
+}
+
+function hotspotStop(room: EnvironmentHeatmapRoom) {
+  const b = ENVIRONMENT_HEATMAP_BOUNDS;
+  const target = { x: -240 + (room.pin.x - b.x) / b.width * ((SMT_FACTORY_LINES - 1) * SMT_FACTORY_PITCH + 420),
+    y: 0, z: -100 + (room.pin.y - b.y) / b.height * (SMT_LINE_WIDTH + 200) };
+  // Enter the aisle alongside the sensor, at equipment-eye height instead of hovering overhead.
+  return { target, eye: { x: target.x + 145, y: 220, z: target.z - 420 } };
+}
+
+function hotspotExit(room: EnvironmentHeatmapRoom) {
+  const stop = hotspotStop(room);
+  // Gain height while backing away: a shallow climb, with the sensor still in view.
+  return { target: stop.target, eye: { ...stop.eye, y: 460, z: stop.eye.z - 800 } };
+}
 
 function flightPoint(from: Point3D, to: Point3D, progress: number): Point3D {
   return { x: from.x + (to.x - from.x) * progress,
     y: from.y + (to.y - from.y) * progress, z: from.z + (to.z - from.z) * progress };
+}
+
+function aisleFlight(from: Point3D, to: Point3D, progress: number): Point3D {
+  const point = flightPoint(from, to, progress);
+  if (progress <= 0 || progress >= 1 || from.y > 1000 || to.y > 1000) return point;
+  // Travel forward throughout the climb/descent instead of rising and dropping in place.
+  // This low arc clears equipment while keeping the final approach shallow.
+  return { ...point, y: point.y + 100 * Math.sin(Math.PI * progress) };
 }
 
 function flightOrientation(eye: Point3D, target: Point3D) {
@@ -61,14 +86,27 @@ function flightOrientation(eye: Point3D, target: Point3D) {
 }
 
 /** The existing VISOR camera carries the thermal floor from an overhead plan into a factory flight. */
-export function environmentHeatmapProjection(elapsed: number) {
+export function environmentHeatmapProjection(elapsed: number, rooms: readonly EnvironmentHeatmapRoom[] = defaultRooms) {
   const time = Number.isFinite(elapsed)
     ? Math.max(ENVIRONMENT_TIMING.heatmapStart, Math.min(ENVIRONMENT_FILM_SECONDS, elapsed))
     : ENVIRONMENT_TIMING.heatmapStart;
-  const segment = time <= FLIGHT_STOPS[0].at ? 0 : time < 42 ? 1 : time < 46 ? 2 : time < 50 ? 3 : 4;
-  const from = FLIGHT_STOPS[Math.max(0, segment - 1)], to = FLIGHT_STOPS[segment];
-  const progress = segment ? smooth(from.at, to.at, time) : 0;
-  const eye = flightPoint(from.eye, to.eye, progress);
+  const ordered = environmentHotspotOrder(rooms);
+  const tourTime = Math.max(0, time - ENVIRONMENT_TIMING.heatmapFull);
+  const index = Math.floor(tourTime / ENVIRONMENT_HOTSPOT_DWELL);
+  const touring = time > ENVIRONMENT_TIMING.heatmapFull && index < ordered.length;
+  const returning = ordered.length > 0 && index >= ordered.length;
+  const activeRoom = touring ? ordered[index] : null;
+  const local = tourTime - index * ENVIRONMENT_HOTSPOT_DWELL;
+  const retreating = !!activeRoom && local >= 3.6;
+  const from = retreating ? hotspotStop(activeRoom!)
+    : touring && index > 0 ? hotspotExit(ordered[index - 1])
+    : returning ? hotspotExit(ordered[ordered.length - 1]) : overview;
+  const to = activeRoom ? (retreating ? hotspotExit(activeRoom) : hotspotStop(activeRoom)) : overview;
+  // Fly in 1.4s, read 2.2s, back out 1.2s; only then cross to the next sensor.
+  const progress = retreating ? smooth(3.6, ENVIRONMENT_HOTSPOT_DWELL, local)
+    : touring ? smooth(0, 1.4, local)
+    : returning ? smooth(0, 3, tourTime - ordered.length * ENVIRONMENT_HOTSPOT_DWELL) : 0;
+  const eye = retreating ? flightPoint(from.eye, to.eye, progress) : aisleFlight(from.eye, to.eye, progress);
   const start = flightOrientation(from.eye, from.target), end = flightOrientation(to.eye, to.target);
   // Blend endpoint angles: interpolating look-at positions would cancel the forward vector during a turn.
   const yawDistance = Math.atan2(Math.sin(end.yaw - start.yaw), Math.cos(end.yaw - start.yaw));
@@ -78,7 +116,8 @@ export function environmentHeatmapProjection(elapsed: number) {
     manualSelection: null, cameraOverride: camera, cameraX: camera.z, cameraZ: camera.x };
   const bounds = ENVIRONMENT_HEATMAP_BOUNDS;
   return { camera, factoryState,
-    phase: ['상공 평면', '라인 입구로 하강', '설비 사이 전진', '라인 선회', '상공 복귀'][segment],
+    activeRoom, rank: touring ? index + 1 : 0, total: ordered.length,
+    phase: retreating ? '뒤로 빠지며 완만하게 상승' : touring ? (progress < 1 ? '완만하게 센서 옆으로 진입' : '측면에서 온도 확인') : returning ? '상공 복귀' : '상공 평면',
     point: (x: number, y: number, height = 0) => factoryProject({
       x: -100 + (y - bounds.y) / bounds.height * (SMT_LINE_WIDTH + 200),
       y: height,

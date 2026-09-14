@@ -3,12 +3,12 @@ import { createHoloProjection } from './holoSpace';
 import { TEMPERATURE_HOUR_MS, temperatureHistoryDomain, temperatureHistoryPoints, type TemperatureSample } from './temperatureHistory';
 import { pad2 } from './filmMath';
 
-export const ENVIRONMENT_FILM_SECONDS = 52;
+export const ENVIRONMENT_FILM_SECONDS = 91;
 export const ENVIRONMENT_TIMING = {
   tourStart: 2.5, tourEnd: 21.5,
   chartsStart: 23, chartsEnd: 25.5, chartsOut: 34,
-  heatmapStart: 35, heatmapFull: 38, heatmapOut: 50,
-  fadeOut: 50,
+  heatmapStart: 35, heatmapFull: 38, heatmapOut: 89,
+  fadeOut: 89,
 } as const;
 export const ZONE_COUNT = 10;
 export interface EnvironmentRange { min: number; max: number }

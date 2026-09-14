@@ -1,103 +1,103 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`film draw-call fingerprint > bars at 0.6s 1`] = `"2314 calls · 83f78b36b533f3aaa89a1bda0c72ae593915bd60"`;
+exports[`film draw-call fingerprint > bars at 0.6s 1`] = `"2314 calls · 7b051ee51c310201557a93d49c8f2bf1228b5a6d"`;
 
-exports[`film draw-call fingerprint > bars at 17s 1`] = `"9442 calls · fbdb35516628a179abb7227b3f2185f3dd1bed1f"`;
+exports[`film draw-call fingerprint > bars at 17s 1`] = `"9442 calls · 32f4334653495bb030cf061069da7b82b9dc630e"`;
 
-exports[`film draw-call fingerprint > bars at 22s 1`] = `"9442 calls · 987367435e96cb33d3ca8447719c7920c205eb9f"`;
+exports[`film draw-call fingerprint > bars at 22s 1`] = `"9442 calls · fdaae65bf9aaaba0b88271ee61c14b1a3368c426"`;
 
-exports[`film draw-call fingerprint > cctv at 0.6s 1`] = `"1179 calls · 05a01353ef51a27e0abbe945fe73b0439c4b3e80"`;
+exports[`film draw-call fingerprint > cctv at 0.6s 1`] = `"1179 calls · 7d936fa808e4617a8648ff935ad38bf2609eeb7c"`;
 
-exports[`film draw-call fingerprint > cctv at 20s 1`] = `"3954 calls · 98bfce00416f5abd61070c61a619d13ddd970f80"`;
+exports[`film draw-call fingerprint > cctv at 20s 1`] = `"3954 calls · e4f834befc2b3de47bd96ec6695a4b6c06adcf32"`;
 
-exports[`film draw-call fingerprint > cctv at 25s 1`] = `"4054 calls · effac58a311600a875ca8df92c9e0beaaf48640c"`;
+exports[`film draw-call fingerprint > cctv at 25s 1`] = `"4054 calls · 0fcd51b118a5a78e6ff85c55991ed71daae2c75b"`;
 
-exports[`film draw-call fingerprint > console at 0.6s 1`] = `"804 calls · 1befa3aa2b3897afb65a1164f60582687f889eff"`;
+exports[`film draw-call fingerprint > console at 0.6s 1`] = `"804 calls · 1f2a16146ca4cd8db80b443533cda2e8b36f0d60"`;
 
-exports[`film draw-call fingerprint > console at 17s 1`] = `"2642 calls · a5e7437b799c4704e18502c442dccff60376b533"`;
+exports[`film draw-call fingerprint > console at 17s 1`] = `"2642 calls · 33405ca09b805c52bc76672313cb251490587366"`;
 
-exports[`film draw-call fingerprint > console at 22s 1`] = `"2599 calls · 77d8d924ecb9b98fb749cb2dfa5aa61dade0f7b2"`;
+exports[`film draw-call fingerprint > console at 22s 1`] = `"2599 calls · 9f32f28bb4baaa07fe5a82bf01f09fbbf98b7d69"`;
 
-exports[`film draw-call fingerprint > corners at 0.6s 1`] = `"251 calls · 62d685188b98f25390a34d940fb659bc239a65e0"`;
+exports[`film draw-call fingerprint > corners at 0.6s 1`] = `"251 calls · ce6856c2284e68652c800fbbba4dd426aba2dd28"`;
 
-exports[`film draw-call fingerprint > corners at 34s 1`] = `"4816 calls · 3f80953d17045bde9f3ddb6dc57d696fc578f885"`;
+exports[`film draw-call fingerprint > corners at 34s 1`] = `"4816 calls · bbf8c077182c5f00402d0c8cf5dbf296293108e3"`;
 
-exports[`film draw-call fingerprint > corners at 39s 1`] = `"4816 calls · 3fb1ee3f8383f514bcd2367450146aee7394ce80"`;
+exports[`film draw-call fingerprint > corners at 39s 1`] = `"4816 calls · 716ed65c2af580427741e0abb7c255131a40abde"`;
 
-exports[`film draw-call fingerprint > energy at 0.6s 1`] = `"1577 calls · 799fb14c9053835d4eb11d31a9c56775f6e1e860"`;
+exports[`film draw-call fingerprint > energy at 0.6s 1`] = `"1577 calls · 3d20fcd4f3d5aaa9c34aade345fb819e0843ad87"`;
 
-exports[`film draw-call fingerprint > energy at 15s 1`] = `"1577 calls · 34ce3e3d414e175d5bbf894133e1dd63986bb2b5"`;
+exports[`film draw-call fingerprint > energy at 15s 1`] = `"1577 calls · 7582c59d7ecf4574259119e42f84ec91b334173a"`;
 
-exports[`film draw-call fingerprint > energy at 20s 1`] = `"2523 calls · f3e03b588eac8d867177712babfb10e7fe77cdf8"`;
+exports[`film draw-call fingerprint > energy at 20s 1`] = `"2523 calls · a282425335b89374ad3a1055267e4b955a5ea80a"`;
 
-exports[`film draw-call fingerprint > gears at 0.6s 1`] = `"9125 calls · 93a9903a5dbfae98352907e7a30e79a86bd41785"`;
+exports[`film draw-call fingerprint > gears at 0.6s 1`] = `"9125 calls · 8d2a10576cd9cf644b13e176e8f0221f6a8044bc"`;
 
-exports[`film draw-call fingerprint > gears at 18s 1`] = `"12066 calls · 738c587b7a86e9ee9108d47fb350e0f032799d74"`;
+exports[`film draw-call fingerprint > gears at 18s 1`] = `"12066 calls · 4be76d3a332eb0384eb43859da61388e4c7c0302"`;
 
-exports[`film draw-call fingerprint > gears at 23s 1`] = `"10645 calls · a643d068d5e31f1c11ca341e1a4121006308d94d"`;
+exports[`film draw-call fingerprint > gears at 23s 1`] = `"10645 calls · 4d6b7d591c3c9c792b2103a95830634ba52261c7"`;
 
-exports[`film draw-call fingerprint > machine at 0.6s 1`] = `"6498 calls · 259ab64b15efc6b07c5b7f1d0a13e4a735c0ae40"`;
+exports[`film draw-call fingerprint > machine at 0.6s 1`] = `"6498 calls · 03f152c5a78a4af29b09db7f3556d588fe8145d5"`;
 
-exports[`film draw-call fingerprint > machine at 13s 1`] = `"6671 calls · 4861ba1cc53e0ac6a44225a9fb4f00e12ef061d7"`;
+exports[`film draw-call fingerprint > machine at 13s 1`] = `"6671 calls · 56a8e6a2aa2ea0d6733e277167a64b4539b234dc"`;
 
-exports[`film draw-call fingerprint > machine at 18s 1`] = `"6654 calls · 1b1d041f600cfec4f752c62b5cdb9ec118167bfe"`;
+exports[`film draw-call fingerprint > machine at 18s 1`] = `"6654 calls · c85f6010101b0f8456e43883268e21672b3de151"`;
 
-exports[`film draw-call fingerprint > network at 0.6s 1`] = `"4556 calls · 7557012f928217954af3b0da9b54c299329d7991"`;
+exports[`film draw-call fingerprint > network at 0.6s 1`] = `"4556 calls · 58102db3442e0cdba967efd5bdd70fe828aa0d45"`;
 
-exports[`film draw-call fingerprint > network at 15s 1`] = `"4778 calls · 34bf96c7093cc7b4588a9c2bfcdd31261d7097f9"`;
+exports[`film draw-call fingerprint > network at 15s 1`] = `"4778 calls · 8fedb7da457a597a0831ae5b04e562104a770e55"`;
 
-exports[`film draw-call fingerprint > network at 20s 1`] = `"4778 calls · 6d87b806e00a0e6e6088dbaf66c648b911426f42"`;
+exports[`film draw-call fingerprint > network at 20s 1`] = `"4778 calls · 1309628171c736bd5ca49f674ce52f00a79b2d58"`;
 
-exports[`film draw-call fingerprint > pie at 0.6s 1`] = `"2285 calls · 4604a973980cc2763b8356252e6be5d452cb4948"`;
+exports[`film draw-call fingerprint > pie at 0.6s 1`] = `"2285 calls · e1b53aebe6925e1145ac325f3622a4473a7df635"`;
 
-exports[`film draw-call fingerprint > pie at 17s 1`] = `"5587 calls · 654406c2d11dd0d1ef1214147d0e3454d678a51c"`;
+exports[`film draw-call fingerprint > pie at 17s 1`] = `"5587 calls · 93d0211173aa182f1a0dcc187f7af5d22fe2360f"`;
 
-exports[`film draw-call fingerprint > pie at 22s 1`] = `"5587 calls · 503a8686adc3e6cf345e18689ce21ef82d88825a"`;
+exports[`film draw-call fingerprint > pie at 22s 1`] = `"5587 calls · 8c6434d354c283296fc1f56e5242139212d49042"`;
 
-exports[`film draw-call fingerprint > product at 0.6s 1`] = `"37492 calls · 7a7d38478a2aa0460ea6a7b392f0787aa1b75357"`;
+exports[`film draw-call fingerprint > product at 0.6s 1`] = `"37492 calls · 4404246fc20a015c5de155920b88c0a17d580c9d"`;
 
-exports[`film draw-call fingerprint > product at 17s 1`] = `"37630 calls · 90132cbc9c85b82e70fdaa02d23cf396f134a093"`;
+exports[`film draw-call fingerprint > product at 17s 1`] = `"37630 calls · c050ba949b524b805531f17cd1895f0f3a1d9689"`;
 
-exports[`film draw-call fingerprint > product at 22s 1`] = `"37623 calls · 3644e090e1c9e628197b206803a169efd733d87e"`;
+exports[`film draw-call fingerprint > product at 22s 1`] = `"37623 calls · ff70840595deb4f3148abe146ed5f07e37eb44c2"`;
 
-exports[`film draw-call fingerprint > scan at 0.6s 1`] = `"4716 calls · 5cfd02b85284472a63388bcad558b26415f4a58a"`;
+exports[`film draw-call fingerprint > scan at 0.6s 1`] = `"4716 calls · 90c8726f8676b0f59e30f67300558e67737515d7"`;
 
-exports[`film draw-call fingerprint > scan at 15s 1`] = `"5329 calls · 8b6011f5eacd94bec377cd3466564304092e3983"`;
+exports[`film draw-call fingerprint > scan at 15s 1`] = `"5329 calls · cb0fe60f1914c7955f2e282e4ab6bf4fc8926442"`;
 
-exports[`film draw-call fingerprint > scan at 20s 1`] = `"5398 calls · b29ac54761463654bb1c4d52283493e6db61562c"`;
+exports[`film draw-call fingerprint > scan at 20s 1`] = `"5398 calls · 80c43648d6f822a08ffcdca3315ff484869ae4f9"`;
 
-exports[`film draw-call fingerprint > spc at 0.6s 1`] = `"307 calls · cab85dd160f164a48923a60022fd626aaf3691d0"`;
+exports[`film draw-call fingerprint > spc at 0.6s 1`] = `"307 calls · ed532cdff883a98b3312716f20a73e85dd047107"`;
 
-exports[`film draw-call fingerprint > spc at 30s 1`] = `"4878 calls · bceba50c4afa149ad278bee5ded79513a6f6472d"`;
+exports[`film draw-call fingerprint > spc at 30s 1`] = `"4878 calls · b8ea11b54b7f6bdd4fc661a5d55069c768f1f9cf"`;
 
-exports[`film draw-call fingerprint > spc at 35s 1`] = `"4878 calls · a74b07ae86203b8c702c7be3c7495ec182fb4d16"`;
+exports[`film draw-call fingerprint > spc at 35s 1`] = `"4878 calls · 874ff33f9218a540edebf239087afdbd9f563165"`;
 
-exports[`film draw-call fingerprint > trace at 0.6s 1`] = `"535 calls · 734ecac3a03626f730c8972cf1929106d8ddb4f6"`;
+exports[`film draw-call fingerprint > trace at 0.6s 1`] = `"535 calls · 64291c0203d79820731b35eb2f12ae447a722fdf"`;
 
-exports[`film draw-call fingerprint > trace at 16s 1`] = `"3182 calls · ba46502c68fb3a2e02f9b8badb8991800bd590d3"`;
+exports[`film draw-call fingerprint > trace at 16s 1`] = `"3182 calls · dd87241a1a70723da12e6fb134cd49e31799d3d6"`;
 
-exports[`film draw-call fingerprint > trace at 21s 1`] = `"3016 calls · 936824f8b49cefd6a0e0a7a57ff16e72632fd391"`;
+exports[`film draw-call fingerprint > trace at 21s 1`] = `"3016 calls · b7eb459ac5686e63fa402aeb0cc492b7affba877"`;
 
-exports[`film draw-call fingerprint > unfold at 0.6s 1`] = `"229 calls · 826ed57518ddf7504bcff9b39a302ce1f1119b0f"`;
+exports[`film draw-call fingerprint > unfold at 0.6s 1`] = `"229 calls · 7217adb3298c2cb7d0a1422d2fbe481097724cf7"`;
 
-exports[`film draw-call fingerprint > unfold at 28s 1`] = `"7897 calls · 5aa757601968d278361a4311be33e573135989e7"`;
+exports[`film draw-call fingerprint > unfold at 28s 1`] = `"7897 calls · 938d857b88ae0c5dd0a3ffb958b7936fee098672"`;
 
-exports[`film draw-call fingerprint > unfold at 31.5s 1`] = `"7897 calls · d928c153ad18e4704beeb2a1b9a2678ff3b0cda9"`;
+exports[`film draw-call fingerprint > unfold at 31.5s 1`] = `"7897 calls · 570bbf274921455d6ace7ea15e1e6e8c63c59766"`;
 
-exports[`film draw-call fingerprint > visor at 0.6s 1`] = `"4851 calls · 35125cbc9551fa4e2d03c814b0059870bc43caa2"`;
+exports[`film draw-call fingerprint > visor at 0.6s 1`] = `"4851 calls · f4394588e1cd706a6d468f150122d5865b919dee"`;
 
-exports[`film draw-call fingerprint > visor at 1.5s 1`] = `"4851 calls · 3e5fb98f880c4f58c6526747f1cf64c31df9efa6"`;
+exports[`film draw-call fingerprint > visor at 1.5s 1`] = `"4851 calls · 516ffb7daa4530af024f9951a63a1491bfcc8176"`;
 
-exports[`film draw-call fingerprint > visor at 6.5s 1`] = `"3571 calls · d488f5e8dfe6e4a461a45e768f162bee0b21ae7e"`;
+exports[`film draw-call fingerprint > visor at 6.5s 1`] = `"3571 calls · 919b9600e8c0adff2f6f5200cc9ffc0b6fb5f10d"`;
 
-exports[`film draw-call fingerprint > visorPan at 0.6s 1`] = `"3892 calls · 892d7988f576ab50ef8a3b351133ca370574c56c"`;
+exports[`film draw-call fingerprint > visorPan at 0.6s 1`] = `"3892 calls · a6d2dc28b1b9df59c9a747e5346875a07ea4ad79"`;
 
-exports[`film draw-call fingerprint > visorPan at 19s 1`] = `"4354 calls · ffb0f0227c6713fc96052ea484c045af46902c0f"`;
+exports[`film draw-call fingerprint > visorPan at 19s 1`] = `"4354 calls · 9a84644f4c5d578c50df02737d455e2ab723074e"`;
 
-exports[`film draw-call fingerprint > visorPan at 24s 1`] = `"4354 calls · c77db920ce1e424d92286886f8d284414e59741f"`;
+exports[`film draw-call fingerprint > visorPan at 24s 1`] = `"4354 calls · b1ce210a017c212ebbe5c93da44167bdddeaaa4e"`;
 
-exports[`film draw-call fingerprint > wave at 0.6s 1`] = `"2061 calls · 004f8991702bb755acc368e91a5dd10f6077d229"`;
+exports[`film draw-call fingerprint > wave at 0.6s 1`] = `"2061 calls · 65d75c9f642ed557375c8ae0b669383a7bc6917c"`;
 
-exports[`film draw-call fingerprint > wave at 30s 1`] = `"9049 calls · 43eb73e019531c7bc0be057e69314c8c80d59576"`;
+exports[`film draw-call fingerprint > wave at 30s 1`] = `"9049 calls · 0ce07fa1da9e638b24671b11535389457720cdd6"`;
 
-exports[`film draw-call fingerprint > wave at 35s 1`] = `"9069 calls · ff072e5ce23aeccec522fd1d0576e2e12ae7fc3a"`;
+exports[`film draw-call fingerprint > wave at 35s 1`] = `"9069 calls · 44f81e7981047c98f705ec0e6fd8ace4c02f5ed1"`;
