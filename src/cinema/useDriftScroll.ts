@@ -118,5 +118,5 @@ export function useDriftScroll<Host extends HTMLElement = HTMLDivElement, Viewpo
     };
   }, [axis, speed, paused, suspended, holdMs, resumeMs, initialHoldMs, manualMs]);
 
-  return { hostRef, viewportRef, paused, stopped: paused || suspended, toggle: () => setPaused(value => !value) };
+  return { hostRef, viewportRef, paused, stopped: paused || suspended, setPaused, toggle: () => setPaused(value => !value) };
 }
