@@ -20,6 +20,7 @@ export interface DomainObjectType {
   type: string;
   /** Property name of the collection inside the feed data. */
   collection: string;
+  optional?: boolean;
   label: string;
   fields: readonly SceneFieldDescriptor[];
   /** Nested keys the descriptors cannot express (coordinates, ranges, histories). */
@@ -105,10 +106,26 @@ export const DOMAIN_FEEDS: readonly DomainFeed[] = [
   {
     feed: 'quality', label: '품질 SPC 측정', refresh: 'event', refreshHint: '부분군 완성 시 이벤트, 또는 1~5분 폴링',
     header: [text('name', '측정 항목'), text('unit', '단위'), number('nominal', '공칭값'), number('lsl', '규격 하한'), number('usl', '규격 상한'), number('cpkTarget', 'Cpk 목표', { min: 0 })],
-    objects: [{ type: 'spcSubgroup', collection: 'subgroups', label: '부분군', fields: SCENE_FIELDS.spc }],
+    objects: [{ type: 'spcSubgroup', collection: 'subgroups', label: '부분군', fields: SCENE_FIELDS.spc },
+      { type: 'spcTarget', collection: 'targets', optional: true, label: 'SPC 분석 대상 (목록 순서대로 순회)',
+        fields: [text('name', '측정 항목'), text('unit', '단위'), number('nominal', '공칭값'), number('lsl', '규격 하한'),
+          number('usl', '규격 상한'), number('cpkTarget', 'Cpk 목표', { min: 0 })],
+        extra: { subgroups: { label: '해당 대상의 부분군 측정값', schema: { type: 'array', items: { type: 'object',
+          properties: { id: { type: 'string' }, values: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 10 } }, required: ['id', 'values'] } } } } }],
     scenes: ['spc', 'corners', 'unfold'], status: 'partial',
-    note: 'SPC 장면이 읽는다(부분군 수·크기 무관). 코너·펼침의 양품률과 상단 지표의 이탈 수도 파생 예정.',
-    example: data => ({ ...data.spc, subgroups: data.spc.subgroups.slice(0, 5).map(group => ({ label: group.id, ...group })) }),
+    note: 'targets가 있으면 배열 순서대로 순회하며 Xbar–R·히스토그램·Cpk를 동시에 표시. 생략하면 기존 단일 항목 사용. 빈 배열은 대상 없음. 다중 대상은 전체 스냅샷으로 갱신. 상위 측정값은 대표 항목 지표용.',
+    example: data => ({ ...data.spc, targets: data.spc.targets?.map(target => ({ ...target, label: target.name })),
+      subgroups: data.spc.subgroups.slice(0, 5).map(group => ({ label: group.id, ...group })) }),
+  },
+  {
+    feed: 'oee', label: '설비종합효율', refresh: 'normal', refreshHint: '동일 집계 기간의 누적 원자료',
+    header: [text('name', '라인'), text('period', '집계 기간')],
+    objects: [{ type: 'oeeEquipment', collection: 'equipment', label: '설비별 효율 원자료', fields: [
+      text('name', '설비명'), number('plannedSeconds', '계획 생산 시간(초)', { min: 0 }),
+      number('stopSeconds', '정지 시간(초)', { min: 0 }), number('idealCycleSeconds', '이상 사이클(초/개)', { min: 0 }),
+      number('totalCount', '총 생산 수량', { min: 0, decimals: 0 }), number('goodCount', '양품 수량', { min: 0, decimals: 0 })] }],
+    scenes: ['oee'], status: 'live', note: 'OEE = 가동률 × 성능 × 품질. 계획 시간에서 계획 비가동은 제외. 집계 기간과 제품 기준을 통일한다. 기본은 시드이며 DB 연결은 별도 설정한다.',
+    example: data => ({ ...data.oee, equipment: data.oee.equipment.map(item => ({ ...item, label: item.name })) }),
   },
   {
     feed: 'energy', label: '에너지 사용', refresh: 'fast', refreshHint: '5~30초 폴링',
@@ -177,7 +194,7 @@ export function feedJsonSchema(feed: DomainFeed): Record<string, unknown> {
     for (const field of object.fields) { itemProperties[field.field] = fieldSchema(field); if (!field.optional) itemRequired.push(field.field); }
     for (const [key, extra] of Object.entries(object.extra ?? {})) { itemProperties[key] = { description: extra.label, ...extra.schema }; if (!extra.optional) itemRequired.push(key); }
     properties[object.collection] = { type: 'array', description: object.label, items: { type: 'object', properties: itemProperties, required: itemRequired } };
-    required.push(object.collection);
+    if (!object.optional) required.push(object.collection);
   }
   return { $schema: 'http://json-schema.org/draft-07/schema#', $id: `hatchery/feeds/${feed.feed}`, title: `${feed.label} (${feed.feed})`,
     description: `${feed.note} 갱신: ${feed.refreshHint}. 장면: ${feed.scenes.join(', ')}.`, type: 'object', properties, required, additionalProperties: true };

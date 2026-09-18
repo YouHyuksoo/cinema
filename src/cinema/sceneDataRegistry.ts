@@ -7,6 +7,7 @@ import type { EnergyCoreData } from './energyCore';
 import type { ProcessNetworkData } from './processNetwork';
 import type { ProductInspectionData } from './productInspection';
 import type { SpcData } from './spcTypes';
+import type { OeeData } from './oeeData';
 import { validateSceneField, validateSceneObjectFields, type SceneFieldDescriptor } from './sceneField';
 import { SCENE_FIELDS } from './sceneFields';
 import { PRODUCTION_LINE_FIELDS } from './productionLineFields';
@@ -94,13 +95,18 @@ const network: SceneDataEntry<'network'> = {
   patch: patchCollection<'network', 'nodes'>('nodes', SCENE_FIELDS.network),
 };
 
+const isSpcMeasurement = (data: unknown) => isRecord(data) && isText(data.name) && isText(data.unit)
+  && [data.nominal, data.lsl, data.usl, data.cpkTarget].every(isNumber)
+  && listOf(data.subgroups, group => isText(group.id) && isNumberList(group.values));
 const spc: SceneDataEntry<'spc'> = {
   key: 'spc',
-  normalize: data => isRecord(data) && isText(data.name) && isText(data.unit)
-    && [data.nominal, data.lsl, data.usl, data.cpkTarget].every(isNumber)
-    && listOf(data.subgroups, group => isText(group.id) && isNumberList(group.values))
+  normalize: data => isRecord(data) && isSpcMeasurement(data)
+    && (data.targets === undefined || (listOf(data.targets, target => isText(target.id) && isSpcMeasurement(target))
+      && new Set((data.targets as { id: string }[]).map(target => target.id)).size === (data.targets as unknown[]).length))
     ? data as unknown as SpcData : undefined,
-  patch: patchCollection<'spc', 'subgroups'>('subgroups', SCENE_FIELDS.spc),
+  patch: (data, objects) => data.targets !== undefined
+    ? { data, applied: 0, ignored: [], error: '다중 SPC 대상은 targets를 포함한 전체 스냅샷으로 갱신하세요.' }
+    : patchCollection<'spc', 'subgroups'>('subgroups', SCENE_FIELDS.spc)(data, objects),
 };
 
 const energy: SceneDataEntry<'energy'> = {
@@ -124,6 +130,10 @@ const pcb: SceneDataEntry<'pcb'> = {
 };
 
 export const SCENE_DATA_REGISTRY: Partial<Record<FilmId, SceneDataEntry>> = {
+  oee: { key: 'oee', normalize: data => isRecord(data) && isText(data.name) && isText(data.period)
+    && listOf(data.equipment, item => isText(item.id) && isText(item.name)
+      && [item.plannedSeconds, item.stopSeconds, item.idealCycleSeconds, item.totalCount, item.goodCount].every(isNumber))
+    ? data as unknown as OeeData : undefined },
   bars: mounter, pie: production, wave: environment, network, spc, energy, product, machine: pcb,
 };
 

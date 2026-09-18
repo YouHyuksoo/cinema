@@ -48,6 +48,12 @@ exports[`film draw-call fingerprint > network at 15s 1`] = `"4778 calls · 8fedb
 
 exports[`film draw-call fingerprint > network at 20s 1`] = `"4778 calls · 1309628171c736bd5ca49f674ce52f00a79b2d58"`;
 
+exports[`film draw-call fingerprint > oee at 0.6s 1`] = `"2339 calls · 683fc21d72044f72bab6977db403267b500f35f3"`;
+
+exports[`film draw-call fingerprint > oee at 3s 1`] = `"2339 calls · 257a8b253ffdd74a129a949c395e7fa4d4ac12fc"`;
+
+exports[`film draw-call fingerprint > oee at 8s 1`] = `"2339 calls · 459bd8a8f6d2ab46c85e14edeed29ee46da159a8"`;
+
 exports[`film draw-call fingerprint > pie at 0.6s 1`] = `"2285 calls · e1b53aebe6925e1145ac325f3622a4473a7df635"`;
 
 exports[`film draw-call fingerprint > pie at 17s 1`] = `"5587 calls · 93d0211173aa182f1a0dcc187f7af5d22fe2360f"`;

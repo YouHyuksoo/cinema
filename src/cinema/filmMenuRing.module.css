@@ -58,17 +58,15 @@
 .menu[data-menu-layout=orbit] .stage::before {
   content:''; position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .45s ease;
   background:radial-gradient(circle at var(--orbit-cx,50%) var(--orbit-cy,50%),
-    rgba(4,11,16,.92) 0, rgba(4,11,16,.92) calc(var(--orbit-r,180px) + 84px), rgba(4,11,16,0) calc(var(--orbit-r,180px) + 190px));
+    rgba(3,8,13,.96) 0, rgba(3,8,13,.96) calc(var(--orbit-r,180px) + 110px), rgba(3,8,13,0) calc(var(--orbit-r,180px) + 240px));
 }
-.menu[data-menu-layout=orbit] .stage::after {
-  content:''; position:fixed; left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); width:calc(var(--orbit-r,180px) * 2); height:calc(var(--orbit-r,180px) * 2);
-  transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0; transition:opacity .45s ease;
-  border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent);
-  box-shadow:0 0 24px color-mix(in srgb,var(--film-accent) 25%,transparent),inset 0 0 40px color-mix(in srgb,var(--film-accent) 10%,transparent);
-}
-.menu[data-menu-layout=orbit][data-menu-open=true] .stage::before,.menu[data-menu-layout=orbit][data-menu-open=true] .stage::after { opacity:1; }
-.menu[data-menu-layout=orbit] .tile svg { filter:drop-shadow(0 0 9px color-mix(in srgb,var(--film-accent) 55%,transparent)); }
-.menu[data-menu-layout=orbit] .tile[data-front=true] svg { filter:drop-shadow(0 0 14px color-mix(in srgb,var(--film-accent) 80%,transparent)); }
+/* No accent circle around the globe: a second ring drawn through the tiles only added clutter. */
+.menu[data-menu-layout=orbit][data-menu-open=true] .stage::before { opacity:1; }
+.menu[data-menu-layout=orbit] .tile { opacity:1; z-index:calc(2 - var(--orbit-outer,0)); }
+/* Inner teeth stack above the outer ones so their names are not covered by the neighbouring hex. */
+.menu[data-menu-layout=orbit] .tile[data-front=true] { z-index:4; }
+.menu[data-menu-layout=orbit] .tile svg { filter:drop-shadow(0 0 6px color-mix(in srgb,var(--film-accent) 35%,transparent)); }
+.menu[data-menu-layout=orbit] .tile[data-front=true] svg { filter:drop-shadow(0 0 12px color-mix(in srgb,var(--film-accent) 70%,transparent)); }
 .menu[data-menu-layout=orbit] .tile {
   left:var(--orbit-cx,50%); top:var(--orbit-cy,50%); pointer-events:auto; cursor:grab;
   transform:translate(-50%,-50%) translate(calc(cos(var(--orbit-angle,0rad)) * (var(--orbit-r,180px) * var(--orbit-tooth,1) + var(--orbit-spread-x,0px) * var(--orbit-outer,0))),calc(sin(var(--orbit-angle,0rad)) * (var(--orbit-r,180px) * var(--orbit-tooth,1) + var(--orbit-spread-y,0px) * var(--orbit-outer,0)))) scale(var(--ring-scale));

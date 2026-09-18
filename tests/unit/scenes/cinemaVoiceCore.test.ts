@@ -25,6 +25,12 @@ describe('rotating voice reactor audio and motion contract', () => {
     expect(voiceCoreState(4, phase, 1)).toEqual(voiceCoreState(4, phase, 0));
     expect(voiceTeslaSparks(voiceCoreState(4, phase, 1))).toEqual([]);
   });
+  it('keeps one active highlight until the voice session returns to idle', () => {
+    const connected = ['requesting', 'listening', 'thinking', 'speaking'] as const;
+    const highlights = connected.map(phase => voiceCoreState(2, phase, 0).highlight);
+    expect(new Set(highlights).size).toBe(1);
+    expect(highlights[0]).not.toBe(voiceCoreState(2, 'idle', 0).highlight);
+  });
   it.each(phases)('reduced motion freezes %s geometry and suppresses lightning', phase => {
     const a = voiceCoreState(1, phase, 0, true), b = voiceCoreState(99, phase, 1, true);
     expect(a).toEqual(b);

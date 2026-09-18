@@ -42,7 +42,7 @@ describe('film texture bloom pass', () => {
   });
   it('is turned off for the main backdrop only', () => {
     const source = readFileSync('src/cinema/useFilmPlayback.ts', 'utf8');
-    expect(source).toContain('current.texture, { bloom: !cameraView.current, now });');
+    expect(source).toContain('current.texture, { bloom: !cameraView.current, now, cheap: low });');
   });
   it('reuses only the soft glow between updates and refreshes on seeking and resizing', () => {
     const draw = createFilmTextureRenderer('cyan'), frame = recordingCanvas();

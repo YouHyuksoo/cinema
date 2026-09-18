@@ -10,6 +10,11 @@ export interface FilmTextureOptions {
   bloom?: boolean;
   /** Wall-clock RAF timestamp. Reuse the soft glow between 30 Hz updates. */
   now?: number;
+  /**
+   * Low-performance machines: keep the cheap material layers (reflection, vignette, sweep) and drop
+   * the two full-surface passes nobody misses at a glance, the screen-blended bloom and the grain pattern.
+   */
+  cheap?: boolean;
 }
 
 export interface FilmTextureSettings {
@@ -188,7 +193,7 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
       return;
     }
 
-    if (bloomContext && options?.bloom !== false) {
+    if (bloomContext && options?.bloom !== false && !options?.cheap) {
       const now = options?.now;
       const refresh = now === undefined || !previousBloom || previousBloom.context !== ctx
         || previousBloom.width !== width || previousBloom.height !== height || previousBloom.style !== settings.style
@@ -237,7 +242,7 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
       ctx.drawImage(vignette, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
     }
 
-    if (material.grain) {
+    if (material.grain && !options?.cheap) {
       const phase = settings.style === 'film' ? Math.floor(t * 12) : 0;
       const offsetX = phase * 73 % 256;
       const offsetY = phase * 151 % 256;

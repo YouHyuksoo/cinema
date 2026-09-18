@@ -4,12 +4,15 @@ import { jarvisMainData } from '@/cinema/jarvisMainData';
 import { FILM_CHAPTERS } from '@/cinema/filmProgram';
 import { JARVIS_REALTIME_VOICES } from '@/cinema/jarvisAudio';
 import { DEFAULT_VOICE_GENDER, voiceGenderOf, type VoiceGender } from '@/cinema/jarvisVoiceGender';
-import { effectiveJarvisPrompt, renderJarvisPrompt } from '@/cinema/jarvisPrompt';
+import { renderJarvisPrompt } from '@/cinema/jarvisPrompt';
+import { aiPromptFor } from '@/cinema/aiPrompts';
+import { savedAiConfig } from './aiProviders';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import { describeHatcheryPatch, hatcheryObjectCatalog, SET_SCENE_OBJECT_VALUES_TOOL, toolCallToPatch } from '@/cinema/hatcheryTargets';
 import type { JarvisReply } from '@/cinema/jarvisCommands';
 import { AiProviderFailure, chatWithProvider, resolveAiRuntime } from './aiProviders';
 import { SCREEN_CONTROL_TOOL, validateScreenCommand } from '@/cinema/screenCommands';
+import { REALTIME_SCREEN_TOOL } from '@/cinema/realtimeScreenTool';
 
 /** True when any provider can answer: a saved key on /cinema/ai, or OPENAI_API_KEY in the environment. */
 export const openAiConfigured = () => resolveAiRuntime() !== null;
@@ -29,14 +32,13 @@ export const REALTIME_VOICES = JARVIS_REALTIME_VOICES;
  * (built-in or the copy saved on the AI settings screen) with the persona of the selected voice,
  * the operator's extra directives, then the bulky reference data last and marked as reference only.
  */
-export function jarvisInstructions(gender: VoiceGender = DEFAULT_VOICE_GENDER) {
-  const runtime = resolveAiRuntime();
-  const extra = runtime?.instructions.trim();
+export function jarvisInstructions(gender: VoiceGender = DEFAULT_VOICE_GENDER, purpose: 'analysis' | 'voice' = 'analysis') {
+  const { prompt, extra } = aiPromptFor(savedAiConfig(), purpose);
   const commandResponsePolicy = `# 명령 응답 최우선 규칙
 메뉴 열기·닫기, 설정 변경, 화면 전환, 재생·정지, 음성 시작·종료 등 모든 작업 명령은 실행 결과만 한 문장으로 답합니다.
 성공하면 "처리했습니다", "실행했습니다", "반영했습니다" 중 하나처럼 짧게 답하고, 설명·상황 보고·현재값 나열·사용법·다음 단계 안내를 절대 덧붙이지 않습니다.
 사용자가 브리핑·현황·상태 요약을 명시한 경우에만 내용을 설명합니다. 실패할 때만 실패 원인을 짧게 말합니다.`;
-  return [renderJarvisPrompt(effectiveJarvisPrompt(runtime?.prompt), gender), extra ? `# 운영자 추가 지시\n${extra}` : '', referenceData(), commandResponsePolicy]
+  return [renderJarvisPrompt(prompt, gender), extra ? `# 운영자 추가 지시\n${extra}` : '', referenceData(), commandResponsePolicy]
     .filter(Boolean).join('\n\n');
 }
 function referenceData() {
@@ -49,7 +51,7 @@ ${hatcheryObjectCatalog(DEFAULT_FILM_SCENE_DATA)}
 ${JSON.stringify({ zones: jarvisOverview().zones, energy: jarvisMainData.energy,
     process: jarvisMainData.process, quality: jarvisMainData.quality, inspection: jarvisMainData.inspection })}`;
 }
-export const ChatBody = z.object({ message: z.string().trim().min(1).max(1200),
+export const ChatBody = z.object({ message: z.string().min(1).max(1200), analysisOnly: z.boolean().optional(),
   screenState: z.string().max(8000).optional(),
   history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(4000) })).max(8).default([]) });
 const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -130,10 +132,13 @@ export async function answerWithOpenAi(body: z.infer<typeof ChatBody>, signal: A
   return { source: 'ai', reply };
 }
 export function realtimeConfiguration(voice: string) {
-  return { type: 'realtime', model: realtimeModel(), instructions: jarvisInstructions(voiceGenderOf(voice)), max_output_tokens: 800,
+  return { type: 'realtime', model: realtimeModel(), instructions: jarvisInstructions(voiceGenderOf(voice), 'voice') + '\n일반적인 대화·인사·잡담은 직접 자연스럽게 답하세요. 명확한 화면 이동·메뉴·재생·표시 설정은 control_screen으로 직접 처리하세요. 음성 대화를 끝내라는 요청은 반드시 end_voice_session을 호출하고, 호출 전에 종료했다고 말하지 마세요. 데이터 분석·지표 질문·복합 판단과 직접 조작 도구가 지원하지 않는 업무는 delegate_analysis로 위임하세요. 도구 결과만 근거로 답하고 실행 전에 완료를 주장하지 마세요.', max_output_tokens: 800,
     audio: { input: { transcription: { model: 'gpt-4o-mini-transcribe', language: 'ko' },
       turn_detection: { type: 'semantic_vad', eagerness: 'medium', create_response: true, interrupt_response: true } }, output: { voice } },
-    tools: [{ type: 'function', name: 'open_scene', description: '사용자가 명시적으로 요청한 HUD 연출을 엽니다. 설비 제어는 하지 않습니다.',
-      parameters: { type: 'object', properties: { chapter: { type: 'string', enum: FILM_CHAPTERS.map(c => c.id) }, subject: { type: 'string', enum: ['pcb', 'car'], description: 'machine 전용. PCB 요청은 pcb, 명시적 자동차 요청만 car. 생략 시 pcb.' } }, required: ['chapter'], additionalProperties: false } },
-      SET_SCENE_OBJECT_VALUES_TOOL, SCREEN_CONTROL_TOOL], tool_choice: 'auto' };
+    tools: [REALTIME_SCREEN_TOOL, { type: 'function', name: 'end_voice_session',
+      description: '사용자가 음성 대화, 음성 연결, 마이크 또는 세션을 종료해 달라고 명확히 요청할 때 호출합니다. 종료했다고 말하기 전에 반드시 호출하세요.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false } },
+    { type: 'function', name: 'delegate_analysis',
+      description: '데이터 분석, 현장 지표 질문, 복합 판단과 control_screen으로 처리할 수 없는 업무 요청을 분석모델에 위임합니다. 단순 화면 조작은 control_screen을 사용하세요. 사용자 발화를 요약하거나 바꾸지 않고 그대로 전달하세요. 인사·잡담은 직접 답하세요.',
+      parameters: { type: 'object', properties: { transcript: { type: 'string', description: '사용자 발화 원문' } }, required: ['transcript'], additionalProperties: false } }], tool_choice: 'auto' };
 }

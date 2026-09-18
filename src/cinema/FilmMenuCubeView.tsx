@@ -14,6 +14,7 @@ import styles from './filmMenuCube.module.css';
 import { SHOCK_ATTRIBUTE } from './reactorMenuShock';
 import { cubeReactorFlight, CUBE_FLIGHT_PERSPECTIVE } from './cubeReactorFlight';
 import { cubeClockFaces, cubeStickerCharacter } from './cubeClock';
+import { useScreenObject } from './ScreenObjectContext';
 
 const CUBE_ICONS: Record<(typeof CUBE_FACES)[number]['id'], ReactNode> = {
   admin: <>
@@ -67,6 +68,12 @@ export function FilmMenuCube({ onSelect, links = {} }: {
     window.addEventListener('cinema-cube-menu', controlMenu);
     return () => window.removeEventListener('cinema-cube-menu', controlMenu);
   }, []);
+  useScreenObject(() => ({ id:'menu.cube', description:'좌측 상단 관리 큐브 메뉴', getState:() => ({ open }), methods:{
+    setOpen:{ description:'관리 큐브 메뉴를 펼치거나 접습니다.', parameters:{open:{type:'boolean'}}, execute:args => {
+      if(typeof args.open!=='boolean')return {ok:false,message:'open 값이 필요합니다.'};
+      setOpen(args.open);return {ok:true,message:'관리 큐브 메뉴 상태를 변경했습니다.'};
+    } },
+  } }), [open]);
 
   useLayoutEffect(() => {
     const overlay = layer.current, floating = float.current, body = cube.current, button = control.current;

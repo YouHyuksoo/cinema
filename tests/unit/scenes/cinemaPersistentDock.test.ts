@@ -16,6 +16,11 @@ function renderDock(preview: boolean, menuOpen: boolean) {
 }
 
 describe('auto-collapsing scene dock', () => {
+  it('plays the shared transition sound when the globe expands', () => {
+    const source = readFileSync(new URL('../../../src/cinema/FilmDock.tsx', import.meta.url), 'utf8');
+    expect(source).toContain("import { playFilmTransitionSound } from './filmTransitionSound'");
+    expect(source).toMatch(/const expandMenu[\s\S]*playFilmTransitionSound\(\)[\s\S]*onMenuOpenChange\(true\)/);
+  });
   it('starts the main page with the floating globe and collapsed ring', () => {
     const html = renderToStaticMarkup(createElement(SignalFilm));
     const main = html.match(/<main[^>]*>/)?.[0] ?? '';

@@ -109,3 +109,5 @@
   .body>.center .wave { height:100%; }
   .body>aside { min-height:0; }
 }
+/* Low-performance machines: the empty input keeps its steady accent border instead of a box-shadow pulse. */
+:global(html[data-film-perf=low]) .input input { animation:none; border-color:var(--film-accent); }

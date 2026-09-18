@@ -1,4 +1,5 @@
 import { SMT_FACTORY_SECONDS } from './smtFactory';
+import { OEE_SECONDS } from './oeeData';
 import { CORNER_FILM_SECONDS } from './cornerSequence';
 import { RACE_CAR_SECONDS } from './raceCar';
 import { PROCESS_NETWORK_SECONDS } from './processNetwork';
@@ -27,6 +28,7 @@ export const FILM_CHAPTERS = [
   { id: 'corners', title: '코너 전개', subtitle: '생산 달성 · 양품률 · 설비 가동 · 사이클 타임', duration: FILM_DURATIONS.corners, previewAt: 34 },
   { id: 'machine', title: 'PCB 불량 분석', subtitle: '고정 투명 기판 · 불량 부품 포커스 · 자동차는 설정에서 선택', duration: FILM_DURATIONS.machine, previewAt: 13 },
   { id: 'network', title: '살아 있는 공정망', subtitle: '공정 처리능력 · 대기량 · 병목', duration: FILM_DURATIONS.network, previewAt: 15 },
+  { id: 'oee', title: 'OEE', subtitle: '설비별 자동 순회 · 가동률 × 성능 × 품질 · 손실 분석', duration: OEE_SECONDS, previewAt: 3 },
   { id: 'energy', title: '에너지 파동', subtitle: '전력 · 생산량 · 효율', duration: FILM_DURATIONS.energy, previewAt: 15 },
   { id: 'product', title: '제품 내부 검사', subtitle: '부품 치수 · 오차 · 공차 판정', duration: FILM_DURATIONS.product, previewAt: 17 },
   { id: 'spc', title: 'SPC 분석', subtitle: 'X̄–R 관리도 · 히스토그램 · 공정능력', duration: FILM_DURATIONS.spc, previewAt: 30 },

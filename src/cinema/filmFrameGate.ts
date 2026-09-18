@@ -2,7 +2,15 @@ import type { FilmChartSettings } from './chartPresentation';
 import type { FilmTextureSettings } from './filmTexture';
 import type { FilmThemeId } from './filmThemes';
 import type { MachineSubject } from './machinePresentation';
+import type { FilmId } from './filmProgram';
 
+const EXPENSIVE_SCENE_FPS: Partial<Record<FilmId, number>> = { product: 30 };
+
+/** Heavy translucent 3D scenes may paint at a bounded cadence while the film clock stays exact. */
+export function filmRenderTime(time: number, scene: FilmId) {
+  const fps = EXPENSIVE_SCENE_FPS[scene];
+  return fps && Number.isFinite(time) ? Math.floor(time * fps) / fps : time;
+}
 /**
  * Everything that can change what the film canvas paints. The render loop compares consecutive
  * keys and skips the draw (scene + texture) when nothing moved: a paused scene, a paused main

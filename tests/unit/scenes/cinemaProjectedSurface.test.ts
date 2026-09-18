@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { drawProjectedFilmSurface } from '../../../src/cinema/components/drawProjectedFilmSurface';
+import { drawProjectedFilmSurface, surfaceRasterSizeForFrame } from '../../../src/cinema/components/drawProjectedFilmSurface';
 import { recordingCanvas } from '../support/recordingCanvas';
+import { shouldRenderSmtEquipmentSurface, smtSurfaceFrameTime } from '../../../src/cinema/components/drawSmtFactory';
 
 beforeEach(() => vi.stubGlobal('document', { createElement: () => {
   const { ctx } = recordingCanvas();
@@ -9,6 +10,20 @@ beforeEach(() => vi.stubGlobal('document', { createElement: () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('projected equipment artwork', () => {
+  it('limits internal SMT equipment texture refreshes to twelve frames per second', () => {
+    expect(smtSurfaceFrameTime(1)).toBe(1);
+    expect(smtSurfaceFrameTime(1.04)).toBe(1);
+    expect(smtSurfaceFrameTime(1.09)).toBeCloseTo(1.0833, 3);
+  });
+  it('keeps detailed perspective artwork on the selected cabinet only', () => {
+    expect(shouldRenderSmtEquipmentSurface('L3-maoi','L3-maoi')).toBe(true);
+    expect(shouldRenderSmtEquipmentSurface('L2-maoi','L3-maoi')).toBe(false);
+    expect(shouldRenderSmtEquipmentSurface('L3-maoi',null)).toBe(false);
+  });
+  it('shares the largest raster only within one frame instead of ratcheting forever', () => {
+    expect(surfaceRasterSizeForFrame({width:320,height:180},{width:900,height:500},true)).toEqual({width:900,height:500});
+    expect(surfaceRasterSizeForFrame({width:320,height:180},{width:900,height:500},false)).toEqual({width:320,height:180});
+  });
   it('shares a frame across repeated equipment, and refreshes when time or detail changes', () => {
     const { ctx } = recordingCanvas(), draw = vi.fn();
     const paint = (time: number, scale = 1) => drawProjectedFilmSurface(ctx, {

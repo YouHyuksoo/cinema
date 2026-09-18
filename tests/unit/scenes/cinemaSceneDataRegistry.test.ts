@@ -42,7 +42,7 @@ describe('scene data registry', () => {
     expect((wave.data as typeof DEFAULT_FILM_SCENE_DATA.environment).zones[2].temperature).toBe(31.5);
     const network = sceneDataEntry('network')!.patch!(DEFAULT_FILM_SCENE_DATA.network, [{ id: 'reflow', queue: 3 }]);
     expect((network.data as typeof DEFAULT_FILM_SCENE_DATA.network).nodes.find(node => node.id === 'reflow')?.queue).toBe(3);
-    const spc = sceneDataEntry('spc')!.patch!(DEFAULT_FILM_SCENE_DATA.spc, [{ id: 'SG-01', values: [10, 10, 10, 10, 10] }]);
+    const spc = sceneDataEntry('spc')!.patch!({ ...DEFAULT_FILM_SCENE_DATA.spc, targets: undefined }, [{ id: 'SG-01', values: [10, 10, 10, 10, 10] }]);
     expect((spc.data as typeof DEFAULT_FILM_SCENE_DATA.spc).subgroups[0].values).toEqual([10, 10, 10, 10, 10]);
   });
 

@@ -21,6 +21,8 @@ import { JarvisVoiceModeToggle } from './JarvisVoiceModeToggle';
 import { JarvisAiProviderSelect } from './JarvisAiProviderSelect';
 import { JarvisDialogue } from './JarvisDialogue';
 import { jarvisOverview } from './jarvisCommands';
+import { hatcheryMainData } from './jarvisMainData';
+import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import { JARVIS_PHASE_LABELS } from './jarvisAudio';
 import type { FilmCamera } from './useFilmCamera';
 import type { FilmId } from './filmProgram';
@@ -30,9 +32,11 @@ import styles from './jarvis.module.css';
 import streamStyles from './jarvisStream.module.css';
 import type { FeedPollSummary } from './feedPolling';
 import { useInputDictation } from './useInputDictation';
+import { useScreenObject } from './ScreenObjectContext';
+import type { FilmSceneDataKey } from './filmSceneData';
+import type { SceneDataProvenance } from './sceneDataStore';
 
-const overview = jarvisOverview();
-interface JarvisMainProps { camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; themeSettings?: ReactNode; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null }
+interface JarvisMainProps { data?:FilmSceneData; camera: FilmCamera; onChapter: (id: FilmId, subject?: MachineSubject) => void; actions?: HatcheryActions; themeSettings?: ReactNode; sceneSettings?: ReactNode; theme?: FilmThemeId; voice?: ReturnType<typeof useJarvisVoice>; externalBriefing?: boolean; feedStatus?:FeedPollSummary|null; provenance?:(key:FilmSceneDataKey)=>SceneDataProvenance|undefined; onCardFocusClose?:()=>void }
 export function JarvisMain(props: JarvisMainProps) {
   return props.voice ? <JarvisMainContent {...props} voice={props.voice}/> : <ConnectedJarvisMain {...props}/>;
 }
@@ -40,20 +44,38 @@ function ConnectedJarvisMain(props: JarvisMainProps) {
   const voice = useJarvisVoice(props.onChapter, props.actions);
   return <JarvisMainContent {...props} voice={voice}/>;
 }
-function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
+function JarvisMainContent({ data=DEFAULT_FILM_SCENE_DATA, camera, onChapter, themeSettings, sceneSettings, theme = 'cyan', voice, externalBriefing = false, feedStatus, provenance, onCardFocusClose }: JarvisMainProps & { voice: ReturnType<typeof useJarvisVoice> }) {
+  const mainData = hatcheryMainData(data);
+  const overview = jarvisOverview(data);
   const [input, setInput] = useState('');
-  const dictation = useInputDictation(input, setInput, voice.active || voice.voiceMode !== 'browser' || voice.switching);
+  const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
+  const submitInput = useCallback((value: string) => {
+    const message = value.trim();
+    if (!message || busy) return;
+    setInput(''); void voice.ask(message);
+  }, [busy, voice]);
+  const dictation = useInputDictation(input, setInput,
+    voice.active || busy || voice.voiceMode !== 'browser' || voice.switching, submitInput);
   useEffect(() => voice.registerInputStopper(dictation.stop), [dictation.stop, voice.registerInputStopper]);
   const [cardFocus, setCardFocus] = useState<{ source:HTMLElement; label:string; openId:number } | null>(null);
   const nextFocusId = useRef(0);
   const focusCard = useCallback(({ source, label }: JarvisStreamFocusRequest) => {
     setCardFocus(current => current ? current : { source, label, openId:++nextFocusId.current });
   }, []);
-  const busy = voice.phase === 'thinking' || voice.phase === 'speaking';
+  const closeCardFocus = useCallback(() => {
+    setCardFocus(null);
+    onCardFocusClose?.();
+  }, [onCardFocusClose]);
+  useScreenObject(() => ({ id:'card.focus', description:'중앙 카드 확대 보기', getState:() => ({ open:Boolean(cardFocus) }), methods:{
+    close:{ description:'현재 확대된 카드를 닫습니다.', execute:() => {
+      if (!cardFocus) return { ok:false, message:'현재 확대된 카드가 없습니다.' };
+      closeCardFocus(); return { ok:true, message:'확대한 카드를 닫았습니다.' };
+    } },
+  } }), [cardFocus, closeCardFocus]);
   const answer = voice.messages.filter(m => m.role === 'assistant').at(-1);
   const reply = answer?.content || '준비됐습니다. 생산 흐름·품질·에너지와 주요 알림을 함께 살피고, 원하는 연출을 불러드릴게요.';
   return <section className={styles.main} data-external-briefing={externalBriefing} aria-label="HATCHERY 메인 메뉴">
-    <JarvisMainHeader feedStatus={feedStatus} onFocusMetric={focusCard} />
+    <JarvisMainHeader data={data} feedStatus={feedStatus} provenance={provenance} onFocusMetric={focusCard} onChapter={onChapter}/>
     <div className={styles.body}>
     <JarvisStream title="HELP / SETTINGS" label="좌측 설명 및 설정" speed={15} suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
     {themeSettings && <section className={`${streamStyles.block} ${streamStyles.settings}`} aria-label="테마 설정">
@@ -86,7 +108,7 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
         onChange={mode => { dictation.stop(); void voice.setVoiceMode(mode); }} />}
       {voice.realtime ? <JarvisAiVoiceSettings gender={voice.voiceGender} active={voice.active}
         onGender={voice.setVoiceGender} /> : <JarvisVoiceSettings profile={voice.speechProfile} />}
-      <p className={styles.notice}>{voice.realtime ? '중앙 마이크를 누르면 Realtime AI 음성 대화를 시작합니다.' : voice.configured ? '중앙 마이크는 로컬 받아쓰기로 입력창만 채웁니다. 터빈의 AI 음성 대화는 텍스트 모델 답변을 브라우저 목소리로 읽습니다.' : '중앙 마이크로 로컬 음성입력을 사용할 수 있습니다.'}</p>
+      <p className={styles.notice}>{voice.realtime ? '중앙 마이크를 누르면 Realtime AI 음성 대화를 시작합니다.' : voice.configured ? '중앙 마이크는 로컬 음성을 듣고, 말이 끝나면 입력 내용을 자동 전송합니다. 답변은 브라우저 목소리로 읽습니다.' : '중앙 마이크로 로컬 음성을 입력하면 말이 끝난 뒤 자동 전송합니다.'}</p>
       <p className={styles.notice}>최근 질문: {voice.transcript || '아직 입력한 질문이 없습니다.'}</p>
       {(voice.error || voice.statusError || camera.error) && <p className={styles.error} role="alert">{voice.error || voice.statusError || camera.error}</p>}
       <div className={styles.quick}>{['현장 요약', '살아 있는 공정망 보여줘', '에너지 보여줘', 'SPC 분석 보여줘'].map(q =>
@@ -102,7 +124,7 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
         <JarvisWave theme={theme} audio={voice.audioRef} />
       </div>
     } form={
-      <form className={styles.input} onSubmit={event => { event.preventDefault(); void voice.ask(input); setInput(''); }}>
+      <form className={styles.input} onSubmit={event => { event.preventDefault(); submitInput(input); }}>
         <JarvisChatTools camera={camera} input={input} onInput={setInput} mic={(() => {
           const realtime = voice.voiceMode === 'realtime';
           const browserConversation = !realtime && voice.active;
@@ -123,12 +145,12 @@ function JarvisMainContent({ camera, onChapter, themeSettings, sceneSettings, th
       {!externalBriefing && <JarvisDialogue key={reply} text={reply} source={voice.source} />}
     </JarvisCenterLayout>
     <JarvisStream title="DATA / ANALYSIS" label="우측 분석 정보" speed={19} side="right" suspended={Boolean(cardFocus)} onFocusCard={focusCard}>
-      <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials /></section>
-      <JarvisOperations onChapter={onChapter} />
-      <JarvisQualityEnergy onChapter={onChapter} />
+      <section className={streamStyles.block}><h2>CHANNELS / 현장 게이지</h2><JarvisChannelDials data={mainData} /></section>
+      <JarvisOperations data={mainData} onChapter={onChapter} />
+      <JarvisQualityEnergy data={mainData} onChapter={onChapter} />
       <JarvisTemperatureAlerts zones={overview.zones} onDetails={() => onChapter('wave')} />
     </JarvisStream>
     </div>
-    {cardFocus && <JarvisCardFocus {...cardFocus} onClose={() => setCardFocus(null)} />}
+    {cardFocus && <JarvisCardFocus {...cardFocus} onClose={closeCardFocus} />}
   </section>;
 }

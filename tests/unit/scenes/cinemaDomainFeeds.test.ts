@@ -14,8 +14,8 @@ const update = process.env.FEED_DOCS_UPDATE === '1';
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 describe('domain feed declarations', () => {
-  it('declares nine feeds with unique collections and covers every chapter at least once', () => {
-    expect(DOMAIN_FEEDS.map(feed => feed.feed)).toEqual(['production', 'equipment', 'process', 'environment', 'quality', 'energy', 'workOrder', 'inspection', 'machine']);
+  it('declares ten feeds with unique collections and covers every chapter at least once', () => {
+    expect(DOMAIN_FEEDS.map(feed => feed.feed)).toEqual(['production', 'equipment', 'process', 'environment', 'quality', 'oee', 'energy', 'workOrder', 'inspection', 'machine']);
     for (const feed of DOMAIN_FEEDS) {
       const collections = feed.objects.map(object => object.collection);
       expect(new Set(collections).size).toBe(collections.length);

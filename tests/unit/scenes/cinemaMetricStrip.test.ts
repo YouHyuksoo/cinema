@@ -1,9 +1,10 @@
-import { createElement } from 'react';
+import { createElement, type FunctionComponent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { jarvisMainData, jarvisMainMetrics } from '@/cinema/jarvisMainData';
 import { DEFAULT_ENVIRONMENT_DATA } from '@/cinema/zoneEnvironment';
 import { JarvisMetricCards } from '@/cinema/JarvisMetricCards';
+import { DEFAULT_FILM_SCENE_DATA, mergeFilmSceneData } from '@/cinema/filmSceneData';
 
 describe('eight-metric header strip', () => {
   it('has eight unique metrics and keeps the original first four', () => {
@@ -31,5 +32,16 @@ describe('eight-metric header strip', () => {
       expect(html).toContain(`data-kind="${metric.kind}"`);
       expect(metric.note).toBeTruthy();
     }
+  });
+  it('renders the current scene-store snapshot instead of the default metric constants', () => {
+    const data = mergeFilmSceneData(DEFAULT_FILM_SCENE_DATA, { energy: { ...DEFAULT_FILM_SCENE_DATA.energy,
+      production: { value: 321, capacity: 654, unit: 'EA' } } });
+    const props: NonNullable<Parameters<typeof JarvisMetricCards>[0]> = { data,
+      feedStatus: { mode:'server', feeds:[], applied:1, rejected:[], at:'2026-09-14T00:00:00Z' } };
+    const MetricCards = JarvisMetricCards as FunctionComponent<typeof props>;
+    const html = renderToStaticMarkup(createElement(MetricCards, props));
+    expect(html).toContain('321');
+    expect(html).toContain('목표 654 EA');
+    expect(html).toContain('· FEED');
   });
 });

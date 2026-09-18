@@ -1,6 +1,8 @@
 import type { environmentHeatmap } from '../environmentHeatmap';
 import type { environmentHeatmapProjection } from '../environmentHeatmapProjection';
 import { environmentThermalImage } from './drawEnvironmentThermalField';
+import { filmCanvasClip } from '../filmCanvasClip';
+import type { FilmViewportBounds } from '../filmViewport';
 
 type Heatmap = ReturnType<typeof environmentHeatmap>;
 type Projection = ReturnType<typeof environmentHeatmapProjection>;
@@ -36,22 +38,28 @@ function triangle(paint: CanvasRenderingContext2D, image: HTMLCanvasElement,
   paint.save(); paint.beginPath();
   paint.moveTo(a.x, a.y); paint.lineTo(b.x, b.y); paint.lineTo(c.x, c.y); paint.closePath(); paint.clip();
   paint.setTransform(xx, xy, yx, yy, a.x - xx * a.u - yx * a.v, a.y - xy * a.u - yy * a.v);
-  paint.drawImage(image, 0, 0); paint.restore();
+  const left = Math.max(0, Math.min(a.u, b.u, c.u) - 1), top = Math.max(0, Math.min(a.v, b.v, c.v) - 1);
+  const sampleWidth = Math.min(image.width, Math.max(a.u, b.u, c.u) + 1) - left;
+  const sampleHeight = Math.min(image.height, Math.max(a.v, b.v, c.v) + 1) - top;
+  paint.drawImage(image, left, top, sampleWidth, sampleHeight, left, top, sampleWidth, sampleHeight); paint.restore();
 }
 
 /** Carry the continuous thermal field on the factory floor through the flight camera. */
 export function drawEnvironmentThermalGround(ctx: CanvasRenderingContext2D, model: Heatmap,
-  projection: Projection, alpha: number, reveal: number) {
+  projection: Projection, alpha: number, reveal: number, clip?: FilmViewportBounds) {
   if (!(alpha > .001 && reveal > .001 && ctx.canvas.width > 0 && ctx.canvas.height > 0)) return;
+  const visible = filmCanvasClip(ctx, clip);
+  const outputWidth = visible.right - visible.left, outputHeight = visible.bottom - visible.top;
+  if (outputWidth <= 0 || outputHeight <= 0) return;
   const image = environmentThermalImage(ctx, model, reveal), buffer = groundBuffer(ctx);
   if (!image || !buffer) return;
   const { canvas, paint, mesh } = buffer;
   const scale = Math.min(1, MAX_COMPOSITE_SIZE / Math.max(ctx.canvas.width, ctx.canvas.height));
-  const width = Math.max(1, Math.ceil(ctx.canvas.width * scale));
-  const height = Math.max(1, Math.ceil(ctx.canvas.height * scale));
+  const width = Math.max(1, Math.ceil(outputWidth * scale));
+  const height = Math.max(1, Math.ceil(outputHeight * scale));
   if (canvas.width !== width) canvas.width = width;
   if (canvas.height !== height) canvas.height = height;
-  const scaleX = width / ctx.canvas.width, scaleY = height / ctx.canvas.height;
+  const scaleX = width / outputWidth, scaleY = height / outputHeight;
   const transform = ctx.getTransform(), bounds = model.bounds;
   const coordinateLimit = Math.max(width, height) * 128;
   for (let row = 0; row <= ROWS; row++) {
@@ -60,8 +68,8 @@ export function drawEnvironmentThermalGround(ctx: CanvasRenderingContext2D, mode
       const point = projection.point(bounds.x + column / COLUMNS * bounds.width,
         bounds.y + row / ROWS * bounds.height);
       vertex.u = column / COLUMNS * image.width; vertex.v = row / ROWS * image.height;
-      vertex.x = (transform.a * point.x + transform.c * point.y + transform.e) * scaleX;
-      vertex.y = (transform.b * point.x + transform.d * point.y + transform.f) * scaleY;
+      vertex.x = (transform.a * point.x + transform.c * point.y + transform.e - visible.left) * scaleX;
+      vertex.y = (transform.b * point.x + transform.d * point.y + transform.f - visible.top) * scaleY;
       vertex.visible = point.visible && point.depth >= projection.camera.near
         && Number.isFinite(vertex.x) && Number.isFinite(vertex.y)
         && Math.abs(vertex.x) < coordinateLimit && Math.abs(vertex.y) < coordinateLimit;
@@ -82,6 +90,6 @@ export function drawEnvironmentThermalGround(ctx: CanvasRenderingContext2D, mode
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * .72;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(canvas, 0, 0, width, height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.drawImage(canvas, 0, 0, width, height, visible.left, visible.top, outputWidth, outputHeight);
   ctx.restore();
 }

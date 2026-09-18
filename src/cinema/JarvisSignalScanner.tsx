@@ -6,6 +6,7 @@ import { ScannerStatusOrbs } from './ScannerStatusOrbs';
 import { ScannerTeslaEffect } from './ScannerTeslaEffect';
 import type { FeedPollSummary } from './feedPolling';
 import { CONNECTION_LABELS, scannerConnectionStatus } from './scannerConnectionStatus';
+import { useLowPerformance } from './filmPerformanceMode';
 
 /** Where the blips land on the pedestal disc (unit circle, squashed with the disc) and when they flash. */
 const BLIPS = [
@@ -36,11 +37,14 @@ const WALL_PANELS = Array.from({ length:7 }, (_, i) => {
  * existing feed polling supplies connection evidence, with a clock to detect stale observations.
  */
 export function JarvisSignalScanner({feedStatus}:{feedStatus?:FeedPollSummary|null} = {}) {
-  const [still, setStill] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  // Low-performance machines still the whole pedestal: SMIL spins and the orbiting spheres repaint
+  // the drop-shadowed SVG every frame, which CSS alone cannot switch off.
+  const still = reduced || useLowPerformance();
   const [now,setNow]=useState<number|null>(null);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setStill(media.matches);
+    const update = () => setReduced(media.matches);
     update(); media.addEventListener('change', update);
     const clock=()=>setNow(Date.now());
     clock();const timer=setInterval(clock,5000);

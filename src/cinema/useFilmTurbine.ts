@@ -18,7 +18,7 @@ export function useFilmTurbine(player: FilmPlayback, home: () => void, close: ()
       briefing() { home(); void voice.ask('현장 요약'); },
       settings: openSettings,
       logout() { voice.stop(); close(); player.pause(); window.location.assign('/?intro=1'); },
-      conversation() { home(); if (!voice.active) void voice.start(); },
+      conversation() { if (!voice.active) void voice.start(); },
     });
   } };
 }

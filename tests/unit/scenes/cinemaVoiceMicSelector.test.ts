@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { JarvisChatTools } from '@/cinema/JarvisChatTools';
 import type { FilmCamera } from '@/cinema/useFilmCamera';
 
@@ -23,5 +24,12 @@ describe('selector-driven center microphone', () => {
     }));
     expect(html).toContain('aria-label="로컬 음성입력 종료"');
     expect(html).toContain('aria-pressed="true"');
+  });
+
+  it('starts the exact voice path saved in AI settings', () => {
+    const source = readFileSync('src/cinema/useJarvisVoice.ts', 'utf8');
+    expect(source).toContain("if (voiceMode === 'browser')");
+    expect(source).toContain('if (!realtimeAvailable)');
+    expect(source).not.toContain('if (!configured || !realtime)');
   });
 });

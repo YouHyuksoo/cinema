@@ -7,9 +7,11 @@ import { DEFAULT_SPC_DATA } from './spcData';
 import type { SpcData } from './spcTypes';
 import { DEFAULT_PCB_INSPECTION_DATA, type PcbInspectionData } from './pcbInspectionData';
 import { DEFAULT_MOUNTER_ANALYSIS, type MounterAnalysisData } from './mounterAnalysis';
+import { DEFAULT_OEE_DATA, type OeeData } from './oeeData';
 
 /** Everything a film frame reads from outside: one entry per data-driven scene family. */
 export interface FilmSceneData {
+  oee: OeeData;
   production: ProductionSnapshot;
   environment: ZoneEnvironmentData;
   energy: EnergyCoreData;
@@ -22,6 +24,7 @@ export interface FilmSceneData {
 export type FilmSceneDataKey = keyof FilmSceneData;
 
 export const DEFAULT_FILM_SCENE_DATA: FilmSceneData = {
+  oee: DEFAULT_OEE_DATA,
   production: DEFAULT_PRODUCTION_SNAPSHOT,
   environment: DEFAULT_ENVIRONMENT_DATA,
   energy: DEFAULT_ENERGY_DATA,

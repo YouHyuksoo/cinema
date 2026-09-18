@@ -30,8 +30,9 @@ export const isMenuLayout = (value: unknown): value is MenuLayout => MENU_LAYOUT
 export const ORBIT_FRONT_ANGLE = -Math.PI / 2;
 /** Inner teeth sit at this fraction of the outer radius so adjacent hexes nest instead of sharing one circle. */
 export const ORBIT_INNER_SCALE = .74;
-/** Outer orbit radius for a globe diameter: sawtooth packing needs less pad than a single circle. */
-export const orbitRadius = (diameter: number) => (Number.isFinite(diameter) ? Math.max(0, diameter) : 0) * .5 + 48;
+/** Outer orbit radius for a globe diameter: sawtooth packing needs less pad than a single circle.
+ *  The pad also has to seat the tile names, which sit under each hex. */
+export const orbitRadius = (diameter: number) => (Number.isFinite(diameter) ? Math.max(0, diameter) : 0) * .5 + 62;
 export const orbitTooth = (index: number) => index % 2 === 0 ? 1 : ORBIT_INNER_SCALE;
 
 /** Orbit layout: tiles sit flat in a sawtooth around the globe, the front slot at twelve o'clock. */
@@ -42,8 +43,9 @@ export function orbitPose(index: number, turn: number, count: number, radius: nu
   const front = (Math.cos(around) + 1) / 2;
   const r = radius * orbitTooth(index);
   // Larger than the dock ring's tiles: they sit against the busy main screen, so they need presence.
+  // Fully opaque at every slot: a distance fade let that screen read through the menu.
   return { x: Math.cos(angle) * r, y: Math.sin(angle) * r, z: 0, yaw: 0, angle, radius: r, tooth: orbitTooth(index),
-    scale: 1.02 + front * .3, opacity: .82 + front * .18 };
+    scale: 1.14 + front * .3, opacity: 1 };
 }
 
 /** Quantize only the CSS boundary: JS engines may differ in the final bits of sin/cos. */

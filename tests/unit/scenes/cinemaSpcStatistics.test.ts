@@ -65,7 +65,7 @@ describe('Xbar/R statistics and capability reference estimates', () => {
     expect(converted.violationCount).toBe(original.violationCount);
     expect(converted.outsideSpecs).toBe(original.outsideSpecs);
     expect(converted.focusGroupIndex).toBe(original.focusGroupIndex);
-    const changedGoal = valid({ ...DEFAULT_SPC_DATA, nominal: 9.97, cpkTarget: 2 });
+    const changedGoal = valid({ ...DEFAULT_SPC_DATA, nominal: DEFAULT_SPC_DATA.nominal - .03, cpkTarget: 2 });
     expect(changedGoal.cp).toBe(original.cp); expect(changedGoal.cpk).toBe(original.cpk);
   });
 
@@ -153,7 +153,8 @@ describe('Xbar/R statistics and capability reference estimates', () => {
     expect(result.outOfControl).toBe(true); expect(result.violationCount).toBe(1); expect(result.focusGroupIndex).toBe(17);
     expect(result.xbar.violations.filter(Boolean)).toHaveLength(1); expect(result.xbar.violations[17]).toBe(true);
     expect(result.r.violations.every(violation => !violation)).toBe(true);
-    expect(result.outsideSpecs).toBe(2);
+    expect(result.outsideSpecs).toBe(data.subgroups.flatMap(group => [...group.values])
+      .filter(value => value < data.lsl || value > data.usl).length);
     expect(result.cp).toBeGreaterThan(result.cpk!);
     expect(Number.isFinite(result.cpk)).toBe(true);
     expect(analyzeSpc(data)).toEqual(result);

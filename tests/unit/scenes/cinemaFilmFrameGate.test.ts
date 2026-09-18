@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { filmFrameChanged, type FilmFrameKey } from '@/cinema/filmFrameGate';
+import { filmFrameChanged, filmRenderTime, type FilmFrameKey } from '@/cinema/filmFrameGate';
 import { DEFAULT_FILM_CHARTS } from '@/cinema/chartPresentation';
 
 const base = (): FilmFrameKey => ({
@@ -10,6 +10,10 @@ const base = (): FilmFrameKey => ({
 });
 
 describe('film frame gate', () => {
+  it('caps the expensive product scene and keeps other scene clocks exact', () => {
+    expect(filmRenderTime(12.049, 'product')).toBe(12 + 1 / 30);
+    expect(filmRenderTime(12.049, 'visor')).toBe(12.049);
+  });
   it('always draws the first frame', () => {
     expect(filmFrameChanged(null, base())).toBe(true);
   });
@@ -40,7 +44,8 @@ describe('film frame gate', () => {
 describe('film render loop wiring', () => {
   it('skips the scene and texture passes when the frame key is unchanged', () => {
     const source = readFileSync('src/cinema/useFilmPlayback.ts', 'utf8');
-    expect(source).toContain("import { filmFrameChanged, type FilmFrameKey } from './filmFrameGate';");
+    expect(source).toContain("import { filmFrameChanged, filmRenderTime, type FilmFrameKey } from './filmFrameGate';");
+    expect(source).toContain('filmRenderTime(current.time, active.chapter.id)');
     expect(source).toContain('if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }');
     expect(source).toContain('lastKey = key;');
     expect(source.indexOf('lastKey = key;')).toBeLessThan(source.indexOf('drawSignalFilm(themed.ctx'));

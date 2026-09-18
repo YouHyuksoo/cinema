@@ -55,3 +55,7 @@
 @keyframes spaceDrift { 0%,100% { translate:8px -2px; opacity:.72; } 50% { translate:-9px 4px; opacity:1; } }
 @media(max-width:600px) { .backdrop { padding:8px; }.panel,.panel[data-source-kind=metric] { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }.glass { max-height:calc(100dvh - 18px); }.topbar { padding-left:15px; }.scroll { max-height:calc(100dvh - 68px); }.cloneContent { padding:15px 10px 18px; }.panel[data-source-kind=metric] .cloneContent>article[data-kind] { min-height:min(300px,calc(100dvh - 112px)); padding:24px 20px!important; }.panel[data-source-kind=metric] .cloneContent>article[data-kind] svg { height:clamp(110px,20vh,160px); } }
 @media(prefers-reduced-motion:reduce) { .backdrop,.panel,.spaceDepth { animation:none!important; transition:none!important; } }
+/* Low-performance machines: the focused card stays put and drops the 16px blur and drop-shadow behind it. */
+:global(html[data-film-perf=low]) :is(.panel,.spaceDepth) { animation:none; }
+:global(html[data-film-perf=low]) .spaceDepth::after { filter:none; }
+:global(html[data-film-perf=low]) .vanishingLines { filter:none; }

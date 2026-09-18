@@ -12,6 +12,7 @@ import { isSceneId, parseSceneObjectPatch } from './sceneDataDocument';
 import { isMachineSubject, type MachineSubject } from './machinePresentation';
 import { cinemaApi } from './cinemaApi';
 import { resolveScreenCommands } from './screenCommands';
+import { resolveJarvisCommand } from './jarvisCommands';
 
 interface Message { role: 'user' | 'assistant'; content: string }
 export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
@@ -162,8 +163,8 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if (token === current.generation) failure('마이크를 연결하지 못했습니다. 브라우저 권한과 장치 연결을 확인해 주세요.');
     }
   }
-  async function ask(input: string) {
-    const message = input.trim(), current = state.current;
+  async function ask(input: string, analysisOnly = false) {
+    const message = analysisOnly ? input : input.trim(), current = state.current;
     if (!message || message.length > 1200 || current.busy) return;
     current.busy = true; stopRecognition(); setError(''); setTranscript(message); phaseTo('thinking');
     const token = current.generation, abort = new AbortController(); current.abort = abort;
@@ -181,7 +182,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
-      const direct = resolveScreenCommands(message);
+      const direct = analysisOnly ? null : resolveScreenCommands(message);
       let data: JarvisReply | null = null;
       if (direct) {
         const replies: string[] = [];
@@ -191,10 +192,10 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
           if (!result?.ok) break;
         }
         data = { source: 'local', reply: replies.join('\n') };
-      } else data = resolveReply(message);
+      } else if (!analysisOnly) data = resolveReply(message) ?? (actionsRef.current ? resolveJarvisCommand(message, actionsRef.current.sceneData()) : null);
       if (!data) {
         const screenState = await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
-        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, history: previous,
+        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, analysisOnly, history: previous,
           screenState: screenState?.state ? JSON.stringify(screenState.state) : undefined }), signal: abort.signal });
         const answer = await response.json() as JarvisReply & { error?: string };
         if (token !== current.generation) return;
@@ -227,6 +228,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
         }, 45000);
         window.speechSynthesis.speak(utterance);
       } else { setError('음성 출력을 지원하지 않아 답변을 글로 표시했습니다.'); finish(chapter); }
+      return data.reply;
     } catch (err) {
       if (token === current.generation) {
         setError(err instanceof Error && err.name !== 'AbortError' ? err.message : '응답 시간이 초과되었습니다.'); finish();

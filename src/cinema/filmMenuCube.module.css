@@ -196,3 +196,5 @@
   .layer { --cube-size:58px; }
   .control { width:58px; height:58px; }
 }
+/* Low-performance machines: the docked cube does not float; each frame re-composited every face layer. */
+:global(html[data-film-perf=low]) :is(.hit,.float) { animation:none; }

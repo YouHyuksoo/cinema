@@ -6,3 +6,5 @@
 .sweep { transform-origin:0 0; animation:sweep 32s linear infinite; }
 @keyframes sweep { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .sweep { animation:none; } }
+:global(html[data-film-perf=low]) .sweep { animation:none; }
+:global(html[data-film-perf=low]) .frame { filter:none; }

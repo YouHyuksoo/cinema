@@ -1,8 +1,10 @@
 'use client';
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { TURBINE_COMMANDS, type TurbineCommand } from './turbineCommands';
 import { TurbineBlade, TurbineCommandIcon } from './TurbineBlade';
 import styles from './filmTurbineMenu.module.css';
+import { useScreenObject } from './ScreenObjectContext';
+import { playFilmTransitionSound } from './filmTransitionSound';
 
 export function FilmTurbineMenu({ ready, voiceActive, onCommand }: {
   ready: boolean; playing: boolean; voiceActive: boolean; onCommand(command: TurbineCommand): void;
@@ -10,16 +12,32 @@ export function FilmTurbineMenu({ ready, voiceActive, onCommand }: {
   const [open, setOpen] = useState(false);
   const hub = useRef<HTMLButtonElement>(null);
   const controls = useId();
+  const setMenuOpen = useCallback((next: boolean) => setOpen(current => {
+    if (next && !current) playFilmTransitionSound();
+    return next;
+  }), []);
   useEffect(() => {
-    const control = (event: Event) => setOpen(Boolean((event as CustomEvent<boolean>).detail));
+    const control = (event: Event) => setMenuOpen(Boolean((event as CustomEvent<boolean>).detail));
     window.addEventListener('cinema-turbine-menu', control);
     return () => window.removeEventListener('cinema-turbine-menu', control);
-  }, []);
+  }, [setMenuOpen]);
+  useScreenObject(() => ({ id:'menu.turbine', description:'좌측 하단 터빈 명령 메뉴', getState:() => ({ open }), methods:{
+    setOpen:{ description:'터빈 메뉴를 펼치거나 접습니다.', parameters:{open:{type:'boolean'}}, execute:args => {
+      if(typeof args.open!=='boolean')return {ok:false,message:'open 값이 필요합니다.'};
+      setMenuOpen(args.open);return {ok:true,message:'터빈 메뉴 상태를 변경했습니다.'};
+    } },
+  } }), [open, setMenuOpen]);
   // The other corner instruments need client-side placement before their first paint.
   if (!ready) return null;
   return <nav className={styles.menu} data-turbine-open={open} aria-label="터빈 명령 메뉴"
-    onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
-    onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); hub.current?.focus(); setOpen(false); } }}>
+    onClick={event => {
+      // Folded, the whole instrument opens it, not just the hub: the rotor is the affordance people aim at.
+      if (open || !(event.target instanceof Element) || event.target.closest('button')) return;
+      hub.current?.focus({ preventScroll: true });
+      setMenuOpen(true);
+    }}
+    onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false); }}
+    onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); hub.current?.focus(); setMenuOpen(false); } }}>
     <span className={styles.hoverTarget} aria-hidden="true"/>
     <div className={styles.art}>
       <div className={styles.pose}>
@@ -34,16 +52,16 @@ export function FilmTurbineMenu({ ready, voiceActive, onCommand }: {
             disabled={!ready || (command.id === 'conversation' && voiceActive)}
             aria-pressed={command.id === 'conversation' ? voiceActive : undefined}
             onClick={() => {
-              setOpen(false);
+              setMenuOpen(false);
               hub.current?.focus({preventScroll:true});
               onCommand(command.id);
             }}>
             <TurbineBlade/>
-            <span className={styles.legend}><TurbineCommandIcon command={command.id}/><span>{command.label}</span></span>
+            <span className={styles.legend}><span className={styles.legendContent}><TurbineCommandIcon command={command.id}/><span>{command.label}</span></span></span>
           </button></div>)}
         </div>
         <button ref={hub} data-turbine-hub className={styles.hub} type="button" aria-label="터빈 메뉴 펼치기/접기" aria-expanded={open} aria-controls={controls}
-          onClick={() => setOpen(value => !value)}><span/><i aria-hidden="true"/></button>
+          onClick={() => setMenuOpen(!open)}><span/><i aria-hidden="true"/></button>
         </div>
       </div>
       </div>

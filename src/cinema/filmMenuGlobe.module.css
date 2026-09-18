@@ -105,3 +105,5 @@
   filter:brightness(1.6) saturate(1.3);
   box-shadow:0 0 24px var(--film-accent),inset 0 0 20px var(--film-accent-soft);
 }
+/* Low-performance machines: the folded sphere keeps its resting glow; the breathing box-shadow repainted a 64px blur every frame. */
+:global(html[data-film-perf=low]) .layer[data-phase=closed] .ball { animation:none; }

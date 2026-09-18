@@ -66,6 +66,7 @@ export function mapRowsToFeedData(feed: DomainFeed, mapping: FeedMappingConfig, 
   }
   for (const object of feed.objects) {
     const collectionMapping = mapping.collections[object.collection];
+    if (object.optional && rows[object.collection] === undefined) continue;
     const source = rows[object.collection] ?? [];
     const items: Record<string, unknown>[] = [];
     const seen = new Set<string>();

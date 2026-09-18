@@ -61,14 +61,14 @@ export function voiceCoreState(time: number, phase: JarvisPhase, level: number, 
   const t = reduced || !Number.isFinite(time) ? 0 : time;
   const audible = phase === 'listening' || phase === 'speaking';
   const energy = !reduced && audible ? clamp(level) : 0;
-  const thinking = phase === 'thinking' || phase === 'requesting';
+  const connected = phase === 'requesting' || phase === 'listening' || phase === 'thinking' || phase === 'speaking';
   return {
     time: t, phase, energy, reduced,
     rotation: .38 + t * .16,
     coreRadius: 39 + energy * 8,
     glow: phase === 'error' ? .15 : .5 + energy * .45,
     sparkCount: energy > .045 ? Math.min(5, Math.ceil(energy * 5)) : 0,
-    highlight: phase === 'error' ? VOICE_CORE_COLORS.pink : thinking ? VOICE_CORE_COLORS.violet : VOICE_CORE_COLORS.cyan,
+    highlight: phase === 'error' ? VOICE_CORE_COLORS.pink : connected ? VOICE_CORE_COLORS.violet : VOICE_CORE_COLORS.cyan,
     pitch: voiceCorePitch(t, reduced),
     blink: reduced ? 0 : voiceCoreBlink(t),
     gazeYaw: reduced ? -.36 : -.2 + Math.sin(t * .19) * .16,

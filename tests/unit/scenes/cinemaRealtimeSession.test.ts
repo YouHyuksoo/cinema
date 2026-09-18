@@ -129,6 +129,18 @@ describe('Realtime lifecycle', () => {
     expect(screen).toHaveBeenCalledWith({ action: 'set', key: 'settings', value: 'true' });
     session.stop();
   });
+  it('does not execute the same screen action again when the model repeats the locally handled command', async () => {
+    const screen = vi.fn(async () => ({ ok: true, message: '적용 완료' }));
+    const session = new JarvisRealtimeSession({ ...callbacks(), screen }); await session.start('cedar');
+    channel.onmessage?.({ data: JSON.stringify({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '상단 지표 스크롤 멈춰' }) });
+    await Promise.resolve(); await Promise.resolve();
+    channel.onmessage?.({ data: JSON.stringify({ type: 'response.done', response: { status: 'completed', output: [
+      { type: 'function_call', name: 'control_screen', call_id: 'same-1', arguments: JSON.stringify({ action: 'set', key: 'metricsScroll', value: 'false' }) },
+    ] } }) });
+    await Promise.resolve(); await Promise.resolve();
+    expect(screen).toHaveBeenCalledExactlyOnceWith({ action: 'set', key: 'metricsScroll', value: 'false' });
+    session.stop();
+  });
   it('does not navigate when a pre-tool spoken preamble ends before the tool acknowledgement', async () => {
     const cb = callbacks(), session = new JarvisRealtimeSession(cb); await session.start('cedar');
     const event = (data: unknown) => channel.onmessage?.({ data: JSON.stringify(data) });

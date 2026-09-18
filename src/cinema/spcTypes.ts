@@ -2,7 +2,10 @@ export interface SpcSubgroup { id: string; values: readonly number[] }
 export interface SpcData {
   name: string; unit: string; nominal: number; lsl: number; usl: number; cpkTarget: number;
   subgroups: readonly SpcSubgroup[];
+  /** Omit for a single measurement feed. Array order defines the presentation order. */
+  targets?: readonly SpcTarget[];
 }
+export interface SpcTarget extends Omit<SpcData, 'targets'> { id: string }
 export interface SpcControlSeries {
   values: number[]; lower: number; center: number; upper: number; violations: boolean[];
 }

@@ -16,7 +16,8 @@
 }
 .content>section:nth-child(even) { background:linear-gradient(145deg,color-mix(in srgb,var(--film-accent) 11%,transparent),transparent 42%),linear-gradient(0deg,color-mix(in srgb,var(--film-accent) 5%,transparent),transparent 50%); }
 .content>section::before { content:''; pointer-events:none; position:absolute; inset:-5px; border:1px solid color-mix(in srgb,var(--film-accent) 45%,transparent); clip-path:polygon(0 0,17% 0,17% 2%,2% 2%,2% 10%,0 10%,0 0,100% 0,100% 10%,98% 10%,98% 2%,83% 2%,83% 0,100% 0,100% 100%,83% 100%,83% 98%,98% 98%,98% 90%,100% 90%,100% 100%,0 100%,0 90%,2% 90%,2% 98%,17% 98%,17% 100%,0 100%); }
-.content>section::after { content:''; pointer-events:none; position:absolute; left:12px; right:12px; top:0; height:1px; background:linear-gradient(90deg,transparent,var(--film-accent),transparent); opacity:.25; box-shadow:0 0 10px var(--film-accent); animation:panelScan 9s linear infinite; }
+/* Scan line: two background layers (1px line + 12px glow) ride background-position, which paints without a layout pass; animating `top` re-laid out every panel on every frame. */
+.content>section::after { content:''; pointer-events:none; position:absolute; left:12px; right:12px; top:4%; bottom:4%; opacity:.25; background:linear-gradient(90deg,transparent,var(--film-accent),transparent) 0 calc(0% + 6px)/100% 1px no-repeat,radial-gradient(ellipse 50% 50% at 50% 50%,color-mix(in srgb,var(--film-accent) 70%,transparent),transparent 75%) 0 0/100% 12px no-repeat; animation:panelScan 9s linear infinite; }
 .content>section:nth-child(2n)::after { animation-delay:-4s; }
 .content>section:focus-within { opacity:1; }
 .content>section[data-stream-card] { cursor:zoom-in; }
@@ -77,7 +78,13 @@
 .stream:hover *,.stream:focus-within *,.stream[data-paused=true] * { animation-play-state:paused; }
 .stream:hover .content>section::after,.stream:focus-within .content>section::after,.stream[data-paused=true] .content>section::after { animation-play-state:paused; }
 @keyframes ringOrbit { to { transform:rotate(360deg); } }
-@keyframes panelScan { from { top:4%; } to { top:96%; } }
+@keyframes panelScan { from { background-position:0 calc(0% + 6px),0 0; } to { background-position:0 calc(100% - 5px),0 100%; } }
 @media(prefers-reduced-motion:reduce) { .stream *, .miniOrbit,.content>section::after { animation:none; }.content>section { transform:none; } }
 /* Small screens: the stream fills the grid cell the main body gives it (jarvis.module.css) and scrolls inside. */
 @media(max-width:900px) { .stream { height:100%; }.stream>footer { display:none; } }
+/* Low-performance machines: a flat 2D column (no per-panel 3D layer or edge mask to re-composite on every scroll step), no scan line, no rotating rings behind drop-shadow filters. */
+:global(html[data-film-perf=low]) .content>section { transform:none; }
+:global(html[data-film-perf=low]) .content>section::after { animation:none; display:none; }
+:global(html[data-film-perf=low]) .viewport { mask-image:none; }
+:global(html[data-film-perf=low]) :is(.orbit,.counterOrbit,.miniOrbit) { animation:none; }
+:global(html[data-film-perf=low]) :is(.spark,.holoGauge,.queueFlow,.inspectionScan,.miniDial svg) { filter:none; }

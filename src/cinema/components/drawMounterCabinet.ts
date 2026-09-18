@@ -1,5 +1,5 @@
 /** Front elevation based on the supplied white cabinet / black inspection hood reference. */
-export function drawMounterCabinet(ctx: CanvasRenderingContext2D, time: number, index: number) {
+export function drawMounterCabinet(ctx: CanvasRenderingContext2D, time: number, index: number, transport?: () => void) {
   const rect = (x: number, y: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color; ctx.fillRect(x, y, w, h);
   };
@@ -18,6 +18,10 @@ export function drawMounterCabinet(ctx: CanvasRenderingContext2D, time: number, 
   // Broad black hood, inset glass and the thin red safety stripe.
   rect(-108, -129, 219, 109, '#131719'); rect(-104, -125, 211, 5, '#515957');
   rect(-99, -108, 201, 78, '#080d0f');
+  if (transport) {
+    ctx.save(); ctx.beginPath(); ctx.rect(-99, -57, 201, 29); ctx.clip();
+    transport(); ctx.restore();
+  }
   rect(-87, -91, 175, 5, '#616c6b'); rect(-87, -61, 175, 3, '#414c4e');
   const head = Math.sin(time * .75 + index * .8) * 45;
   rect(head - 27, -92, 54, 29, '#3b4748'); rect(head - 20, -88, 40, 17, '#687373');

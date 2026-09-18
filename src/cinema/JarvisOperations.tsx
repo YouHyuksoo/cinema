@@ -1,4 +1,4 @@
-import { jarvisMainData as data } from './jarvisMainData';
+import type { HatcheryMainData } from './jarvisMainData';
 import { processCapacity } from './processNetwork';
 import type { FilmId } from './filmProgram';
 import styles from './jarvisStream.module.css';
@@ -8,7 +8,7 @@ function Segments({ fill }: { fill: number }) {
   return <div className={styles.bar} aria-hidden="true">{Array.from({ length: 24 }, (_, i) =>
     <i key={i} style={{ opacity: i / 24 < fill ? .8 : .12 }} />)}</div>;
 }
-export function JarvisOperations({ onChapter }: { onChapter: (id: FilmId) => void }) {
+export function JarvisOperations({ data, onChapter }: { data:HatcheryMainData; onChapter: (id: FilmId) => void }) {
   const { production } = data.energy;
   return <>
     <section className={styles.block}>
@@ -45,7 +45,7 @@ export function JarvisOperations({ onChapter }: { onChapter: (id: FilmId) => voi
     </section>
   </>;
 }
-export function JarvisQualityEnergy({ onChapter }: { onChapter: (id: FilmId) => void }) {
+export function JarvisQualityEnergy({ data, onChapter }: { data:HatcheryMainData; onChapter: (id: FilmId) => void }) {
   const { quality, energy, inspection, product } = data;
   const means = quality.valid ? quality.xbar.values : [];
   const min = Math.min(...means), span = Math.max(...means) - min || 1;

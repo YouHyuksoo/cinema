@@ -1,0 +1,3 @@
+.overlay{position:fixed;inset:0;z-index:10020;overflow:auto;background:var(--hud-bg,#050b10);color:var(--hud-text,#d9edf2)}
+.close{position:fixed;right:18px;top:18px;z-index:2;width:40px;height:40px;border:1px solid var(--hud-cyan-dim,#347f8d);background:rgb(2 12 18/.92);color:var(--hud-text,#d9edf2);font-size:25px;line-height:1;cursor:pointer}
+.close:hover,.close:focus-visible{border-color:var(--hud-cyan,#50dff7);color:var(--hud-cyan,#50dff7);outline:none;box-shadow:0 0 18px rgb(80 223 247/.2)}

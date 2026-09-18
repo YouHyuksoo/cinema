@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hatchery/feeds/oee",
+  "title": "설비종합효율 (oee)",
+  "description": "OEE = 가동률 × 성능 × 품질. 계획 시간에서 계획 비가동은 제외. 집계 기간과 제품 기준을 통일한다. 기본은 시드이며 DB 연결은 별도 설정한다. 갱신: 동일 집계 기간의 누적 원자료. 장면: oee.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "라인",
+      "type": "string",
+      "minLength": 1
+    },
+    "period": {
+      "description": "집계 기간",
+      "type": "string",
+      "minLength": 1
+    },
+    "equipment": {
+      "type": "array",
+      "description": "설비별 효율 원자료",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "도메인 코드(자연키), 목록 안에서 유일"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "표시 이름"
+          },
+          "name": {
+            "description": "설비명",
+            "type": "string",
+            "minLength": 1
+          },
+          "plannedSeconds": {
+            "description": "계획 생산 시간(초)",
+            "type": "number",
+            "minimum": 0
+          },
+          "stopSeconds": {
+            "description": "정지 시간(초)",
+            "type": "number",
+            "minimum": 0
+          },
+          "idealCycleSeconds": {
+            "description": "이상 사이클(초/개)",
+            "type": "number",
+            "minimum": 0
+          },
+          "totalCount": {
+            "description": "총 생산 수량",
+            "type": "number",
+            "minimum": 0
+          },
+          "goodCount": {
+            "description": "양품 수량",
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "name",
+          "plannedSeconds",
+          "stopSeconds",
+          "idealCycleSeconds",
+          "totalCount",
+          "goodCount"
+        ]
+      }
+    }
+  },
+  "required": [
+    "name",
+    "period",
+    "equipment"
+  ],
+  "additionalProperties": true
+}

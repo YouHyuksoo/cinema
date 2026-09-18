@@ -75,4 +75,10 @@ describe('boot stage first paint', () => {
     const css = readFileSync('src/cinema/hatcheryIntro.module.css', 'utf8');
     expect(css).toContain(':global(:root[data-hatchery-intro-seen]) .stage { display: none; }');
   });
+  it('rechecks session storage after returning from a management route', () => {
+    const source = readFileSync('src/cinema/HatcheryIntro.tsx', 'utf8');
+    expect(source).not.toContain('let playDecision: boolean | null = null;');
+    expect(source).toContain('const playDecision = useRef<boolean | null>(null);');
+    expect(source).toContain('playDecision.current ??= forced || shouldPlayIntro');
+  });
 });

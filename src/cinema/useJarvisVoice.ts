@@ -114,13 +114,22 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     window.addEventListener('pagehide', hide); document.addEventListener('visibilitychange', visibility);
     return () => { abort.abort(); hide(); window.removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', visibility); };
   }, []);
+  const analysisAskRef = useRef(local.ask); analysisAskRef.current = local.ask;
   async function start() {
     inputStopper.current?.();
-    if (configured === null) return;
-    if (!configured || !realtime) { setRealtimeView(false); await local.start(); return; }
+    if (voiceMode === null) return;
+    if (voiceMode === 'browser') { setRealtimeView(false); await local.start(); return; }
+    if (!realtimeAvailable) {
+      local.stop(); setRealtimeView(true); setActive(false); setPhase('error');
+      audioRef.current.phase = 'error';
+      setError('OpenAI Realtime 음성이 선택되어 있지만 연결 가능한 OpenAI 키가 없습니다. AI 설정을 확인해주세요.');
+      return;
+    }
     if (active) return;
     local.stop(); session.current?.stop(); setRealtimeView(true); setError(''); setActive(true); setMessages([]); setTranscript('');
     const current = new JarvisRealtimeSession({
+      analyze: text => analysisAskRef.current(text, true),
+      shutdown: playJarvisShutdownSound,
       phase(value) { audioRef.current.phase = value; setPhase(value); },
       connection: setConnected,
       analyser(value) { audioRef.current.analyser = value; },
@@ -150,7 +159,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   }, []);
   /** Persist a main-screen quick setting (voice mode, provider, model), then re-read what the server will actually do. */
   async function patchSettings(change: { voiceMode?: AiVoiceMode; voiceGender?: VoiceGender; provider?: AiProviderId; model?: string }, failure: string) {
-    if (active || switching) return;
+    if (switching) return;
     if (change.voiceMode) inputStopper.current?.();
     setSwitching(true); setStatusError('');
     try {
@@ -161,18 +170,15 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     finally { setSwitching(false); }
   }
   const setVoiceMode = (mode: AiVoiceMode) => patchSettings({ voiceMode: mode }, '음성 방식을 바꾸지 못했습니다.');
-  const setVoiceGender = (gender: VoiceGender) => {
-    local.speechProfile.setGender(gender);
-    return patchSettings({ voiceGender: gender }, '목소리 설정을 저장하지 못했습니다.');
-  };
+  const setVoiceGender = (gender: VoiceGender) => patchSettings({ voiceGender: gender }, '목소리 설정을 저장하지 못했습니다.');
   const selectProvider = (id: AiProviderId, nextModel?: string) => patchSettings({ provider: id, ...(nextModel ? { model: nextModel } : {}) }, 'AI 프로바이더를 바꾸지 못했습니다.');
   async function ask(input: string) {
-    if (active) session.current?.ask(input);
+    if (active) { const reply = await local.ask(input, true); if (reply) session.current?.speak(reply); }
     else { setRealtimeView(false); await local.ask(input); }
   }
-  const selected = realtimeView ? { phase, transcript, messages, error, source: 'OpenAI Realtime · AI 생성 음성',
+  const selected = realtimeView ? { phase: local.phase === 'thinking' ? local.phase : phase, transcript, messages, error: error || local.error, source: '음성 대화 · 업무 요청은 분석모델',
     supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
-  return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError,
+  return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError, refreshSettings: readStatus,
     provider, model, providers, selectProvider, voiceGender: local.speechProfile.gender, setVoiceGender,
     speechProfile: local.speechProfile,
     aiConnection: { configured, statusError, models, connected, realtimeActive: active, error: realtimeView ? error : local.error },

@@ -1,21 +1,22 @@
-import { DEFAULT_ENVIRONMENT_DATA, environmentZoneStatus } from './zoneEnvironment';
+import { environmentZoneStatus } from './zoneEnvironment';
 import { FILM_CHAPTERS, type FilmId } from './filmProgram';
-import { jarvisMainData } from './jarvisMainData';
+import { hatcheryMainData } from './jarvisMainData';
+import { DEFAULT_FILM_SCENE_DATA, type FilmSceneData } from './filmSceneData';
 import type { SceneObjectPatch } from './sceneDataDocument';
 import { MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 
 /** chapter opens a scene; patch changes scene object values (docs/standards/scene-data-contract.md). Both may be present. */
 export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId; machineSubject?: MachineSubject; patch?: SceneObjectPatch; screenCommands?: import('./screenCommands').ScreenCommand[] }
-export function jarvisOverview() {
-  const zones = DEFAULT_ENVIRONMENT_DATA.zones;
+export function jarvisOverview(data:FilmSceneData=DEFAULT_FILM_SCENE_DATA) {
+  const zones = data.environment.zones;
   return { zones, normal: zones.filter(z => environmentZoneStatus(z) === 'normal').length,
     outside: zones.filter(z => environmentZoneStatus(z) === 'outside'),
     temperature: zones.reduce((sum, z) => sum + z.temperature!, 0) / zones.length,
     humidity: zones.reduce((sum, z) => sum + z.humidity!, 0) / zones.length };
 }
-export function resolveJarvisCommand(input: string): JarvisReply | null {
+export function resolveJarvisCommand(input: string, data:FilmSceneData=DEFAULT_FILM_SCENE_DATA): JarvisReply | null {
   const text = input.trim().toLowerCase().replace(/에스\s*피\s*씨/g, 'spc');
-  const overview = jarvisOverview();
+  const overview = jarvisOverview(data);
   if (/보여|열어|이동|전환|틀어|재생/.test(text)) {
     if (/지\s*마|말아|않/.test(text)) return null;
     const targetText = text.split(/말고|대신/).at(-1)!;
@@ -24,7 +25,7 @@ export function resolveJarvisCommand(input: string): JarvisReply | null {
     if (carRequested && pcbRequested) return { source: 'local', reply: 'PCB 불량 분석과 자동차 중 어느 대상을 열까요?' };
     const machineSubject: MachineSubject | undefined = carRequested ? 'car' : pcbRequested ? 'pcb' : undefined;
     if (machineSubject) return { reply: `${MACHINE_PRESENTATIONS[machineSubject].title} 연출을 엽니다.`, source: 'local', chapter: 'machine', machineSubject };
-    const aliases: [RegExp, FilmId][] = [[/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'], [/cctv|씨씨티비|감시\s*카메라|감시/, 'cctv'],
+    const aliases: [RegExp, FilmId][] = [[/oee|오이이|설비\s*종합\s*효율/, 'oee'], [/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'], [/cctv|씨씨티비|감시\s*카메라|감시/, 'cctv'],
       [/기어/, 'gears'], [/설비\s*스캔|스캔/, 'scan'], [/지표\s*펼침|지표/, 'unfold'], [/변화\s*추적|추적/, 'trace'],
       [/정보\s*(?:콘솔|창)|콘솔/, 'console'], [/공정망|공정\s*네트워크/, 'network'], [/제품\s*내부\s*검사|내부\s*검사/, 'product'],
       [/분해/i, 'machine'], [/에너지/, 'energy'], [/코너/, 'corners'], [/막대/, 'bars'], [/파이/, 'pie'],
@@ -45,7 +46,7 @@ export function resolveJarvisCommand(input: string): JarvisReply | null {
   if (/온습도|온도|습도/.test(text)) return { source: 'local',
     reply: `시연 중인 10개 구역의 평균 온도는 ${overview.temperature.toFixed(1)}도, 평균 습도는 ${overview.humidity.toFixed(1)}퍼센트입니다. 관리 범위 내 ${overview.normal}곳, 이탈 ${overview.outside.length}곳입니다. 구역 번호를 말씀하시면 상세 값을 알려드리겠습니다.` };
   if (/현황|요약|현장.*상태|상태.*현장/.test(text)) {
-    const { energy, bottlenecks, quality } = jarvisMainData;
+    const { energy, bottlenecks, quality } = hatcheryMainData(data);
     return { source: 'local', reply: `시연 데이터 기준, 생산량은 ${energy.production.value}개, 목표 ${energy.production.capacity}개입니다. 공정 병목 ${bottlenecks.length}곳, ${quality.valid ? `SPC 관리 한계 이탈 ${quality.violationCount}개 부분군` : '품질 데이터 확인 필요'}입니다. 사용 전력은 ${energy.power.value}킬로와트입니다. 좌우 정보에서 공정·품질·에너지 상세 연출을 열 수 있습니다.` };
   }
   if (/^(?:(?:hatchery|헤처리|해처리|해쳐리|자비스)[야,\s]*)?(?:안녕(?:하세요)?|도움말|무엇을 할 수 있(?:어|나요))?[.!?\s]*$/.test(text)) return { source: 'local',

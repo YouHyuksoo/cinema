@@ -8,8 +8,10 @@ import { reactorTriggerStyle } from './reactorTriggerLayout';
 import { createFilmThemeContext } from './filmThemeCanvas';
 import type { FilmThemeId } from './filmThemes';
 import { createFrameLoop, watchPageVisibility, watchReducedMotion } from './filmMotion';
+import { isLowPerformance, performancePreference, prefersLowDetail } from './filmPerformanceMode';
 import styles from './jarvisWave.module.css';
 import { easterEggSequence } from './easterEggSequence';
+import { useScreenObject } from './ScreenObjectContext';
 
 export function JarvisWave({ audio, theme = 'cyan', compact = false }: { audio: RefObject<JarvisAudioFrame>; theme?: FilmThemeId; compact?: boolean }) {
   const palette = useRef<ReturnType<typeof createFilmThemeContext> | null>(null);
@@ -19,10 +21,16 @@ export function JarvisWave({ audio, theme = 'cyan', compact = false }: { audio: 
   const finished = useRef<(() => void) | null>(null);
   const [playing, setPlaying] = useState(false);
   const finish = useCallback(() => { finished.current?.(); finished.current = null; setPlaying(false); }, []);
-  const start = () => {
+  const start = useCallback(() => {
     const root = trigger.current?.closest('main');
     if (root) easterEggSequence(root).play();
-  };
+  }, []);
+  useScreenObject(() => ({ id:'reactor', description:'중앙 아크 리액터', getState:() => ({ playing }), methods:{
+    playEffect:{ description:'다음 리액터 연출을 실행합니다.', execute:() => {
+      if (compact || playing) return { ok:false, message:'중앙 리액터 효과를 지금 실행할 수 없습니다.' };
+      start(); return { ok:true, message:'중앙 리액터 효과를 실행했습니다.' };
+    } },
+  } }), [compact, playing, start]);
   useEffect(() => {
     const node = canvas.current, ctx = node?.getContext('2d');
     if (!node || !ctx) return;
@@ -39,7 +47,8 @@ export function JarvisWave({ audio, theme = 'cyan', compact = false }: { audio: 
     }) : null;
     const resize = () => {
       const rect = node.getBoundingClientRect();
-      dpr = Math.min(devicePixelRatio || 1, 2);
+      // A slow machine keeps the reactor at 1x: its polygons and gradients are fill-rate bound.
+      dpr = Math.min(devicePixelRatio || 1, prefersLowDetail() ? 1 : 2);
       cssW = Math.max(1, rect.width); cssH = Math.max(1, rect.height);
       node.width = Math.max(1, cssW * dpr); node.height = Math.max(1, cssH * dpr);
       if (trigger.current) {
@@ -48,11 +57,12 @@ export function JarvisWave({ audio, theme = 'cyan', compact = false }: { audio: 
     };
     const observer = new ResizeObserver(resize);
     observer.observe(node); if (node.parentElement) observer.observe(node.parentElement); resize();
+    const unsubscribePreference = performancePreference.subscribe(resize);
     const draw = (now: number) => {
       const { phase, analyser } = audio.current;
-      // The idle reactor is decorative; halve its expensive canvas work while
-      // keeping full-rate audio response when the voice connection is active.
-      if (phase === 'idle' && now - lastIdleDraw < 33) return;
+      // The idle reactor is decorative; halve its expensive canvas work (quarter it on a slow
+      // machine) while keeping full-rate audio response when the voice connection is active.
+      if (phase === 'idle' && now - lastIdleDraw < (isLowPerformance() ? 66 : 33)) return;
       if (phase === 'idle') lastIdleDraw = now;
       const seconds = previous ? Math.min((now - previous) / 1000, .1) : 0;
       previous = now;
@@ -83,7 +93,7 @@ export function JarvisWave({ audio, theme = 'cyan', compact = false }: { audio: 
       else loop.start();
     };
     const unwatch = watchPageVisibility(visibility); visibility(document.hidden);
-    return () => { unregister?.(); finish(); playback.cancel(); loop.stop(); observer.disconnect(); unwatch(); motion.stop(); };
+    return () => { unregister?.(); finish(); playback.cancel(); loop.stop(); observer.disconnect(); unsubscribePreference(); unwatch(); motion.stop(); };
   }, [audio, compact, finish]);
   // Recolor the existing renderer, without cancelling a running Easter egg or resetting its clock.
   useEffect(() => { palette.current?.setTheme(theme); }, [theme, audio]);

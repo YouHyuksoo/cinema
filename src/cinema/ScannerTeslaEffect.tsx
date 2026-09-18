@@ -6,6 +6,7 @@ import { CONNECTION_LABELS, type ConnectionState } from './scannerConnectionStat
 import { createFrameLoop, fitCanvasToBox, watchPageVisibility, watchReducedMotion } from './filmMotion';
 import styles from './scannerTeslaEffect.module.css';
 import { easterEggSequence } from './easterEggSequence';
+import { useScreenObject } from './ScreenObjectContext';
 
 /** Hover discharges in place; a scanner click or reactor sequence launches the status flight. */
 export function ScannerTeslaEffect({still,details}:{still:boolean;details:string}) {
@@ -14,6 +15,13 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
   const finished=useRef<(() => void) | null>(null);
   const [playing,setPlaying]=useState(false);
   const [hovered,setHovered]=useState(false);
+  useScreenObject(() => ({ id:'scanner', description:'우측 상단 신호 감지기', getState:() => ({ playing, available:!still&&!playing }), methods:{
+    playEffect:{ description:'상태 구체 공전 효과를 실행합니다.', execute:() => {
+      const root=triggerRef.current?.closest('main');
+      if(!root||still||playing)return {ok:false,message:'신호 감지기 효과를 지금 실행할 수 없습니다.'};
+      easterEggSequence(root).play('scanner'); return {ok:true,message:'신호 감지기 효과를 실행했습니다.'};
+    } },
+  } }), [still, playing]);
   useEffect(()=>{
     const root=triggerRef.current?.closest('main');
     if(!root)return;
@@ -91,7 +99,7 @@ export function ScannerTeslaEffect({still,details}:{still:boolean;details:string
   },[mode]);
   const canvas=<canvas ref={canvasRef} className={playing?styles.flyby:styles.arcs} data-scanner-tesla="true" data-active="false" aria-hidden="true" />;
   return <>
-    <button ref={triggerRef} type="button" className={styles.trigger} aria-label="신호 감지기 상태 공전 실행" aria-busy={playing} disabled={still||playing}
+    <button ref={triggerRef} type="button" className={styles.trigger} data-scanner-trigger="true" aria-label="신호 감지기 상태 공전 실행" aria-busy={playing} disabled={still||playing}
       aria-description={details}
       onPointerEnter={event=>{if(event.pointerType!=='touch')setHovered(true);}}
       onPointerLeave={()=>setHovered(false)}

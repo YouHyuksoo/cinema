@@ -12,6 +12,8 @@ const list = (value: unknown): Item[] => Array.isArray(value) ? value.filter((it
 export function feedToSceneDocuments(feedId: string, data: Record<string, unknown>, envelope: { source: SceneDataSource; at: string }): SceneDataDocument[] {
   const document = (scene: FilmId, payload: unknown): SceneDataDocument => ({ scene, version: 1, source: envelope.source, at: envelope.at, data: payload });
   switch (feedId) {
+    case 'oee':
+      return [document('oee', { name: data.name, period: data.period, equipment: data.equipment })];
     case 'production':
       return [document('pie', { unit: data.unit, target: data.target, ...(data.selectedId !== undefined ? { selectedId: data.selectedId } : {}), lines: list(data.lines) })];
     case 'equipment':
@@ -24,6 +26,7 @@ export function feedToSceneDocuments(feedId: string, data: Record<string, unknow
         links: list(data.links).map(link => ({ from: link.from, to: link.to, bend: typeof link.bend === 'number' ? link.bend : 0 })) })];
     case 'quality':
       return [document('spc', { name: data.name, unit: data.unit, nominal: data.nominal, lsl: data.lsl, usl: data.usl, cpkTarget: data.cpkTarget,
+        ...(data.targets !== undefined ? { targets: data.targets } : {}),
         subgroups: list(data.subgroups).map(group => ({ id: group.id, values: group.values })) })];
     case 'energy': {
       const readings = list(data.readings);

@@ -97,3 +97,5 @@
 @media (max-height: 500px) {
   .toolbar { top: 36px; max-height: calc(100dvh - var(--film-content-inset, 116px) - 50px); padding: 9px 10px; gap: 6px; }
 }
+
+:global(html[data-film-perf=low]) .toolbar { backdrop-filter: none; }

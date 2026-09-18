@@ -14,9 +14,9 @@ import { recordingCanvas } from '../support/recordingCanvas';
 const fonts = { label: 'Label', mono: 'Mono' };
 
 describe('CCTV surveillance scene', () => {
-  it('registers as the seventeenth chapter with nine distinct cameras', () => {
+  it('registers as the final chapter with nine distinct cameras', () => {
     expect(FILM_CHAPTERS.at(-1)).toMatchObject({ id: 'cctv', duration: CCTV_FILM_SECONDS });
-    expect(chapterStart('cctv')).toBe(538);
+    expect(chapterStart('cctv')).toBe(653);
     expect(CCTV_CAMERAS).toHaveLength(9);
     expect(new Set(CCTV_CAMERAS.map(camera => camera.kind)).size).toBe(9);
     expect(new Set(CCTV_CAMERAS.map(camera => camera.id)).size).toBe(9);

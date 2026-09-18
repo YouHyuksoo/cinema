@@ -28,6 +28,7 @@ export async function runFeed(config: HatcheryConfig, feedId: string, options: {
     let columns: string[] = [];
     let headerRow: FeedRow | undefined;
     for (const object of feed.objects) {
+      if (object.optional && !mapping.collections[object.collection]) continue;
       const sql = mapping.collections[object.collection]?.sql || mapping.sql;
       if (!sql.trim()) { base.issues.push(`${object.collection}: SQL이 없습니다.`); rows[object.collection] = []; continue; }
       const result = await query(mapping, source.id, sql, options.limit);

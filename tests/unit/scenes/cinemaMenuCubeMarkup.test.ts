@@ -55,6 +55,18 @@ describe('management cube markup', () => {
     expect(html.match(/<button[^>]*aria-label="메뉴 관리"[^>]*>/)?.[0] ?? '').not.toContain('hidden=');
   });
 
+  it('connects voice, settings and management tiles to their existing screens', () => {
+    const signal = readFileSync(new URL('../../../src/cinema/SignalFilm.tsx', import.meta.url), 'utf8');
+    const overlay = readFileSync(new URL('../../../src/cinema/admin/HatcheryAiOverlay.tsx', import.meta.url), 'utf8');
+    const aiSettings = readFileSync(new URL('../../../src/cinema/admin/HatcheryAiSettings.tsx', import.meta.url), 'utf8');
+    expect(signal).toContain("if (id === 'voice')");
+    expect(signal).toContain("if (id === 'system')");
+    expect(signal).toContain("setManagementPage('admin')");
+    expect(signal).toContain('initialSection={managementSection}');
+    expect(overlay).toContain('initialSection');
+    expect(aiSettings).toContain('data-ai-section="voice"');
+  });
+
   it('keeps the cube overlay from stealing the rest of the viewport', () => {
     const css = readFileSync(new URL('../../../src/cinema/filmMenuCube.module.css', import.meta.url), 'utf8')
       .replace(/\s+/g, ' ');

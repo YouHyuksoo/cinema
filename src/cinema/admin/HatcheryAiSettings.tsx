@@ -1,18 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AI_LIMITS, AI_PROVIDERS, AI_VOICE_MODES, DEFAULT_AI_CONFIG, aiProvider, type AiConfig, type AiProviderId, type AiVoiceMode, type MaskedAiConfig } from '../aiConfig';
 import type { AiTestResult } from '@/server/cinema/aiProviders';
 import type { CodexLoginStatus } from '@/server/cinema/codexAuth';
 import { CINEMA_BASE_PATH, cinemaApi } from '../cinemaApi';
 import { DEFAULT_JARVIS_PROMPT, JARVIS_VOICE_PLACEHOLDER } from '../jarvisPrompt';
 import styles from './hatcheryAdmin.module.css';
+import { DEFAULT_ANALYSIS_PROMPT } from '../aiPrompts';
 
 type Draft = AiConfig & { hasApiKey: boolean; keySource: MaskedAiConfig['keySource'] };
 const emptyDraft = (): Draft => ({ ...DEFAULT_AI_CONFIG, hasApiKey: false, keySource: 'none' });
 
 /** AI provider, model, key, generation settings, operator instructions and a live connection test. Server only. */
-export function HatcheryAiSettings() {
+export function HatcheryAiSettings({ onClose, onOpenAdmin, initialSection }: {
+  onClose?: () => void; onOpenAdmin?: () => void; initialSection?: 'voice';
+} = {}) {
   const [mode, setMode] = useState<'loading' | 'server' | 'static'>('loading');
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [saved, setSaved] = useState(false);
@@ -20,6 +23,7 @@ export function HatcheryAiSettings() {
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [test, setTest] = useState<AiTestResult | 'running' | null>(null);
   const [saving, setSaving] = useState(false);
+  const voiceSection = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +45,15 @@ export function HatcheryAiSettings() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (mode !== 'server' || initialSection !== 'voice') return;
+    const frame = requestAnimationFrame(() => {
+      voiceSection.current?.scrollIntoView({ block: 'start' });
+      voiceSection.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialSection, mode]);
+
   const provider = aiProvider(draft.provider);
   const update = (change: Partial<Draft>) => { setDraft(current => ({ ...current, ...change })); setTest(null); };
   const changeProvider = (id: AiProviderId) => {
@@ -50,11 +63,11 @@ export function HatcheryAiSettings() {
   };
   const payload = (): AiConfig => ({ provider: draft.provider, model: draft.model, apiKey: draft.apiKey, temperature: draft.temperature,
     maxOutputTokens: draft.maxOutputTokens, instructions: draft.instructions, realtimeModel: draft.realtimeModel, voiceMode: draft.voiceMode,
-    voiceGender: draft.voiceGender,
+    voiceGender: draft.voiceGender, voicePrompt: draft.voicePrompt, voiceInstructions: draft.voiceInstructions,
     // An unchanged prompt is stored empty so later built-in improvements still apply.
-    prompt: draft.prompt.trim() === DEFAULT_JARVIS_PROMPT.trim() ? '' : draft.prompt });
-  const promptText = draft.prompt || DEFAULT_JARVIS_PROMPT;
-  const promptEdited = promptText.trim() !== DEFAULT_JARVIS_PROMPT.trim();
+    prompt: draft.prompt.trim() === DEFAULT_ANALYSIS_PROMPT.trim() ? '' : draft.prompt });
+  const promptText = draft.prompt || DEFAULT_ANALYSIS_PROMPT;
+  const promptEdited = promptText.trim() !== DEFAULT_ANALYSIS_PROMPT.trim();
 
   async function save() {
     setSaving(true); setNotice(null);
@@ -94,8 +107,10 @@ export function HatcheryAiSettings() {
           {' '}상태: {saved ? <span className={styles.result} data-ok={draft.hasApiKey}>{draft.hasApiKey ? `${provider.label} · ${draft.model} · 인증 ${keyState}` : `${provider.label} · 인증 없음`}</span>
             : <span className={styles.result} data-ok={draft.keySource === 'env'}>{draft.keySource === 'env' ? '저장된 설정 없음 · 환경 변수 OpenAI 키 사용 중' : '저장된 설정 없음 · AI 미연결'}</span>}</p></div>
       <div className={styles.actions}>
-        <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema`}>화면으로</a>
-        <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema/admin`}>데이터 소스 관리</a>
+        {onClose ? <button type="button" className={styles.button} onClick={onClose}>화면으로</button>
+          : <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema`}>화면으로</a>}
+        {onOpenAdmin ? <button type="button" className={styles.button} onClick={onOpenAdmin}>데이터 소스 관리</button>
+          : <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema/admin`}>데이터 소스 관리</a>}
         <button type="button" className={styles.button} data-primary onClick={() => void save()} disabled={saving}>{saving ? '저장 중…' : '저장'}</button>
       </div>
     </header>
@@ -134,7 +149,7 @@ export function HatcheryAiSettings() {
       </div>
     </section>
 
-    <section className={styles.section}>
+    <section ref={voiceSection} className={styles.section} data-ai-section="voice" tabIndex={-1}>
       <h2>3. 음성 방식</h2>
       <div className={styles.card}>
         <div className={styles.grid}>
@@ -162,7 +177,17 @@ export function HatcheryAiSettings() {
     <section className={styles.section}>
       <h2>5. 시스템 프롬프트</h2>
       <div className={styles.card}>
-        <label className={styles.block}>HATCHERY 지시문 (최대 {AI_LIMITS.prompt}자 · 음성·텍스트 모델 공통 · {promptEdited ? '수정됨' : '기본값'})
+        <label className={styles.block}>음성모델 시스템 프롬프트 · Realtime 전용
+          <textarea rows={12} value={draft.voicePrompt || DEFAULT_JARVIS_PROMPT} maxLength={AI_LIMITS.prompt}
+            onChange={event => update({ voicePrompt: event.target.value })} /></label>
+        <button type="button" className={styles.button} onClick={() => update({ voicePrompt: '' })}>음성 기본값으로 되돌리기</button>
+        <label className={styles.block}>음성모델 추가 지시
+          <textarea rows={4} value={draft.voiceInstructions} maxLength={AI_LIMITS.instructions}
+            onChange={event => update({ voiceInstructions: event.target.value })} /></label>
+        <p className={styles.muted}>일상 대화는 직접 응답하고 분석·조작 요청은 분석모델에 위임합니다. 저장 후 음성을 다시 연결하면 적용됩니다. 브라우저 음성 입력은 텍스트 모델로 전달되므로 아래 분석 프롬프트를 사용합니다.</p>
+      </div>
+      <div className={styles.card}>
+        <label className={styles.block}>분석모델 시스템 프롬프트 (최대 {AI_LIMITS.prompt}자 · 텍스트 채팅·분석 전용 · {promptEdited ? '수정됨' : '기본값'})
           <textarea rows={22} value={promptText} maxLength={AI_LIMITS.prompt} spellCheck={false} data-prompt-editor
             onChange={event => update({ prompt: event.target.value })} /></label>
         <div className={styles.actions}>
@@ -171,7 +196,7 @@ export function HatcheryAiSettings() {
         </div>
       </div>
       <div className={styles.card}>
-        <label className={styles.block}>운영자 추가 지시 (최대 {AI_LIMITS.instructions}자 · 위 지시문 뒤에 붙습니다)
+        <label className={styles.block}>분석모델 추가 지시 (최대 {AI_LIMITS.instructions}자 · 위 지시문 뒤에 붙습니다)
           <textarea rows={8} value={draft.instructions} maxLength={AI_LIMITS.instructions} spellCheck={false}
             placeholder={'예) 답변은 세 문장 이내로. 설비명은 라인 번호와 함께 말할 것. 영어 약어는 처음 한 번 풀어 쓸 것.'}
             onChange={event => update({ instructions: event.target.value })} /></label>

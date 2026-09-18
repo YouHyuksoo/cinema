@@ -8,7 +8,7 @@ import { DEFAULT_FILM_CHARTS, normalizeChartPresentation, type ChartKind, type C
 import { DEFAULT_FILM_THEME, getFilmTheme, type FilmThemeId } from './filmThemes';
 import { createFilmThemeContext } from './filmThemeCanvas';
 import { drawJarvisBackdrop } from './drawJarvisBackdrop';
-import { filmFrameChanged, type FilmFrameKey } from './filmFrameGate';
+import { filmFrameChanged, filmRenderTime, type FilmFrameKey } from './filmFrameGate';
 import { beginFilmViewport } from './filmViewport';
 import type { FilmCameraFrame } from './filmCameraSession';
 import { useSmtFactoryInteraction } from './useSmtFactoryInteraction';
@@ -23,6 +23,12 @@ import { type MenuLayout } from './filmMenuRing';
 import { menuLayoutPreference } from './filmMenuPreference';
 import { readPlaybackPreference, savePlaybackPreference } from './filmPlaybackPreference';
 import { createFilmRenderBudget } from './filmRenderBudget';
+import { isLowPerformance, performancePreference, prefersLowDetail, reportRenderPressure } from './filmPerformanceMode';
+import { createFilmShadowGate } from './filmShadowGate';
+import { playFilmTransitionSound } from './filmTransitionSound';
+
+/** How long the canvas yields to an input so its handler, the React commit and the paint go first. */
+const INPUT_YIELD_MS = 90;
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
@@ -66,10 +72,21 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     const ctx = node?.getContext('2d', { alpha: false });
     if (!node || !ctx) return;
     const textureRenderers = new Map<FilmThemeId, ReturnType<typeof createFilmTextureRenderer>>();
-    const renderBudget = createFilmRenderBudget();
+    // Explicit low mode or a slow device by its hints never rasters above 1x; the choice may change while mounted.
+    const renderBudget = createFilmRenderBudget(undefined, { lowDetail: () => prefersLowDetail() });
     let resizeForBudget = false;
+    const unsubscribePreference = performancePreference.subscribe(() => { resizeForBudget = true; });
+    // Low mode paints every canvas shadow without blur; renderers keep their own shadowBlur values.
+    const shadowGate = createFilmShadowGate(ctx);
     let frame = 0;
     let previous = performance.now();
+    let painted = previous;
+    // A heavy draw blocks the main thread, so a click landing mid-frame waits for it and then for the
+    // React commit behind the next one. Yielding the frames right after an input keeps buttons quick.
+    let inputAt = -Infinity;
+    const noteInput = (event: Event) => { if (!(event as KeyboardEvent).repeat) inputAt = performance.now(); };
+    window.addEventListener('pointerdown', noteInput, { capture: true, passive: true });
+    window.addEventListener('keydown', noteInput, { capture: true, passive: true });
     let lastPublished = -Infinity;
     let cameraTime = 3;
     let lastKey: FilmFrameKey | null = null;
@@ -112,7 +129,6 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     });
     const render = (now: number) => {
       if (resizeForBudget) { resize(); lastKey = null; resizeForBudget = false; }
-      const frameMs = now - previous;
       if (!current.paused) {
         const elapsed = Math.min((now - previous) / 1000, .05) * current.speed;
         if (cameraView.current) cameraTime += elapsed;
@@ -124,13 +140,22 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, data.environment);
       const factoryState = readFactoryState(), cctvState = readCctvState();
       // Identical inputs paint an identical frame: a paused scene or backdrop costs nothing until something moves.
-      const key: FilmFrameKey = { camera: cameraView.current, time: cameraView.current ? cameraTime : current.time,
+      const key: FilmFrameKey = { camera: cameraView.current, time: cameraView.current ? cameraTime : filmRenderTime(current.time, active.chapter.id),
         width: node.width, height: node.height, inset: viewport.bottomInset, theme: current.theme, texture: current.texture,
         charts: current.charts, subject: current.machineSubject, factory: factoryState, cctvManual: !!cctvState,
         selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb') };
       if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }
+      // Nothing of the canvas is reachable under a modal overlay (it makes the page inert), the film
+      // clock keeps its own time, and a bounded cadence leaves the thread idle between heavy frames.
+      const interval = renderBudget.frameInterval;
+      if (now - inputAt < INPUT_YIELD_MS || (page instanceof HTMLElement && page.inert)
+        || (interval > 0 && now - painted < interval - 1)) { frame = requestAnimationFrame(render); return; }
+      const sinceLastPaint = now - painted;
+      painted = now;
       lastKey = key;
       const drawStarted = performance.now();
+      const low = isLowPerformance();
+      shadowGate.closed = low;
       themed.setTheme(current.theme);
       if (cameraView.current) {
         const view = beginFilmViewport(themed.ctx, node.width, node.height, viewport);
@@ -147,8 +172,12 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         drawTexture = createFilmTextureRenderer(current.theme);
         textureRenderers.set(current.theme, drawTexture);
       }
-      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture, { bloom: !cameraView.current, now });
-      if (renderBudget.sample(now, performance.now() - drawStarted, frameMs)) resizeForBudget = true;
+      drawTexture(ctx, node.width, node.height, cameraView.current ? cameraTime : current.time, current.texture, { bloom: !cameraView.current, now, cheap: low });
+      if (renderBudget.sample(now, performance.now() - drawStarted, sinceLastPaint)) resizeForBudget = true;
+      // A capped cadence, or frames arriving late while the canvas is cheap, is this machine telling
+      // us it is over budget: the page decoration steps down too, since the canvas is not the only
+      // thing competing for frames. The report is sticky, so the two decoration sets do not alternate.
+      reportRenderPressure(renderBudget.pressured);
       // Publish the position to React only when the readout would change; the preview freezes film
       // time, and the dock's time display has 0.1s resolution, so identical frames must not re-render.
       if (now - lastPublished > 180 && !cameraView.current) {
@@ -162,7 +191,11 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
-    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); };
+    return () => {
+      cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); unsubscribePreference();
+      window.removeEventListener('pointerdown', noteInput, { capture: true });
+      window.removeEventListener('keydown', noteInput, { capture: true });
+    };
   }, [canvasRef, cameraRef, cameraView, readFactoryState, readCctvState, updateEnvironment, store]);
 
   return {
@@ -212,7 +245,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     pause() { factory.clear(); cctv.clear(); clock.current.paused = true; setPlaying(false); },
     play() { factory.clear(); cctv.clear(); clock.current.paused = false; setPlaying(true); },
     togglePlay() { factory.clear(); cctv.clear(); clock.current.paused = !clock.current.paused; setPlaying(!clock.current.paused); },
-    selectChapter(id: FilmId) {
+    selectChapter(id: FilmId, forceTransitionSound = false) {
+      if (forceTransitionSound || chapterAt(clock.current.time).chapter.id !== id) playFilmTransitionSound();
       factory.clear(); cctv.clear();
       environment.clear();
       clock.current.time = chapterStart(id); clock.current.paused = false;

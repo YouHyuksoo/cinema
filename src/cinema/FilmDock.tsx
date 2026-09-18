@@ -7,6 +7,7 @@ import styles from './film.module.css';
 import mobileStyles from './filmDock.module.css';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import type { FilmId } from './filmProgram';
+import { playFilmTransitionSound } from './filmTransitionSound';
 
 const dockIcon = (name: string, paths: ReactNode) => (
   <svg className={mobileStyles.actionIcon} data-dock-icon={name} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -47,6 +48,7 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   const expandMenu = useCallback(() => {
     focusIntent.current = 'front';
     setExpanded(false);
+    playFilmTransitionSound();
     latest.current.onMenuOpenChange(true);
   }, []);
   const focusOpenedMenu = useCallback(() => {
@@ -61,7 +63,8 @@ export function FilmDock({ player, camera, menuOpen, onMenuOpenChange }: {
   const selectChapter = useCallback((id: FilmId) => {
     focusIntent.current = 'globe'; setExpanded(false);
     const current = latest.current;
-    current.camera.closePreview(); current.player.selectChapter(id); current.onMenuOpenChange(false);
+    const fromPreview = current.camera.preview;
+    current.camera.closePreview(); current.player.selectChapter(id, fromPreview); current.onMenuOpenChange(false);
   }, []);
   const { chapter, localTime } = player.position;
   return (

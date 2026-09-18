@@ -5,6 +5,7 @@ import { useCameraWindow } from './useCameraWindow';
 import { JarvisCamera } from './JarvisCamera';
 import type { FilmCamera } from './useFilmCamera';
 import styles from './jarvisCameraPopup.module.css';
+import { useScreenObject } from './ScreenObjectContext';
 
 export function JarvisCameraPopup({ camera, icon = false, host = false }: { camera: FilmCamera; icon?: boolean; host?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -19,6 +20,12 @@ export function JarvisCameraPopup({ camera, icon = false, host = false }: { came
     window.addEventListener('cinema-camera-popup', show);
     return () => window.removeEventListener('cinema-camera-popup', show);
   }, [host, camera.stop]);
+  useScreenObject(() => ({ id:'camera.popup', description:'내 영상 팝업', getState:() => ({ open:host&&open }), methods:{
+    setOpen:{ description:'영상 팝업을 열거나 닫습니다.', parameters:{open:{type:'boolean'}}, execute:args => {
+      if(!host||typeof args.open!=='boolean')return {ok:false,message:'영상 팝업 호스트를 사용할 수 없습니다.'};
+      setOpen(args.open);if(!args.open)camera.stop();return {ok:true,message:'영상 팝업 상태를 변경했습니다.'};
+    } },
+  } }), [host, open, camera.stop], host);
   return <>
     {!host && <button type="button" className={styles.trigger} aria-haspopup="dialog" aria-label={camera.status === 'on' ? '영상 보기' : '영상 연결'} title="영상 연결" onClick={() => window.dispatchEvent(new CustomEvent('cinema-camera-popup', { detail: true }))}>
       {icon ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="13" height="14" rx="2" /><path d="m15 9 7-4v14l-7-4" /></svg> : camera.status === 'on' ? '영상 보기' : '영상 연결'}

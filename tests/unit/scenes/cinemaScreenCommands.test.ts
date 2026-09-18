@@ -61,6 +61,32 @@ describe('screen command contract', () => {
     }
     expect(resolveScreenCommands('처음부터 다시 시작해')).toEqual([{ action: 'set', key: 'restart', value: 'true' }]);
   });
+  it('maps the remaining visible object controls without relying on the model', () => {
+    const cases: [string, string, string][] = [
+      ['metricsScroll', '상단 지표 스크롤 멈춰', 'false'],
+      ['leftScroll', '왼쪽 카드 자동 스크롤 재개해', 'true'],
+      ['rightScroll', '오른쪽 분석 카드 멈춰', 'false'],
+      ['focusCard', '생산 진행 카드 확대해', 'right:production'],
+      ['cardFocus', '확대한 카드 닫아', 'false'],
+      ['scannerEffect', '신호 감지기 실행해', 'true'],
+      ['reactorEffect', '중앙 리액터 다음 효과 실행해', 'true'],
+      ['cctvStep', '다음 CCTV 카메라 보여줘', 'next'],
+      ['factoryZoom', '3D 설비 화면 확대해', 'in'],
+      ['factoryDeselect', '설비 선택 해제해', 'true'],
+      ['environmentStep', '다음 온습도 구역 보여줘', 'next'],
+      ['environmentClear', '온습도 구역 선택 해제해', 'true'],
+    ];
+    for (const [key, phrase, value] of cases) {
+      expect(resolveScreenCommands(phrase), key).toContainEqual({ action: 'set', key, value });
+    }
+    expect(resolveScreenCommands('재생해')).toEqual([{ action: 'set', key: 'playing', value: 'true' }]);
+  });
+  it('accepts natural multi-part commands instead of dropping the whole utterance', () => {
+    expect(resolveScreenCommands('색상 테마 블루로 변경해 그리고 재생 속도 1.5로 변경해')).toEqual([
+      { action: 'set', key: 'theme', value: 'blue' },
+      { action: 'set', key: 'speed', value: '1.5' },
+    ]);
+  });
   it('rejects unknown keys, out of range numbers and invalid enums before mutation', () => {
     for (const [key, value] of [['speed', '500'], ['zoom', '0'], ['blur', 'NaN'], ['intensity', ''], ['theme', 'invented'], ['apiKey', 'secret']]) {
       expect(validateScreenCommand({ action: 'set', key, value })).toBeNull();

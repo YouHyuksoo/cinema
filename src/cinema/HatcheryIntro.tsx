@@ -14,12 +14,6 @@ const STICKER = Object.fromEntries(CUBE_FACES.map(face => [face.axis, face.stick
 /** Scramble seed: a fixed sequence, so the intro reads the same every session. */
 const SCRAMBLE_SEED = 11;
 /**
- * Decided once per document: React's dev-mode double effect (and a hydration-recovery remount) must
- * not turn the first run's session flag into "already played" for the second run.
- */
-let playDecision: boolean | null = null;
-
-/**
  * The intro cube: the management Rubik's cube, large and alone on a dark stage, tumbling in 3D while
  * its layers scramble and solve (the same move engine as the docked cube). On the `return` / `snap`
  * cue it flies to the docked cube's real position and scale, so the hand-off is seamless.
@@ -166,6 +160,9 @@ const FIRST_FRAME: IntroFrame = { phase: 'closed', door: 0, cube: 'stage', skipp
 export function HatcheryIntro() {
   const [frame, setFrame] = useState<IntroFrame | null>(FIRST_FRAME);
   const timeline = useRef<ReturnType<typeof createIntroTimeline> | null>(null);
+  // Preserve the decision across React's development effect replay, but discard it when this route
+  // actually unmounts so browser Back rechecks the once-per-session flag.
+  const playDecision = useRef<boolean | null>(null);
   const [handlers] = useState(() => ({
     solved: () => timeline.current?.solved(performance.now()),
     docked: () => timeline.current?.docked(performance.now()),
@@ -178,9 +175,9 @@ export function HatcheryIntro() {
     try { storage = window.sessionStorage; } catch { storage = null; }
     // ?intro=1 replays on demand (design review, demos); otherwise once per tab session.
     const forced = new URLSearchParams(window.location.search).has('intro');
-    playDecision ??= forced || shouldPlayIntro(storage, motion.reduced);
+    playDecision.current ??= forced || shouldPlayIntro(storage, motion.reduced);
     // Already seen this session (or reduced motion): the layout's inline script hid the stage before paint; drop it now.
-    if (!playDecision) {
+    if (!playDecision.current) {
       motion.stop();
       const drop = requestAnimationFrame(() => setFrame(null));
       return () => cancelAnimationFrame(drop);

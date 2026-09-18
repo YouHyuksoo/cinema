@@ -20,7 +20,8 @@ export function drawEnvironmentHeatmap(ctx: CanvasRenderingContext2D, fonts: Fil
   ctx.save();
   ctx.beginPath(); ctx.rect(145, 198, 990, 412); ctx.clip();
   ctx.translate(0, 48);
-  drawEnvironmentSpace(ctx, fonts, model, projection, alpha, reveal);
+  drawEnvironmentSpace(ctx, fonts, model, projection, alpha, reveal,
+    { left: 145, top: 150, right: 1135, bottom: 562 });
   ctx.restore();
   const visible = model.rooms.map(room => {
     const point = projection.point(room.pin.x, room.pin.y);

@@ -3,7 +3,7 @@ sources:
   - src/cinema/domainFeeds.ts
   - src/cinema/sceneFields.ts
   - src/cinema/productionLineFields.ts
-verifiedCommit: 0952ea6
+verifiedCommit: 08f37d4
 ---
 
 # 도메인 피드 — DB가 보내야 하는 기대값
@@ -20,7 +20,8 @@ verifiedCommit: 0952ea6
 | `equipment` | 설비 마스터 · 상태 | 빠른 폴링 (5~10초 폴링 또는 상태 변경 푸시) | 일부 연결 | `stations`, `metrics` | bars, visor, visorPan, scan, gears, console, cctv |
 | `process` | 공정 처리능력 · 대기 | 보통 폴링 (10~30초 폴링) | 일부 연결 | `nodes`, `links` | network, corners, unfold |
 | `environment` | 환경 구역 온습도 | 빠른 폴링 (30~60초 폴링 또는 센서 푸시) | 연결됨 | `zones` | wave |
-| `quality` | 품질 SPC 측정 | 이벤트 (부분군 완성 시 이벤트, 또는 1~5분 폴링) | 일부 연결 | `subgroups` | spc, corners, unfold |
+| `quality` | 품질 SPC 측정 | 이벤트 (부분군 완성 시 이벤트, 또는 1~5분 폴링) | 일부 연결 | `subgroups`, `targets` | spc, corners, unfold |
+| `oee` | 설비종합효율 | 보통 폴링 (동일 집계 기간의 누적 원자료) | 연결됨 | `equipment` | oee |
 | `energy` | 에너지 사용 | 빠른 폴링 (5~30초 폴링) | 일부 연결 | `readings` | energy |
 | `workOrder` | 워크오더 · 불량 | 이벤트 (워크오더 생성·완료와 검사 판정 이벤트) | 이관 예정 | `defects` | trace |
 | `inspection` | 제품 내부 검사 | 이벤트 (검사 완료 이벤트) | 일부 연결 | `measurements` | product |
@@ -163,7 +164,7 @@ verifiedCommit: 0952ea6
 
 ## 품질 SPC 측정 — `quality`
 
-SPC 장면이 읽는다(부분군 수·크기 무관). 코너·펼침의 양품률과 상단 지표의 이탈 수도 파생 예정.
+targets가 있으면 배열 순서대로 순회하며 Xbar–R·히스토그램·Cpk를 동시에 표시. 생략하면 기존 단일 항목 사용. 빈 배열은 대상 없음. 다중 대상은 전체 스냅샷으로 갱신. 상위 측정값은 대표 항목 지표용.
 
 - 갱신: 이벤트 · 부분군 완성 시 이벤트, 또는 1~5분 폴링
 - 상태: 일부 연결
@@ -187,6 +188,48 @@ SPC 장면이 읽는다(부분군 수·크기 무관). 코너·펼침의 양품�
 | `id` | 문자열 |  |  | 필수 | 도메인 코드(자연키), 목록 안에서 유일 |
 | `label` | 문자열 |  |  | 필수 | 표시 이름 |
 | `values` | 숫자 목록 |  |  | 필수 | 측정값 (패치 가능) |
+
+### SPC 분석 대상 (목록 순서대로 순회) — `targets[]` (객체 타입 `spcTarget`)
+
+| 컬럼 | 종류 | 단위 | 범위 | 필수 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 문자열 |  |  | 필수 | 도메인 코드(자연키), 목록 안에서 유일 |
+| `label` | 문자열 |  |  | 필수 | 표시 이름 |
+| `name` | 문자열 |  |  | 필수 | 측정 항목 |
+| `unit` | 문자열 |  |  | 필수 | 단위 |
+| `nominal` | 숫자 |  |  | 필수 | 공칭값 |
+| `lsl` | 숫자 |  |  | 필수 | 규격 하한 |
+| `usl` | 숫자 |  |  | 필수 | 규격 상한 |
+| `cpkTarget` | 숫자 |  | 0~ | 필수 | Cpk 목표 |
+| `subgroups` | 구조 |  |  | 필수 | 해당 대상의 부분군 측정값 (JSON Schema 참조) |
+
+## 설비종합효율 — `oee`
+
+OEE = 가동률 × 성능 × 품질. 계획 시간에서 계획 비가동은 제외. 집계 기간과 제품 기준을 통일한다. 기본은 시드이며 DB 연결은 별도 설정한다.
+
+- 갱신: 보통 폴링 · 동일 집계 기간의 누적 원자료
+- 상태: 연결됨
+- 스키마: `public/cinema/data/schemas/oee.schema.json` · 예시: `oee.example.json`
+
+### 헤더
+
+| 컬럼 | 종류 | 단위 | 범위 | 필수 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `name` | 문자열 |  |  | 필수 | 라인 |
+| `period` | 문자열 |  |  | 필수 | 집계 기간 |
+
+### 설비별 효율 원자료 — `equipment[]` (객체 타입 `oeeEquipment`)
+
+| 컬럼 | 종류 | 단위 | 범위 | 필수 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| `id` | 문자열 |  |  | 필수 | 도메인 코드(자연키), 목록 안에서 유일 |
+| `label` | 문자열 |  |  | 필수 | 표시 이름 |
+| `name` | 문자열 |  |  | 필수 | 설비명 |
+| `plannedSeconds` | 숫자 |  | 0~ | 필수 | 계획 생산 시간(초) |
+| `stopSeconds` | 숫자 |  | 0~ | 필수 | 정지 시간(초) |
+| `idealCycleSeconds` | 숫자 |  | 0~ | 필수 | 이상 사이클(초/개) |
+| `totalCount` | 숫자 |  | 0~ | 필수 | 총 생산 수량 |
+| `goodCount` | 숫자 |  | 0~ | 필수 | 양품 수량 |
 
 ## 에너지 사용 — `energy`
 

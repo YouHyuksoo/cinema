@@ -78,3 +78,4 @@
 @keyframes circuit { to { stroke-dashoffset: -808; } }
 @keyframes dots { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .spin, .cube, .reticleTicks, .reticleArcs, .reticleInner, .circuitPulse, .captionDots i { animation: none; } .flight[data-flight] .tilt { transition: none; } }
+:global(html[data-film-perf=low]) .circuitPulse { filter:none; }

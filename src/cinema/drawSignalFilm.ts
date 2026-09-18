@@ -5,6 +5,7 @@ import { drawUnfoldFilm } from './drawUnfoldFilm';
 import { drawTraceFilm } from './drawTraceFilm';
 import { drawConsoleFilm } from './drawConsoleFilm';
 import { drawVisorFilm, drawPlanarVisorFilm } from './drawVisorFilm';
+import { drawOeeFilm } from './drawOeeFilm';
 import { drawMultiChartFilm } from './drawMultiChartFilm';
 import { drawMounterAnalysisFilm } from './drawMounterAnalysisFilm';
 import { drawPieFilm } from './drawPieFilm';
@@ -32,6 +33,7 @@ export { FILM_SECONDS } from './filmProgram';
 export interface MachineRenderOptions { subject?: MachineSubject; provenance?: SceneDataProvenance }
 type Renderer = (ctx: CanvasRenderingContext2D, width: number, height: number, time: number, fonts: FilmFonts, insets: FilmViewportInsets | undefined, charts: FilmChartSettings, factory: FactoryInteraction | null, environment: ZoneEnvironmentState | null, data: FilmSceneData, machine: MachineRenderOptions, cctv: CctvFrameInput | null) => void;
 const renderers: Record<FilmId, Renderer> = {
+  oee: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawOeeFilm(ctx, width, height, time, fonts, insets, data.oee),
   wave: (ctx, width, height, time, fonts, insets, _charts, _factory, environment, data) => drawWaveFilm(ctx, width, height, time, fonts, insets, data.environment, environment),
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
   console: drawConsoleFilm, visor: (ctx, width, height, time, fonts, insets, _charts, factory) => drawVisorFilm(ctx, width, height, time, fonts, 'space', insets, factory),

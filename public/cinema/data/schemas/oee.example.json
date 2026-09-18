@@ -1,0 +1,112 @@
+{
+  "feed": "oee",
+  "version": 1,
+  "source": "static",
+  "at": "2026-09-08T09:00:00+09:00",
+  "data": {
+    "name": "SMT LINE 01",
+    "period": "주간조 · 08:00–16:00 / 시드 데이터",
+    "equipment": [
+      {
+        "id": "printer",
+        "name": "스크린 프린터",
+        "plannedSeconds": 27000,
+        "stopSeconds": 1800,
+        "idealCycleSeconds": 12,
+        "totalCount": 1920,
+        "goodCount": 1896,
+        "label": "스크린 프린터"
+      },
+      {
+        "id": "mounter-1",
+        "name": "마운터 01",
+        "plannedSeconds": 27000,
+        "stopSeconds": 2400,
+        "idealCycleSeconds": 11,
+        "totalCount": 2010,
+        "goodCount": 1988,
+        "label": "마운터 01"
+      },
+      {
+        "id": "mounter-2",
+        "name": "마운터 02",
+        "plannedSeconds": 27000,
+        "stopSeconds": 4200,
+        "idealCycleSeconds": 11,
+        "totalCount": 1820,
+        "goodCount": 1780,
+        "label": "마운터 02"
+      },
+      {
+        "id": "mounter-3",
+        "name": "마운터 03",
+        "plannedSeconds": 27000,
+        "stopSeconds": 2100,
+        "idealCycleSeconds": 11,
+        "totalCount": 2090,
+        "goodCount": 2055,
+        "label": "마운터 03"
+      },
+      {
+        "id": "mounter-4",
+        "name": "마운터 04",
+        "plannedSeconds": 27000,
+        "stopSeconds": 3600,
+        "idealCycleSeconds": 11,
+        "totalCount": 1930,
+        "goodCount": 1898,
+        "label": "마운터 04"
+      },
+      {
+        "id": "mounter-5",
+        "name": "마운터 05",
+        "plannedSeconds": 27000,
+        "stopSeconds": 1500,
+        "idealCycleSeconds": 11,
+        "totalCount": 2180,
+        "goodCount": 2161,
+        "label": "마운터 05"
+      },
+      {
+        "id": "reflow",
+        "name": "리플로우",
+        "plannedSeconds": 27000,
+        "stopSeconds": 1200,
+        "idealCycleSeconds": 12,
+        "totalCount": 2020,
+        "goodCount": 2012,
+        "label": "리플로우"
+      },
+      {
+        "id": "aoi",
+        "name": "AOI 검사기",
+        "plannedSeconds": 27000,
+        "stopSeconds": 1600,
+        "idealCycleSeconds": 10,
+        "totalCount": 2240,
+        "goodCount": 2180,
+        "label": "AOI 검사기"
+      },
+      {
+        "id": "ict",
+        "name": "ICT 검사기",
+        "plannedSeconds": 27000,
+        "stopSeconds": 2700,
+        "idealCycleSeconds": 10,
+        "totalCount": 2150,
+        "goodCount": 2107,
+        "label": "ICT 검사기"
+      },
+      {
+        "id": "fct",
+        "name": "FCT 검사기",
+        "plannedSeconds": 27000,
+        "stopSeconds": 3300,
+        "idealCycleSeconds": 12,
+        "totalCount": 1780,
+        "goodCount": 1740,
+        "label": "FCT 검사기"
+      }
+    ]
+  }
+}

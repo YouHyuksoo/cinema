@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { FilmId } from './filmProgram';
 
 const CHAPTER_ICONS: Record<FilmId, ReactNode> = {
+  oee: <><circle cx="16" cy="16" r="12" /><circle cx="16" cy="16" r="8" /><path d="M16 16 23 9M7 26h18" /><circle cx="16" cy="16" r="2" /></>,
   wave: <>
     <path d="M7 19V6a3 3 0 0 1 6 0v13a6 6 0 1 1-6 0Z" />
     <path d="M10 10v13m3-15h3m-3 5h3" />

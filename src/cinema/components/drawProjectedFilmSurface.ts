@@ -29,6 +29,13 @@ const MAX_SOURCE_SIZE = 2048;
 const MAX_COMPOSITE_SIZE = 4096;
 const buffers = new WeakMap<CanvasRenderingContext2D, SurfaceBuffers>();
 
+export function surfaceRasterSizeForFrame(requested: { width: number; height: number },
+  cached: { width: number; height: number } | undefined, sameFrame: boolean) {
+  return sameFrame && cached
+    ? { width:Math.max(requested.width, cached.width), height:Math.max(requested.height, cached.height) }
+    : requested;
+}
+
 function getBuffers(context: CanvasRenderingContext2D): SurfaceBuffers {
   const cached = buffers.get(context);
   if (cached) return cached;
@@ -141,8 +148,12 @@ export function drawProjectedFilmSurface(context: CanvasRenderingContext2D,
   }
   if (cached) {
     source = cached.source; theme = cached.theme;
-    // Keep the largest requested detail so the five instances don't resize/redraw each other.
-    sourceWidth = Math.max(sourceWidth, cached.width); sourceHeight = Math.max(sourceHeight, cached.height);
+    // Five lines share the largest raster requested in one frame. On the next frame, allow the
+    // logical sampled area to shrink again; otherwise one close camera pass permanently ratchets
+    // all later equipment redraws to the largest resolution reached so far.
+    const sameFrame = cached.time === cache!.time && cached.themeId === themeId;
+    const size = surfaceRasterSizeForFrame({width:sourceWidth,height:sourceHeight}, cached, sameFrame);
+    sourceWidth = size.width; sourceHeight = size.height;
   }
   reserve(source, sourceWidth, sourceHeight, MAX_SOURCE_SIZE);
   if (!cached || cached.time !== cache!.time || cached.themeId !== themeId ||

@@ -10,6 +10,7 @@ import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import { canvasFixture } from '../support/canvasFixture';
 
 const hooks = vi.hoisted(() => ({ refs: [] as { current: unknown }[] }));
+const transitionSound = vi.hoisted(() => vi.fn());
 vi.mock('react', async importOriginal => ({
   ...await importOriginal<typeof import('react')>(),
   useState: <T>(value: T | (() => T)) => [typeof value === 'function' ? (value as () => T)() : value, vi.fn()],
@@ -20,7 +21,8 @@ vi.mock('react', async importOriginal => ({
 vi.mock('@/cinema/useSmtFactoryInteraction', () => ({ useSmtFactoryInteraction: () => ({ clear: vi.fn(), readState: () => null }) }));
 vi.mock('@/cinema/useCctvInteraction', () => ({ useCctvInteraction: () => ({ clear: vi.fn(), readState: () => null, manual: false }) }));
 vi.mock('@/cinema/useEnvironmentSelection', () => ({ useEnvironmentSelection: () => ({ clear: vi.fn(), update: () => null }) }));
-beforeEach(() => { hooks.refs = []; });
+vi.mock('@/cinema/filmTransitionSound', () => ({ playFilmTransitionSound: transitionSound }));
+beforeEach(() => { hooks.refs = []; transitionSound.mockClear(); });
 
 describe('manual machine subject selection', () => {
   it('starts with PCB, rewinds only machine and preserves pause and other playback settings', () => {
@@ -37,12 +39,21 @@ describe('manual machine subject selection', () => {
     expect(clock.time).toBe(9);
     player.changeMachineSubject('bad' as never);
     expect(clock.machineSubject).toBe('pcb');
-    expect(FILM_CHAPTERS).toHaveLength(17); expect(FILM_SECONDS).toBe(594);
+    expect(FILM_CHAPTERS).toHaveLength(18); expect(FILM_SECONDS).toBe(709);
   });
   it('exposes an explicit selector without automatic car switching', () => {
     const html = renderToStaticMarkup(createElement(FilmMachineControls, { subject: 'pcb', disabled: false, onChange: vi.fn() }));
     expect(html).toContain('분석 대상'); expect(html).toContain('PCB 불량 분석'); expect(html).toContain('자동차');
     expect(html).toContain('value="pcb" selected');
+  });
+  it('plays one transition sound only when a manual chapter selection changes the scene', () => {
+    const player = useFilmPlayback({ current: null }, { current: {} } as never, { current: false });
+    player.selectChapter('machine');
+    expect(transitionSound).toHaveBeenCalledOnce();
+    player.selectChapter('machine');
+    expect(transitionSound).toHaveBeenCalledOnce();
+    player.play();
+    expect(transitionSound).toHaveBeenCalledOnce();
   });
   it('routes explicit PCB and car requests to their corresponding subject', () => {
     expect(resolveJarvisCommand('PCB 불량 보여줘')).toMatchObject({ chapter: 'machine', machineSubject: 'pcb' });

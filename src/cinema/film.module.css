@@ -83,6 +83,25 @@
 .hexAccent { stroke: color-mix(in srgb, var(--film-accent) 40%, transparent); transition: stroke .2s; }
 .chapterIcon { position: absolute; width: 24px; height: 24px; top: 10px; left: 50%; margin-left: -12px; }
 .chapterLabel { font-size: 10px; letter-spacing: .04em; white-space: nowrap; line-height: 15px; }
+/* Open orbit ring: solid tiles so the main screen never reads through them, and one name at a time.
+   Eighteen labels on one circle collided with their neighbours; the ring readout names the front tile. */
+[data-menu-layout=orbit] .chapterButton .hexBack { fill: var(--film-bg); stroke: color-mix(in srgb, var(--film-accent) 26%, transparent); }
+[data-menu-layout=orbit] .chapterButton .hexFace { fill: color-mix(in srgb, var(--film-accent) 10%, var(--film-bg)); stroke: color-mix(in srgb, var(--film-accent) 46%, transparent); }
+[data-menu-layout=orbit] .chapterButton .hexInset { stroke: color-mix(in srgb, var(--film-accent) 18%, transparent); }
+[data-menu-layout=orbit] .chapterButton[aria-current] .hexFace { fill: color-mix(in srgb, var(--film-accent) 24%, var(--film-bg)); }
+/* Every tile keeps its name. Each label sits on its own opaque plate and is pushed outward along the
+   tile's own orbit angle, so it lands in the empty ground outside the ring instead of on the hex of
+   the neighbouring tooth. */
+[data-menu-layout=orbit] .chapterButton .chapterLabel {
+  position: relative; margin-top: 1px; padding: 1px 5px; border-radius: 7px; font-size: 11px; line-height: 15px;
+  color: var(--film-ink); background: color-mix(in srgb, var(--film-bg) 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--film-accent) 22%, transparent);
+  transform: translate(calc(cos(var(--orbit-angle, 0rad)) * 20px), calc(sin(var(--orbit-angle, 0rad)) * 16px));
+}
+[data-menu-layout=orbit] .chapterButton[data-front=true] .chapterLabel {
+  color: var(--film-accent-soft); background: color-mix(in srgb, var(--film-accent) 16%, var(--film-bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--film-accent) 55%, transparent);
+}
 .chapterButton[aria-current] { color: var(--film-accent-soft); }
 .chapterButton[aria-current] .hexTile { transform: translateY(-3px) translateZ(22px); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--film-accent) 25%, transparent)); }
 .chapterButton[aria-current] .hexFace { fill: color-mix(in srgb, var(--film-accent) 16%, transparent); stroke: var(--film-accent); }
@@ -125,3 +144,4 @@
   .hexTile, .hexFace, .hexAccent { transition: none; }
   .chapterButton[aria-current] .hexTile, .chapterButton:hover:not(:disabled) .hexTile, .chapterButton:focus-visible .hexTile { transform: none; }
 }
+:global(html[data-film-perf=low]) .dockSettings { backdrop-filter:none; }

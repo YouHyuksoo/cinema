@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   } catch { return Response.json({ error: '질문을 확인해 주세요.' }, { status: 400 }); }
   const parsed = ChatBody.safeParse(raw);
   if (!parsed.success) return Response.json({ error: '질문은 1~1200자로 입력해 주세요.' }, { status: 400 });
-  const local = resolveJarvisCommand(parsed.data.message);
+  const local = parsed.data.analysisOnly ? null : resolveJarvisCommand(parsed.data.message);
   if (local) return Response.json(local);
   if (!openAiConfigured()) return Response.json({ source: 'unavailable', reply: 'AI 키가 설정되지 않았습니다. 큐브 메뉴의 AI 설정에서 프로바이더와 키를 저장하면 자유 대화를 쓸 수 있습니다. 현장 요약과 연출 열기는 지금도 사용할 수 있습니다.' });
   try { return Response.json(await answerWithOpenAi(parsed.data, request.signal)); }

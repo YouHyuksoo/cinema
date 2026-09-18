@@ -1,5 +1,6 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { type PlaybackMode } from './filmProgram';
 import type { FilmPlayback } from './useFilmPlayback';
 import { FilmTextureControls } from './FilmTextureControls';
@@ -11,6 +12,7 @@ import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import { SelectField } from './FilmFields';
 import { FilmCenterControls } from './FilmCenterControls';
 import { MENU_LAYOUTS } from './filmMenuRing';
+import { PERFORMANCE_MODES, performancePreference } from './filmPerformanceMode';
 import styles from './film.module.css';
 import { PLAYBACK_RATE_OPTIONS } from './playbackRates';
 
@@ -40,6 +42,17 @@ function ThemeFields({ player }: { player: FilmPlayback }) {
   </>;
 }
 
+/** Slow machines spend their frames on the corner instruments; this drops their continuous decoration. */
+function PerformanceField() {
+  const mode = useSyncExternalStore(performancePreference.subscribe, performancePreference.getSnapshot, performancePreference.getServerSnapshot);
+  return <div className={styles.textureRow}>
+    <SelectField label="성능 모드" value={mode} options={PERFORMANCE_MODES} onChange={performancePreference.set} />
+    <span className={styles.textureDescription}>{mode === 'low' ? '모서리 터빈·구체의 상시 회전과 장식 효과를 끕니다'
+      : mode === 'full' ? '기기 성능과 무관하게 모든 연출 효과를 유지합니다'
+      : '기기 사양과 실제 프레임 부담을 보고 자동으로 정합니다'}</span>
+  </div>;
+}
+
 function SceneFields({ player, camera }: { player: FilmPlayback; camera: FilmCameraMode }) {
   const { chapter, localTime } = player.position;
   const title = chapter.id === 'machine' ? MACHINE_PRESENTATIONS[player.machineSubject].title : chapter.title;
@@ -56,6 +69,7 @@ function SceneFields({ player, camera }: { player: FilmPlayback; camera: FilmCam
         <SelectField label="메뉴 펼침 방식" value={player.menuLayout ?? 'dock'} options={MENU_LAYOUTS} disabled={!player.ready} onChange={player.changeMenuLayout} />
         <span className={styles.textureDescription}>{(player.menuLayout ?? 'dock') === 'orbit' ? '구체가 화면 안쪽으로 나와 둘레에 장면 링을 펼칩니다' : '구체가 하단 3D 링으로 펼쳐집니다'}</span>
       </div>
+      <PerformanceField />
       {!camera.preview && chapter.id === 'machine' && <FilmMachineControls subject={player.machineSubject}
         disabled={!player.ready} onChange={player.changeMachineSubject} />}
       {!camera.preview && chapter.id === 'pie' && (

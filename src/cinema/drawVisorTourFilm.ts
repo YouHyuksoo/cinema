@@ -30,7 +30,7 @@ export function drawVisorTourFilm(ctx: CanvasRenderingContext2D, width: number, 
     drawVisorReadout(ctx,fonts,{kind:stop.kind,x,y,time:state.localTime-6,opacity:presence*readout,heat,equipmentLabel:label});
   }
   filmText(ctx,fonts,'VISOR / SMT FACTORY',65,72,17,presence*.9,true);
-  filmText(ctx,fonts,'05 LINES / 40 MACHINES / DEMO',65,95,10,presence*.6,true);
+  filmText(ctx,fonts,state.overview > 0 ? 'BIRD VIEW / 05 LINES / 40 MACHINES / 360°' : '05 LINES / 40 MACHINES / DEMO',65,95,10,presence*.6,true);
   SMT_FACTORY_STOPS.forEach((item,i)=>filmText(ctx,fonts,`LINE ${String(item.line).padStart(2,'0')} · ${item.title}`,235+i*310,663,12,
     presence*(state.index===i?.95:.38),false,'left',signalColor(state.index===i?heat:0,1)));
 }

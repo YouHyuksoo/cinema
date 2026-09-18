@@ -1,3 +1,5 @@
+import { drawMounterTransport } from './components/drawMounterTransport';
+import { drawMounterLockOn } from './components/drawMounterLockOn';
 import { drawMounterCabinet } from './components/drawMounterCabinet';
 import { drawChartStage } from './drawChartStage';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './filmDrawing';
@@ -14,20 +16,26 @@ export function drawMounterAnalysisFilm(ctx: CanvasRenderingContext2D, width: nu
   const reveal = smooth(.35, 1.6, time) * (1 - smooth(25.5, 28, time));
 
   filmText(ctx, fonts, state.name, 72, 145, 20, reveal, true);
-  filmText(ctx, fonts, 'PCB FLOW  →  MOUNTER 01  →  02  →  03  →  04  →  05', 72, 170, 10, reveal * .58, true);
+  filmText(ctx, fonts, `PCB FLOW  →  ${state.mounters.map((_, index) => String(index + 1).padStart(2, '0')).join('  →  ')}`, 72, 170, 10, reveal * .58, true);
   if (!active) {
     filmText(ctx, fonts, '마운터 데이터 대기', 640, 380, 17, reveal, true, 'center');
     return;
   }
 
-  drawConveyor(ctx, tour.focus, state.mounters.length, time, reveal);
+  ctx.save(); ctx.globalAlpha = reveal;
+  drawMounterTransport(ctx, tour.focus, state.mounters.length, time); ctx.restore();
   state.mounters.forEach((mounter, index) => {
     const x = 640 + (index - tour.focus) * 350;
     const distance = Math.abs(index - tour.focus);
     if (x < -230 || x > 1510) return;
-    drawMachine(ctx, fonts, x, 345, time, index, Math.max(.55, 1 - distance * .16), reveal * Math.max(.22, 1 - distance * .34), index === tour.activeIndex, mounter.label);
+    drawMachine(ctx, fonts, x, 345, time, index, 1, reveal * Math.max(.45, 1 - distance * .2), index === tour.activeIndex, mounter.label, () => {
+      ctx.save(); ctx.translate(-x, -345);
+      drawMounterTransport(ctx, tour.focus, state.mounters.length, time); ctx.restore();
+    });
   });
 
+  drawMounterLockOn(ctx, fonts, 640 + (tour.activeIndex - tour.focus) * 350,
+    Math.abs(tour.activeIndex - tour.focus), time, reveal, tour.activeIndex);
   const alarm = active.metrics.length - active.normal;
   filmText(ctx, fonts, `${String(tour.activeIndex + 1).padStart(2, '0')} / ${String(state.mounters.length).padStart(2, '0')}`, 1200, 145, 12, reveal, true, 'right');
   filmText(ctx, fonts, active.label, 1200, 169, 16, reveal, true, 'right');
@@ -48,39 +56,10 @@ export function drawMounterAnalysisFilm(ctx: CanvasRenderingContext2D, width: nu
   ctx.restore();
 }
 
-function drawConveyor(ctx: CanvasRenderingContext2D, focus: number, count: number, time: number, alpha: number) {
-  const camera = focus * 350;
-  ctx.save(); ctx.globalAlpha = alpha;
-  ctx.fillStyle = 'rgba(7,20,27,.9)'; ctx.fillRect(0, 445, 1280, 58);
-  ctx.strokeStyle = signalColor(0, .38); ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, 451); ctx.lineTo(1280, 451); ctx.moveTo(0, 495); ctx.lineTo(1280, 495); ctx.stroke();
-  for (let x = -30 - ((time * 72) % 42); x < 1310; x += 42) {
-    ctx.strokeStyle = signalColor(0, .12); ctx.beginPath(); ctx.moveTo(x, 453); ctx.lineTo(x + 18, 493); ctx.stroke();
-  }
-  const worldLength = Math.max(350, (count - 1) * 350 + 460);
-  for (let pcb = 0; pcb < 7; pcb++) {
-    const worldX = ((time * 88 + pcb * 265) % worldLength) - 180;
-    const x = 640 + worldX - camera;
-    if (x < -90 || x > 1370) continue;
-    drawPcb(ctx, x, 474, .78 + Math.cos((x - 640) / 640) * .08);
-  }
-  ctx.restore();
-}
-
-function drawPcb(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.transform(1, -.04, -.18, .68, 0, 0);
-  ctx.fillStyle = 'rgba(12,92,73,.94)'; ctx.fillRect(-58, -31, 116, 62);
-  ctx.strokeStyle = '#77f4c9'; ctx.lineWidth = 1.5; ctx.strokeRect(-58, -31, 116, 62);
-  for (let row = 0; row < 2; row++) for (let col = 0; col < 5; col++) {
-    ctx.fillStyle = (row + col) % 3 ? '#13282c' : '#d0e4cf'; ctx.fillRect(-45 + col * 20, -20 + row * 26, 12, 8);
-  }
-  ctx.fillStyle = signalColor(0, .8); ctx.fillRect(-50, 22, 100, 2); ctx.restore();
-}
-
 function drawMachine(ctx: CanvasRenderingContext2D, fonts: FilmFonts, x: number, y: number, time: number, index: number,
-  scale: number, alpha: number, selected: boolean, label: string) {
+  scale: number, alpha: number, selected: boolean, label: string, transport: () => void) {
   ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(scale, scale);
-  drawMounterCabinet(ctx, time, index);
+  drawMounterCabinet(ctx, time, index, transport);
   ctx.restore();
   filmText(ctx, fonts, label, x, y + 160 * scale, selected ? 13 : 10, alpha, true, 'center', selected ? signalColor(0, 1) : signalColor(0, .7));
 }

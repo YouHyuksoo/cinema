@@ -1,8 +1,8 @@
 import { JarvisMiniDial } from './JarvisHoloGauge';
-import { jarvisMainData as data } from './jarvisMainData';
+import type { HatcheryMainData } from './jarvisMainData';
 import styles from './jarvisStream.module.css';
 
-export function JarvisChannelDials() {
+export function JarvisChannelDials({data}:{data:HatcheryMainData}) {
   const { energy, process, bottlenecks, quality, qualitySource, inspection } = data;
   const production = energy.production.value / energy.production.capacity;
   const power = energy.power.value / energy.power.capacity;

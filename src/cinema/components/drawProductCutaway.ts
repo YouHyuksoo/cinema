@@ -5,6 +5,13 @@ import { productCylinderPoint, productZoneAnchor, type ProductInspectionState } 
 type Project = (point: HoloPoint) => HoloProjectedPoint;
 interface Facet { points: HoloProjectedPoint[]; fill: string; stroke: string; width: number; depth: number }
 
+// The product is translucent and continuously moving, so excessive radial subdivision is
+// mostly overdraw. These counts keep the silhouette round while bounding per-frame facets.
+const SMALL_CYLINDER_SEGMENTS = 8;
+const LARGE_CYLINDER_SEGMENTS = 10;
+const BEARING_BALL_SEGMENTS = 8;
+const SCAN_RING_SEGMENTS = 36;
+
 /** A cutaway solid built from cylinders, annular end faces and a displaced upper shell. */
 export function drawProductCutaway(ctx: CanvasRenderingContext2D, project: Project,
   state: ProductInspectionState, selectedHeat: number) {
@@ -16,16 +23,19 @@ export function drawProductCutaway(ctx: CanvasRenderingContext2D, project: Proje
       fill: signalColor(heat, opacity * light), stroke: signalColor(heat, edge), width: .65 });
   };
   const cylinder = (from: number, to: number, outer: number, inner: number, heat: number, opacity: number,
-    start = 0, end = Math.PI * 2, lift = 0, edges = .14) => {
-    const radialSegments = outer < 30 ? 24 : 36;
+    start = 0, end = Math.PI * 2, lift = 0, edges = .14, endFaces = true) => {
+    const radialSegments = outer < 30 ? SMALL_CYLINDER_SEGMENTS : LARGE_CYLINDER_SEGMENTS;
     const count = Math.max(4, Math.ceil((end - start) / (Math.PI * 2) * radialSegments));
     const p = (x: number, radius: number, angle: number) => productCylinderPoint(x, radius, angle, lift);
     for (let step = 0; step < count; step++) {
       const a = start + (end - start) * step / count, b = start + (end - start) * (step + 1) / count;
       const light = .42 + .58 * (.5 + .5 * Math.cos(a + state.yaw + .8));
       facet([p(from, outer, a), p(to, outer, a), p(to, outer, b), p(from, outer, b)], heat, opacity, light, edges * .25);
-      for (const x of [from, to]) {
-        facet([p(x, inner, a), p(x, outer, a), p(x, outer, b), p(x, inner, b)], heat, opacity * 1.5, light, edges * .7);
+      if (endFaces) {
+        for (let face = 0; face < 2; face++) {
+          const x = face === 0 ? from : to;
+          facet([p(x, inner, a), p(x, outer, a), p(x, outer, b), p(x, inner, b)], heat, opacity * 1.5, light, edges * .7);
+        }
       }
       if (inner > 0 && end - start < Math.PI * 1.99) {
         facet([p(from, inner, b), p(to, inner, b), p(to, inner, a), p(from, inner, a)], heat, opacity * .4, light, 0);
@@ -40,12 +50,12 @@ export function drawProductCutaway(ctx: CanvasRenderingContext2D, project: Proje
   // The solid shaft remains connected through the floating rotor and bearing assembly.
   cylinder(-242, 247, 15, 0, .08, .5, 0, Math.PI * 2, 0, .22);
   cylinder(205, 243, 20, 15, .02, .42);
-  for (let index = 0; index < 6; index++) cylinder(213 + index * 5, 214 + index * 5, 21, 18, .1, .64);
+  for (let index = 0; index < 6; index++) cylinder(213 + index * 5, 214 + index * 5, 21, 18, .1, .64, 0, Math.PI * 2, 0, .14, false);
   const coilX = -80 - explode * 10;
   cylinder(coilX - 47, coilX + 47, 43, 20, .24, .16);
   for (let index = 0; index < 13; index++) {
     const x = coilX - 45 + index * 7;
-    cylinder(x, x + 3.8, 57, 42, .8, .42, 0, Math.PI * 2, 0, .36);
+    cylinder(x, x + 3.8, 57, 42, .8, .42, 0, Math.PI * 2, 0, .36, false);
   }
   cylinder(-20, 57, 46, 18, .04, .24);
   for (let index = 0; index < 10; index++) {
@@ -60,8 +70,8 @@ export function drawProductCutaway(ctx: CanvasRenderingContext2D, project: Proje
     const angle = index / 10 * Math.PI * 2 + elapsed * .045;
     const p = productCylinderPoint(bearingX, 32, angle);
     const center = project(p);
-    facets.push({ points: Array.from({ length: 10 }, (_, vertex) => {
-      const a = vertex / 10 * Math.PI * 2;
+    facets.push({ points: Array.from({ length: BEARING_BALL_SEGMENTS }, (_, vertex) => {
+      const a = vertex / BEARING_BALL_SEGMENTS * Math.PI * 2;
       return { ...center, x: center.x + Math.cos(a) * 6.5 * center.scale,
         y: center.y + Math.sin(a) * 6.5 * center.scale };
     }), fill: signalColor(.12, .64), stroke: signalColor(0, .58), width: .65, depth: center.depth });
@@ -91,8 +101,8 @@ export function drawProductCutaway(ctx: CanvasRenderingContext2D, project: Proje
   // The scan moves along the same product axis rather than across the entire screen.
   const scanX = -225 + ((elapsed * .115) % 1) * 450;
   ctx.beginPath();
-  for (let step = 0; step <= 64; step++) {
-    const p = project(productCylinderPoint(scanX, 107, step / 64 * Math.PI * 2));
+  for (let step = 0; step <= SCAN_RING_SEGMENTS; step++) {
+    const p = project(productCylinderPoint(scanX, 107, step / SCAN_RING_SEGMENTS * Math.PI * 2));
     if (step) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y);
   }
   ctx.lineWidth = 1.6; ctx.strokeStyle = signalColor(.04, .36); ctx.shadowColor = signalColor(.04, .75);

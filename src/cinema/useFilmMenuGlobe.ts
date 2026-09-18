@@ -6,6 +6,7 @@ import { cornerInstrumentCenter, clampGlobeCenter, drawSoccerSphere, GLOBE_REST_
   type Point } from './filmMenuGlobe';
 import { orbitPose, orbitRadius, ringPose, type MenuLayout } from './filmMenuRing';
 import { shockEnvelope, SHOCK_ATTRIBUTE } from './reactorMenuShock';
+import { applyPerformanceMode, isLowPerformance } from './filmPerformanceMode';
 
 type Phase = 'open' | 'closed' | 'morphing';
 type Input = { menuOpen: boolean; turn: number };
@@ -59,6 +60,14 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     let dragDirty = false;
     // Idle-cost guards: the sphere rasters only on a new snapped spin, orbit variables publish only on change.
     let rasterSpin = -1, rasterSize = 0, publishedOrbitVars = '';
+    // The folded sphere turns once per thirty seconds. Writing eighteen face transforms on every
+    // animation frame keeps style, layout and raster busy for a motion nobody can see at that rate,
+    // so the idle spin paints on a bounded cadence and only writes values that actually changed.
+    applyPerformanceMode();
+    // Read per frame: the dock's performance select may change the mode while the menu stays mounted.
+    const spinInterval = () => isLowPerformance() ? 1000 / 8 : 1000 / 24;
+    let spinDrawn = -Infinity;
+    const written = { faces: [] as string[], opacity: [] as string[], button: '', perspective: '' };
     const restScale = () => GLOBE_REST_SCALE;
     let pointer: null | { id: number; origin: Point; center: Point; lastCenter: Point;
       lastTime: number; dragged: boolean; velocity: Point } = null;
@@ -171,8 +180,10 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
     const draw = () => {
       current.forEach((pose, index) => {
         const face = faces.current[index]; if (!face) return;
-        face.style.transform = `translate(-50%,-50%) translate3d(${pose.x}px,${pose.y}px,${pose.z}px) rotateY(${pose.yaw}deg) rotateX(${pose.pitch ?? 0}deg) scale(${pose.scale})`;
-        face.style.opacity = String(pose.opacity);
+        const transform = `translate(-50%,-50%) translate3d(${pose.x}px,${pose.y}px,${pose.z}px) rotateY(${pose.yaw}deg) rotateX(${pose.pitch ?? 0}deg) scale(${pose.scale})`;
+        if (written.faces[index] !== transform) { face.style.transform = transform; written.faces[index] = transform; }
+        const opacity = String(pose.opacity);
+        if (written.opacity[index] !== opacity) { face.style.opacity = opacity; written.opacity[index] = opacity; }
       });
       const spread = mobileSpread();
       const orbitVars = `${globeCenter.x}px ${globeCenter.y}px ${orbitRadius(diameter)}px ${spread.x} ${spread.y}`;
@@ -196,8 +207,10 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         }
       }
       dragDirty = false;
-      overlay.style.perspectiveOrigin = `${perspective.x}px ${perspective.y}px`;
-      button.style.transform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
+      const origin = `${perspective.x}px ${perspective.y}px`;
+      if (written.perspective !== origin) { overlay.style.perspectiveOrigin = origin; written.perspective = origin; }
+      const buttonTransform = `translate3d(${globeCenter.x}px,${globeCenter.y}px,0) translate(-50%,-50%) scale(${sphereScale()})`;
+      if (written.button !== buttonTransform) { button.style.transform = buttonTransform; written.button = buttonTransform; }
     };
     const stopFrame = () => { if (raf) cancelAnimationFrame(raf); raf = 0; previousTime = null; };
     const releaseActivePointer = () => {
@@ -244,11 +257,16 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
         const shockedAt = button.getAttribute(SHOCK_ATTRIBUTE);
         const shock = shockedAt === null ? 0 : shockEnvelope(time - Number(shockedAt));
         angle = (angle + delta * Math.PI * 2 / 30000 * (1 + shock * 95)) % (Math.PI * 2);
+        const moving = shock > 0 || momentum.x !== 0 || momentum.y !== 0;
         if (momentum.x || momentum.y) {
           const next = globeMomentumStep({ center: globeCenter, velocity: momentum }, delta, viewport, diameter * restScale(), false);
           globeCenter = next.center; momentum = next.velocity; rememberedCenter.current = globeCenter;
         }
-        perspective = { ...globeCenter }; current = orbit && input.menuOpen ? targetRing() : globe(); draw();
+        // A shock or a thrown sphere follows the frame rate; the idle turn does not.
+        if (moving || time - spinDrawn >= spinInterval()) {
+          spinDrawn = time;
+          perspective = { ...globeCenter }; current = orbit && input.menuOpen ? targetRing() : globe(); draw();
+        }
       }
       schedule();
     };
@@ -339,12 +357,20 @@ export function useFilmMenuGlobe(menuOpen: boolean, turn: number, count: number,
       const viewportChanged = viewport.width !== window.innerWidth || viewport.height !== window.innerHeight;
       if (viewportChanged) releaseActivePointer();
       measure();
-      if (orbit && viewportChanged) {
-        orbitCenter = orbitCenterFor({ x: viewport.width / 2, y: viewport.height / 2 });
-        if (input.menuOpen) globeCenter = { ...orbitCenter };
-        centerFrom = { ...globeCenter };
-        centerTo = input.menuOpen ? orbitCenter : cornerInstrumentCenter(viewport, 'right');
-        rememberedCenter.current = { ...globeCenter };
+      if (orbit) {
+        if (viewportChanged) orbitCenter = orbitCenterFor({ x: viewport.width / 2, y: viewport.height / 2 });
+        if (input.menuOpen) {
+          // The open ring owns its centre. `measure()` re-docks the globe to its corner, which is right
+          // while it is folded but would drag an open ring (and its eighteen tiles) off screen. The
+          // docked axis is republished on every strip re-measure, not only on a viewport change.
+          globeCenter = { ...orbitCenter };
+          rememberedCenter.current = { ...globeCenter };
+          centerFrom = { ...globeCenter }; centerTo = { ...orbitCenter };
+        } else if (viewportChanged) {
+          centerFrom = { ...globeCenter };
+          centerTo = cornerInstrumentCenter(viewport, 'right');
+          rememberedCenter.current = { ...globeCenter };
+        }
       }
       cacheRing();
       if (currentPhase === 'closed') {

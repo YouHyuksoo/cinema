@@ -9,9 +9,11 @@ import { JarvisMetricInstrument } from './JarvisMetricInstruments';
 import { useDriftScroll } from './useDriftScroll';
 import styles from './jarvisMetricCards.module.css';
 import type { FeedPollSummary } from './feedPolling';
+import { useScreenObject } from './ScreenObjectContext';
 import type { JarvisStreamFocusRequest } from './JarvisStream';
 import type { FilmId } from './filmProgram';
 import type { SceneDataProvenance } from './sceneDataStore';
+import { METRIC_OBJECT_MANIFEST, metricFeedStatus } from './metricObjectManifest';
 
 interface JarvisMetricCardsProps {
   data?: FilmSceneData;
@@ -32,6 +34,29 @@ function JarvisMetricCard({ metric, index, data, feedStatus, provenance, onFocus
     onFocusMetric({ source:cardRef.current, label:metric.label, side:'left', index });
     return true;
   };
+  const manifest = METRIC_OBJECT_MANIFEST[metric.kind];
+  useScreenObject(() => ({
+    id: manifest.id,
+    description: `${metric.label} 상단 지표 카드`,
+    getState: () => metric,
+    presentation: { detailChapter: manifest.detailChapter },
+    bindings: [{
+      feedId: manifest.feedId, sceneKey: manifest.sceneKey, snapshotFields: manifest.snapshotFields, readOnly:true,
+      feedSchema: manifest.feedSchema, getSnapshot: () => data[manifest.sceneKey],
+      getProvenance: () => provenance?.(manifest.sceneKey), getFeedStatus: () => metricFeedStatus(manifest.feedId, feedStatus),
+    }],
+    methods: {
+      focus: { description:'이 카드를 중앙 확대 보기로 엽니다.', execute:() => {
+        if (!focusMetric()) return { ok:false, message:'현재 카드 확대 기능을 사용할 수 없습니다.' };
+        return { ok:true, message:`${metric.label} 카드를 확대했습니다.` };
+      } },
+      openDetail: { description:'이 지표와 연결된 상세 연출을 엽니다.', execute:() => {
+        if (!onChapter) return { ok:false, message:'현재 상세 연출을 열 수 없습니다.' };
+        onChapter(manifest.detailChapter);
+        return { ok:true, message:`${metric.label} 상세 연출을 열었습니다.` };
+      } },
+    },
+  }), [manifest, metric, index, data, feedStatus, provenance, onFocusMetric, onChapter]);
   return <article ref={cardRef} tabIndex={0} role="button" aria-label={`${metric.label} 중앙 확대`}
     onPointerDown={event => { pointerStart.current = { x:event.clientX, y:event.clientY }; }}
     onPointerCancel={() => { pointerStart.current = null; }}
@@ -59,6 +84,12 @@ export function JarvisMetricCards({data=DEFAULT_FILM_SCENE_DATA,feedStatus,prove
   const sourceLabel = feedStatus?.mode === 'server' ? 'FEED' : feedStatus?.mode === 'error' ? 'ERROR' : 'DEMO';
   const { hostRef: stripRef, viewportRef, paused, setPaused } = useDriftScroll({ axis: 'x', speed: 20, resumeMs: 1000, initialHoldMs: 1500 });
   const setAutoScroll = (enabled:boolean) => setPaused(!enabled);
+  useScreenObject(() => ({ id:'metrics', description:'상단 주요 지표 스트립', getState:() => ({ autoScroll:!paused }), methods:{
+    setAutoScroll:{ description:'상단 지표 자동 스크롤을 켜거나 끕니다.', parameters:{enabled:{type:'boolean'}}, execute:args => {
+      if(typeof args.enabled!=='boolean')return {ok:false,message:'enabled 값이 필요합니다.'};
+      setAutoScroll(args.enabled);return {ok:true,message:'상단 지표 스크롤 상태를 변경했습니다.'};
+    } },
+  } }), [paused, setPaused]);
   return <div ref={stripRef} className={styles.strip} role="region" aria-label="상단 주요 지표" data-metric-strip="true">
     <JarvisCubeBayFrame />
     <div className={styles.signalBay} data-signal-bay="true">

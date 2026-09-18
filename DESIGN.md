@@ -405,7 +405,7 @@
 
 - 진입 큐브 네온: hatcheryIntro.module.css에서 면별 pink #ff367c / cyan #28cdff / mint #39ffba / orange #ff983d / ice #d4f5ff / lime #e7ff52를 사용한다. 어두운 면 중심, 밝은 베벨, 면별 발광으로 입체감을 유지한다. 주변 SVG는 다중 분절 링·각도 눈금·회로 연결선과 이동 펄스를 낮은 대비로 배치한다. 장식은 --pass로 함께 사라지고 reduced-motion에서 정지한다. 영향: HatcheryIntro.tsx → hatcheryIntro.module.css. 기존 큐브 섞기·복원·도킹 시간축은 유지한다.
 
-- 진입 첫 페인트: cinema/page.tsx는 인라인 가림 CSS → HatcheryIntro → SignalFilm 순서로 출력한다. 진입 화면이 닫힌 동안 뒤의 main은 opacity:0으로 렌더링·치수 측정을 유지하고, data-online=true가 된 뒤 드러난다. 이미 본 세션 및 reduced-motion 생략은 data-hatchery-intro-seen으로 예외 처리한다. 검증: cinemaHatcheryIntroMarkup.test.ts.
+- 진입 첫 페인트: cinema/page.tsx는 인라인 가림 CSS → HatcheryIntro → SignalFilm 순서로 출력한다. 진입 화면이 닫힌 동안 뒤의 main은 opacity:0으로 렌더링·치수 측정을 유지하고, data-online=true가 된 뒤 드러난다. 이미 본 세션 및 reduced-motion 생략은 data-hatchery-intro-seen으로 예외 처리한다. 인트로 재생 결정은 `HatcheryIntro` 인스턴스의 ref에만 보관해 개발 모드 effect 재실행에서는 유지하고, 관리·AI 페이지에서 브라우저 뒤로가기로 돌아와 새 인스턴스가 생기면 sessionStorage를 다시 확인하여 인트로를 재생하지 않는다. 검증: cinemaHatcheryIntroMarkup.test.ts.
 
 - 진입 도킹 인계: data-hatchery-intro가 존재하는 동안 도킹 큐브 shell은 visibility:hidden으로 치수만 유지한다. 부유·자동 면 회전을 대기하고, 비행 완료로 intro 속성이 제거되는 순간 도킹 큐브를 공개한다. 진입 spin의 잔여 회전은 비행 중 0도로 정렬한다.
 
@@ -447,10 +447,14 @@
 ### 음성·텍스트 설정 명령
 - screenCommands.ts의 SCREEN_SETTINGS를 화면 조작 도구 목록과 값 검증의 공통 기준으로 사용한다. 메뉴·장면·설정창·배경·테마·질감·재생·검사 대상·차트·카메라·음성·AI 모델 및 생성 설정을 조회/변경한다. 옵션은 기존 화면 선택 목록을 재사용한다.
 - 텍스트·브라우저 음성·Realtime 전사는 `docs/standards/command-map.md`의 한 명령 매핑을 공유한다. 장면 17개와 메인 복귀, 장면·터빈·관리 큐브 메뉴, 화면·재생·차트·카메라·장면 직접 조작·음성·AI 설정을 로컬에서 먼저 판정한다. 영향: jarvisCommands.ts / screenCommands.ts → useScreenCommands.ts / useJarvisVoice.ts → useJarvisLocalVoice.ts / jarvisRealtimeSession.ts.
+- 운영자가 조작하는 화면 객체는 `screenObjectRegistry.ts`에 객체 ID·설명·메서드·상태 조회를 등록한다. `ScreenObjectProvider` 아래의 상단 지표, 좌우 스트림, 카드 확대, 신호 감지기, 중앙 리액터, 터빈 메뉴, 관리 큐브, 영상 팝업은 자기 메서드를 직접 게시한다. 재생기·카메라·CCTV·3D 설비·온습도 컨트롤러도 같은 레지스트리 어댑터를 사용한다. `useScreenCommands`는 기존 `control_screen` key를 객체 메서드 호출로 변환하며 DOM selector로 버튼을 대신 클릭하지 않는다. `그리고`로 연결된 문장은 검증된 명령 배치로 순서대로 실행한다. Realtime 전사에서 먼저 실행된 명령은 서명과 결과를 보관하여 모델의 동일 tool call이 화면을 두 번 조작하지 않게 한다. 영향: screenCommands.ts → screenObjectRegistry.ts / ScreenObjectContext.tsx → useScreenCommands.ts → 각 화면 객체 / jarvisRealtimeSession.ts.
+- 관리 큐브의 `화면` 타일은 페이지 이동 없이 `ScreenObjectInspector` 모달을 연다. 레지스트리에 등록된 객체의 현재 상태와 메서드를 나열하고, 상단 8개 지표 카드는 `metricObjectManifest.ts`의 단일 매핑으로 피드 ID·장면 키·사용 필드·원본 JSON Schema·현재 스냅샷·출처·피드 상태를 읽기 전용으로 공개한다. 지표 카드의 실행 버튼은 중앙 확대와 연결 상세 연출만 제공하며 피드 데이터 수정은 제공하지 않는다. 모달은 body portal과 main inert를 사용하고 ESC·바깥 클릭·닫기로 종료한 뒤 관리 큐브에 초점을 돌린다. 액션 실행은 모달을 먼저 닫고 다음 프레임에 레지스트리 메서드를 호출하며, 카드 확대를 닫거나 상세 연출에서 메인으로 복귀하면 이전 선택 객체를 유지한 관리창을 다시 연다. 영향: SignalFilm.tsx → FilmMenuCubeView.tsx / ScreenObjectInspector.tsx → screenObjectRegistry.ts / ScreenObjectContext.tsx → JarvisMain.tsx / JarvisMainHeader.tsx / JarvisMetricCards.tsx → metricObjectManifest.ts / domainFeeds.ts.
+- 관리 큐브의 `AI` 타일은 `/cinema/ai`로 라우팅하지 않고 `HatcheryAiOverlay`를 body portal로 연다. 메인 `SignalFilm`과 음성·재생·화면 객체 상태는 마운트된 채 유지하며, `화면으로`·닫기·ESC는 오버레이만 닫고 저장된 AI 상태를 다시 읽는다. `/cinema/ai` 독립 주소는 직접 접속용으로 유지한다. 영향: SignalFilm.tsx → admin/HatcheryAiOverlay.tsx → admin/HatcheryAiSettings.tsx → useJarvisVoice.ts.
 - SignalFilm → useScreenCommands → useFilmTurbine → useJarvisVoice가 실제 화면 setter를 연결한다. 설정 변경 후 관측한 값을 비교하여 실패를 성공으로 응답하지 않는다. 카메라 연결은 전역 영상 팝업을 열고 브라우저 권한 결과를 확인한다.
+- 화면 재생 중 ESC는 `useFilmEscapeToHome`의 전역 capture 단축키로 처리한다. 키 반복은 무시하고 재생·음성·카메라·CCTV·3D 설비·온습도 상호작용을 중지하며, 설정·작업 메뉴·터빈·큐브·영상 팝업·카드 확대를 닫고 메인 화면으로 복귀한다. 장면 내부 ESC 정리 이벤트는 계속 전파해 진행 중인 시각 효과도 취소한다. 영향: useFilmEscapeToHome.ts → SignalFilm.tsx → screenObjectRegistry.ts / useScreenCommands.ts.
 - 텍스트: useJarvisLocalVoice의 명확한 로컬 명령 → 공통 executor. 자연어는 서버 openai.ts의 control_screen 도구(타 제공자는 검증된 JSON 명령) → 브라우저 executor. 실제 결과로 응답을 대체한다.
 - 실시간 음성: jarvisRealtimeSession의 control_screen → 동일 executor → function_call_output → 후속 응답. 모델/음성 방식 변경은 현재 세션을 유지하고 다음 연결부터 적용한다. 시스템 프롬프트 및 추가 지시도 서버 검증·저장 경로를 이용한다. API 키·비밀번호는 이 도구 카탈로그에 포함하지 않는다.
-- 받아쓰기: useInputDictation은 브라우저 음성 인식 결과만 입력창에 추가한다. AI 호출/자동 제출은 없고, AI 대화 중에는 중복 마이크 사용을 막는다.
+ - 로컬 음성 입력: useInputDictation은 한 번의 발화를 브라우저 음성 인식으로 받아 입력창에 반영하고, 브라우저가 침묵으로 발화 종료를 확정하면 현재 입력을 한 번 자동 전송한다. 중간 결과·빈 입력·수동 중지·오류·AI 답변 중에는 전송하지 않으며 답변이 시작되면 인식을 중단해 합성 음성이 다시 입력되지 않게 한다.
 - 검증: cinemaScreenCommands / cinemaScreenExecution / cinemaOpenAi / cinemaRealtimeSession 테스트. 새 설정은 카탈로그·실제 setter·상태 snapshot·검증을 함께 추가한다.
 
 ### 에너지 연출 배경과 숫자 표현
@@ -476,20 +480,30 @@
 - 터빈의 브라우저 AI 음성 대화와 중앙 받아쓰기는 동시에 마이크를 열지 않는다. AI 음성 대화가 활성화된 경우 중앙 마이크는 해당 대화를 먼저 종료한다.
 - 접힌 터빈은 호버나 키보드 포커스로 펼치지 않는다. 호버는 중심 위치를 유지한 채 약 10% 확대하고 표면 광택과 중심 펄스를 표시하며, 투명한 허브 클릭 영역을 넓혀 쉽게 누를 수 있게 한다. 메뉴는 중앙 허브 클릭으로만 펼치거나 접는다.
 - 음성 명령이나 텍스트 모델 응답이 연출 장면을 열어도 현재 Realtime 또는 브라우저 음성 세션을 종료하지 않는다. `보여줘`, `열어줘`, `이동`, `전환`, `틀어줘`, `재생`을 모든 장면의 공통 이동 표현으로 해석한다. 안내 음성이 끝난 뒤 장면만 전환하고 같은 연결에서 듣기를 계속하며, 사용자의 명시적 종료·로그아웃·페이지 이탈 때만 세션을 닫는다. Realtime의 장면 안내 응답 ID가 정해진 뒤 들어오는 `input_audio_buffer.speech_started`는 출력 음성의 마이크 재감지일 수 있으므로 대기 장면을 지우지 않는다. 실제 응답 중단의 `output_audio_buffer.cleared`에서만 대기 장면을 취소한다.
-- 음성 연결이 활성화된 채 연출 장면으로 이동하면 좌측 상단 큐브 자리에 구체 메뉴와 같은 지름의 소형 아크리액터를 표시한다. 메인 화면과 동일한 audioRef를 사용해 연결·듣기·생각·응답 상태와 실제 음성 반응을 이어서 보여주며, 소형 리액터를 누르면 음성 연결을 종료한다.
+- 모든 연출 장면은 좌측 상단 큐브 자리에 구체 메뉴와 같은 지름의 소형 아크리액터를 항상 표시한다. 음성이 꺼져 있으면 AI 설정의 `voiceMode`에 따라 `AI 음성 대기` 또는 `로컬 음성 대기`로 표시하고, 메인 화면에서 켠 채 진입하면 동일한 audioRef와 세션을 유지해 연결·듣기·생각·응답 상태를 이어서 보여준다. 꺼진 채 진입한 경우 터빈의 `AI대화`를 누르면 현재 연출 화면을 유지한 채 저장된 방식(`realtime`은 OpenAI Realtime, `browser`는 브라우저 음성인식)을 시작한다. Realtime을 선택했지만 OpenAI 키가 없으면 로컬 방식으로 임의 전환하지 않고 오류를 표시한다. 활성 소형 리액터를 누르면 음성 연결을 종료한다.
 
 ### 연출 렌더링 비용 관리 (2026-09-13)
 
+- 전체 17개 연출 성능 점검(2026-09-14): 동일 브라우저·동일 뷰포트에서 각 장면을 명령으로 직접 열어 초반 프레임 간격을 비교하고, 투영 표면 캐시·오프스크린 캔버스·RAF·타이머·이벤트 수명을 함께 점검한다. 제품 내부 검사는 투명 원통을 24/36분할해 매 프레임 수천 면을 칠하던 비용을 줄여, 외곽 실루엣은 유지하되 소형/대형 원통을 8/10분할하고 반복 권선·축 홈의 보이지 않는 끝면을 생략한다. 베어링 볼과 검사 링도 표시 크기에 맞는 분할 수를 사용하며 제품 장면만 최대 30fps로 그린다. 장면 시계와 음성·입력 처리는 계속 진행한다. 영향: useFilmPlayback.ts → filmFrameGate.ts; drawProductInspectionFilm.ts → components/drawProductCutaway.ts. 검증: cinemaFilmFrameGate / cinemaProductInspection 테스트와 17개 장면 브라우저 순회, 제품 장면 초반·후반 rAF 비교.
 - 고온 순찰 완만한 비행(2026-09-14, 아래 경로 설명 대체): 센서를 바라보며 800만큼 후진하는 동안 높이 220에서 460으로 완만하게 상승한다. 다음 구역까지 수평 이동을 계속하며 높이 100의 낮은 사인 곡선을 더해 진입한다. 제자리 상승·하강 구간을 없애고 고온 순서·측면 정지·91초 길이는 유지한다. 영향: environmentHeatmapProjection.ts. 검증: 투영 테스트 12개 통과(후진 상승 기울기·전 구간 설비 충돌·경계 연속성 포함).
+- 바이저 3D 설비 표면 캐시는 같은 프레임의 5개 라인에서만 가장 큰 요청 해상도를 공유하고, 다음 프레임에는 현재 투영 크기로 논리 샘플 영역을 다시 낮춘다. 한 번 접근한 설비의 최대 해상도를 이후 프레임에 영구 유지하지 않는다. 설비 내부의 컨베이어·팬·헤드 애니메이션 텍스처는 12fps로 갱신하고 카메라·캐비닛 원근 이동은 화면 프레임률을 유지한다. 자동 순회와 수동 선택에서는 선택 설비 하나만 메시 기반 상세 표면을 합성하며 나머지 39대는 기존 3D 캐비닛 면·윤곽·라벨을 그린다. 영향: components/drawSmtFactory.ts → components/drawProjectedFilmSurface.ts / components/projectedSurfaceMesh.ts. 검증: cinemaProjectedSurface.test.ts와 바이저 초기·후반 rAF 측정.
 - 고온 순찰 후진 동작(2026-09-14): 각 센서에서 진입 1.4초 → 측면 확인 2.2초 → 센서를 바라보며 통로 뒤로 400만큼 후진 1.2초를 반복한다. 후진이 끝난 위치에서만 다음 구역으로 이동하며 마지막 센서도 후진 후 상공으로 복귀한다. 총 길이는 91초(온습도 타임라인·페이드·진행선 함께 변경)로 늘려 기존 확인 시간을 유지한다. 각 정지점의 후진 방향·거리·현재 센서 유지와 구역 사이 연속성을 검사하며 전체 진행선 변경에 따른 호출 지문을 갱신한다.
 - 고온 순찰의 측면 진입(2026-09-14): 센서 정지 카메라는 높이 1000의 조감 대신 통로 높이 220, 센서 옆 145·뒤 420 위치에서 약 26도 하향으로 바라본다. 구역 간 이동은 먼저 높이 420으로 상승해 설비를 넘고 목적지 통로로 하강한다. 상공에서 최초 진입·마지막 복귀는 연속 보간한다. 고온 순서·센서 중앙 정렬·2.2초 정지·79초 길이는 유지한다. 실제 측면 화면과 전 구간의 설비 충돌 회피·연속성 검사를 확인한다.
 - 온습도 고온 순찰(2026-09-14): environmentHeatmapProjection은 실제 rooms의 유효 온도를 내림차순으로 방문한다. 같은 온도는 설치 순서, 미확인값은 순찰 제외이며 전체 센서 표시는 유지한다. 38초까지 상공 조망 후 구역마다 1.4초 이동·2.2초 정지, 마지막 구역 뒤 3초 상공 복귀·2초 페이드로 구성한다. 10개 구역 기준 온습도 장면은 79초이며 ENVIRONMENT_TIMING과 filmProgram이 같은 길이를 사용한다. drawEnvironmentHeatmap은 방문 순번·구역명·온도를 표시하고 현재 센서의 라벨 우선 배치·링 강조를 적용한다. 기존 고정 5지점 비행을 대체하며 지면 합성 영역 제한은 유지한다. 검증: 내림차순·동률·누락·빈 데이터·센서 중앙 정렬·정지 구간·연속 경계·역방향 탐색 및 브라우저 실제 온도 표시. 전체 타임라인 길이 변경으로 모든 장면의 진행선/구간 눈금 좌표가 달라져 호출 지문 51개를 갱신했다.
+- 온습도 버드뷰 합성 영역 제한(2026-09-14): drawEnvironmentHeatmap의 실제 클립을 drawEnvironmentSpace → drawEnvironmentThermalGround / drawSmtFactory에 전달한다. filmCanvasClip은 현재 DPR·이동·회전을 적용한 픽셀 경계를 계산한다. 열지도는 이 영역만 같은 픽셀 밀도로 합성하고 삼각형마다 원본의 해당 셀+보간 여백만 복사한다. 설비의 보수적 화면 밖 판정에도 같은 경계를 사용한다. 원근 격자·센서값·카메라 경로는 유지한다. 1920×1080 네이티브 Canvas의 동일 38/42/46초 구간 비교에서 평균 그리기 비용은 27.23→20.51ms, 54.43→38.55ms, 18.99→14.84ms였다(약 22~29% 감소). 이는 개별 측정 환경의 결과이며 전체 화면의 60fps 보장은 아니다. 화면 비교와 clip/온습도/투영/모바일/호출 지문 검사를 사용한다.
+- 터빈 확대 보정(2026-09-14): FilmTurbineMenu와 filmTurbineMenu.module.css는 접힘/펼침 모두 300×300 배치 상자를 유지하고 이동·확대만 transform으로 전환한다. 크기·left/top·margin을 상태마다 교체하지 않아 첫 프레임의 중심 이동을 없앤다. 회전각 CSS 변수의 매 프레임 상속 대신 로터와 legendContent에 서로 반대 방향의 transform 애니메이션을 적용하고 호버·포커스·모바일 펼침 시 함께 정지한다. 전체 터빈에 걸던 호버 필터는 제거하고 유리 광택·허브 반응은 유지한다. 실화면에서 확대 전후 배치 좌표 유지, 첫 프레임 중심 유지와 모바일 화면 경계를 확인했다. 기존 전체 장면 FPS 한계를 해결했다는 의미는 아니다.
 - 축소 구체의 이전 전체 지름 래스터 규칙을 대체한다. CSS 크기·회전·클릭 좌표는 유지하고 공 비트맵만 실제 표시 지름×DPR에 맞춰 32px 단위로 할당한다. FilmDock의 전달 콜백을 고정해 재생 위치 갱신이 메모화된 FilmChapterMenu를 다시 그리지 않도록 한다.
 - useDriftScroll은 범위를 매 프레임 읽지 않고 크기·내용 변경 시 갱신한다. 위치 변경 전에 읽어 강제 레이아웃을 줄인다.
 - filmTexture의 흐린 bloom 레이어만 최대 30Hz로 갱신한다. 본 장면과 합성은 RAF를 유지하며 탐색·크기·테마 변경은 캐시를 무효화한다. 타임스탬프 없는 렌더 호출은 기존 결정적 동작을 유지한다.
 - filmRenderBudget → useFilmPlayback: 불투명 캔버스와 최대 4K 픽셀 예산을 사용한다. 지속적인 그리기 부담에만 내부 해상도를 12.5%씩, 기본의 75%까지 줄이고 여유가 4초 지속되면 복원한다. CSS 좌표·재생 속도·선택 좌표는 유지한다.
 - drawSmtFactory → drawProjectedFilmSurface → projectedSurfaceMesh: 화면 밖 설비를 보수적으로 제외한다. 원근 면은 화면상 중간점 오차 0.5px를 기준으로 최대 12×8까지 분할하며 래스터 크기는 투영 크기에 맞춘다. 같은 설비 그림은 시간·테마·상세 크기가 같을 때 라인 간 재사용하며 최대 24개로 제한한다. 삼각형마다 해당 셀과 보간 여백만 복사하고 투명 경계의 격리 합성은 유지한다.
 - 검증: cinemaProjectedSurface/ProjectedSurfaceMesh/FilmRenderBudget/FilmTextureBloom/MenuGlobeIdle/VoiceCore 단위 검사. 화면 밖 그리기 제외로 달라진 visor 호출 지문 3개를 갱신했다. 호출 지문은 실제 화질·FPS 증명이 아니다. 타입 검사와 프로덕션 빌드는 통과했다. 전체 단위 검사에는 기존 CenterTheme 1건, ScreenExecution 2건, StreamCardFocus 1건의 실패가 남아 있다.
+- 저사양 입력 반응(2026-09-16): 연출 화면의 버튼 지연은 해상도가 아니라 주 스레드 점유가 원인이다. 무거운 장면의 한 프레임 그리기가 프레임 예산을 넘으면 RAF가 곧바로 다음 그리기를 예약해 유휴 구간이 사라지고, 클릭은 그리기 뒤에서 대기한 다음 React 커밋까지 한 프레임 더 기다린다. 세 가지 규칙으로 유휴 구간을 되돌린다. (1) filmRenderBudget은 해상도(12.5%씩, 기본 75%까지, 바닥에서 4창 더 버티면 50%까지)와 별개로 그리기 주기를 60 → 30 → 20 → 15fps로 낮추고, 여유가 4창 지속되면 해상도를 먼저 복원한 뒤 주기를 푼다. 주기가 걸린 상태의 프레임 간격은 해당 목표치와 비교한다. `hardwareConcurrency ≤ 4` 또는 `deviceMemory ≤ 4`인 기기는 30fps에서 시작한다. (2) useFilmPlayback은 pointerdown·keydown(자동 반복 제외) 이후 90ms 동안 장면·질감 패스를 건너뛰어 입력 처리·React 커밋·페인트를 먼저 보낸다. (3) 모달이 main을 inert로 만든 동안에는 그리지 않는다. 장면 시계·재생 속도·선택 좌표·CSS 배치는 그대로이며 예산 표본의 프레임 간격은 실제로 그린 프레임 기준으로 잰다. 영향: filmRenderBudget.ts → useFilmPlayback.ts. 검증: cinemaFilmRenderBudget.test.ts. 실측(프로덕션 빌드, 1440×900, 바이저 3D, 16코어 중 14개를 점유한 CPU 부하 상태 10초): 롱태스크 8건·총 블로킹 233ms·최대 98ms → 0건·0ms. 부하 없는 빠른 PC에서는 주기 제한이 거의 개입하지 않아 기존과 같은 반응을 유지한다.
+- 펼친 구체 둘레 링 정리(2026-09-16): **안·밖 두 반지름의 톱니 배치는 그대로 둔다**(`ORBIT_INNER_SCALE = .74`). 한 겹 원은 18개를 않기에 너무 넓어진다(2026-09-16 사용자 결정). 바꾸는 것은 네 가지다. (1) 타일은 **불투명**이다: 거리별 투명도 램프를 없애고(`opacity: 1`) 육각형 면을 배경색으로 채워 뒷화면이 비치지 않게 한다. (2) 구체 바깥에 곹쳐 그리던 **보조 원(액센트 서클)을 없앵다**. 어두운 딕만 남기고 조금 더 진하게 깔깔한다. (3) 타일과 반지름을 조금 키우고(패드 48→62px, 배율 1.02→1.14) **모든 타일에 이름표를 유지**한다. (4) 이름표는 불투명 판 위에 올리고 각 타일의 `--orbit-angle` 방향으로 바깥으로 밀어, 안쪽 톱니의 글자가 바깥 육각형에 가려 읽히지 않던 문제를 없앵다. 안쪽 톱니가 바깥보다 위로 쌓이고 앞쁳 타일이 맨 위다. 하단 링(dock) 레이아웃은 그대로다. 영향: filmMenuRing.ts / filmMenuRing.module.css / film.module.css. 검증: cinemaMenuRing.test.ts.
+- 펼친 링의 중심 고정(2026-09-16): 상단 스트립이 다시 측정되면 `--hatchery-signal-cx`가 다시 게시되고, 그 감시자가 뷰포트 변경 없는 resize를 불렀다. 그 경로에서 `measure()`가 구체를 모서리로 다시 도킹시켜, 이미 펼쳐 있던 링과 18개 타일이 우하단 구석으로 밀려나 절반이 잘렸다. 이제 펼친 상태에서는 뷰포트 변경 여부와 무관하게 링 중심을 다시 주장한다. 접힌 상태의 모서리 도킹과 드래그 기억은 그대로다. 검증: cinemaMenuGlobeAnchor.test.ts.
+- 모서리 계기의 상시 비용(2026-09-16): 캔버스가 멈춰 있는 장면에서도 버벅거리는 원인은 도크와 같은 평면의 메뉴다. 측정에서 터빈 메뉴를 숨기는 것만으로 같은 조건의 페이지가 25fps→53fps(프레임 중앙값 35.2ms→16.7ms, 50ms 초과 프레임 35개→5개)가 됐다. 접힌 로터는 100초에 한 바퀴 돌면서 `preserve-3d` 서브트리 안의 블레이드마다 `drop-shadow` 필터와 `mix-blend-mode:screen`을 가지므로 매 프레임 재래스터를 강제한다. 접힌 상태(약 1/5 크기)에서는 그 장식이 보이지 않으므로 필터·블렌드·그림자 블러를 모두 끌다. 펼친 상태의 유리 질감은 그대로다. 구체 메뉴는 접힌 상태에서 30초에 한 바퀴 도는 자전 때문에 18개 면의 transform을 매 프레임 썼다. 이제 자전 그리기는 24fps(가볍게 모드 8fps)로 제한하고 값이 바뀜 때만 DOM에 쓴다. 드래그·모멘텀·감전 연출·펼침 전환은 기존 프레임률을 유지한다. 영향: filmTurbineMenu.module.css / useFilmMenuGlobe.ts.
+- 성능 모드(2026-09-16): `filmPerformanceMode.ts`가 `<html data-film-perf>`에 `low`·`full`을 게시하고 CSS와 메뉴 훅이 이것만 본다. 기본값 `auto`는 기기 힌트(`hardwareConcurrency ≤ 4` 또는 `deviceMemory ≤ 4`)와 실측 부담을 함께 본다: 필름 렌더 예산이 그리기 주기를 제한하기 시작하면 `reportRenderPressure`가 low로 내리고, 여유가 돌아오면 다시 풀린다(코어 수만으로는 느린 PC를 놓친다). 사용자는 연출 설정의 `성능 모드`에서 자동·가볍게·최대 품질을 고를 수 있고 선택은 `cinema.performance.v1`에 저장된다. 검증: cinemaFilmPerformanceMode.test.ts.
+- 저사양 장식 세트(2026-09-18): 성능 모드 `low`가 이전에는 터빈 메뉴 회전만 멈췄고, 메인 화면의 나머지 상시 장식은 그대로였다. 저사양 PC에서 비싼 것은 캔버스 해상도가 아니라 매 프레임 다시 래스터되는 필터·그림자다. 규칙: (1) CSS는 `:global(html[data-film-perf=low])`로 지표 카드 부유·SVG 대시 흐름·drop-shadow, 스트림 3D 패널·mask-image·회전 게이지·필터, 채팅 입력 box-shadow 펄스, 접힌 구체의 box-shadow 호흡, 큐브 부유, 청록 패널 스윕, 카드 확대의 blur(16px)와 부유, 모든 backdrop-filter를 끈다. SMIL 회전(신호 감지기)은 CSS로 못 멈추므로 JarvisSignalScanner가 `useLowPerformance()`로 `data-still`을 올린다. (2) 캔버스는 `filmShadowGate.ts`가 컨텍스트 인스턴스의 `shadowBlur` 접근자를 가려 low에서 모든 그림자를 블러 0으로 칠한다(렌더러 30여 곳과 draw-call 지문은 그대로). 질감 패스는 `cheap` 옵션으로 블룸과 그레인 패턴을 건너뛴다. 아크 리액터 유휴 주기는 33 → 66ms. (3) 명시적 `low` 또는 힌트상 저사양 기기는 `prefersLowDetail()`로 필름 캔버스·리액터를 1x 이상 래스터하지 않는다(실측 부담은 해상도에 되먹임되므로 여기서 제외). (4) 실측: filmRenderBudget이 그리기 비용이 6ms 이하인데 프레임 간격이 `max(목표+12ms, 40ms)`를 두 창 연속 넘으면 `pressured`를 올린다(캔버스가 아니라 DOM·합성이 원인이므로 주기는 낮추지 않음). 30Hz 모니터(33ms)는 걸리지 않는다. `reportRenderPressure`는 45초 동안 끈적하게 유지돼 low가 장식을 걷어내자마자 full로 되돌아가 두 세트가 번갈아 깜빡이는 것을 막는다. (5) 모드와 무관하게 스트림 스캔선은 `top` 대신 `background-position`으로 움직여(레이아웃 없이 페인트만) 전체 패널의 매 프레임 레이아웃을 없앴다. 영향: filmPerformanceMode.ts(resolvedPerformance 스토어·useLowPerformance·prefersLowDetail·PRESSURE_HOLD_MS) → filmRenderBudget.ts(lowDetail·pressured) → useFilmPlayback.ts / filmShadowGate.ts / filmTexture.ts → JarvisWave.tsx / JarvisSignalScanner.tsx / JarvisStream.tsx → 각 module.css. 검증: cinemaLowPerformanceDecoration.test.ts, cinemaFilmRenderBudget / cinemaFilmTextureBloom 테스트.
 - 성능 한계: 1920×1080 개발 브라우저에서 온습도·SPC의 일부 구간은 평균 70fps 이상이었으나 복잡한 3D 구간은 계속 60fps 미달이다. 고정 시간대의 네이티브 Canvas 비교에서도 구간별 편차가 커 전체 장면의 60fps 달성을 주장하지 않는다. GPU 개별 면 합성과 패턴 채우기는 실측 이득이 없어 채택하지 않았다.
 
 - 마운터 외관(2026-09-14): 제공 사진의 흰 판금 캐비닛, 넓은 검은 검사창, 붉은 안전 경계선, 전면 피더 뱅크, 하부 점검 도어와 환기구, 우측 조작 기둥·모니터·펜던트 및 상부 타워램프를 Canvas 벡터로 표현한다. 영향: components/drawMounterCabinet.ts → drawMounterAnalysisFilm.ts. 기존 설비 순회와 PCB 컨베이어는 유지한다.
@@ -499,3 +513,32 @@
 - 상단 지표 카드의 클릭·Enter·Space는 객체의 focus 메소드와 같은 중앙 확대 함수를 실행한다. 8px 넘게 드래그하면 클릭 확대를 건너뛴다. 영향: JarvisMetricCards.tsx → JarvisMain.tsx → JarvisCardFocus.tsx.
 
 - 상단 카드 중앙 확대는 중간 크기(최대 폭 720px, 본문 높이 약 300px)로 표시하며 모바일에서도 화면 높이를 강제로 채우지 않는다.
+
+- 장면 전환 시 FilmBriefing을 장면 id로 교체하고 sceneBriefing.ts가 현재 장면과 동일한 데이터 스냅샷으로 화면 브리핑을 작성한다. 메인 화면은 대화 브리핑을 유지한다. 음성 성별은 서버 저장 후 적용하며 연결 중에도 다음 연결용 설정 저장을 허용한다. 메뉴 배치는 pageshow/storage에서 다시 읽는다.
+
+### SPC 다중 측정 대상 동시 분석
+- `spcData.ts`의 SMT·FCT·ICT 시뮬레이션 10개 항목을 기본값으로 사용한다. 규격값은 예시이며 실생산 규격이 아니다.
+- 품질 피드의 선택적 `targets[]`는 id/name/unit/nominal/lsl/usl/cpkTarget/subgroups를 가진다. 배열 순서가 오른쪽 목록과 순회 순서이다. 기존 단일 항목 입력은 그대로 지원하며 빈 targets는 빈 화면으로 표시한다.
+- `spcTour.ts`가 40초 장면 안에 전체 대상을 순회한다. `drawSpcFilm.ts`는 같은 선택 항목으로 Xbar–R, 히스토그램, `drawSpcCapability.ts`의 측정축 기반 평균·목표·LSL/USL·군내 σ 정규 추정 분포를 동시에 그린다. 계산은 객체 수명에 맞춰 캐시하고 새 스냅샷 수신 시 다시 계산한다.
+- 다중 대상은 전체 스냅샷으로 교체한다. 모호한 최상위 부분군 패치는 거부한다. 상위 단일 측정값은 대표 지표용으로 유지한다.
+- 입력 영향 경로: `spcTypes.ts` → `domainFeeds.ts` / `feedMapping.ts` → `feedScenes.ts` → `sceneDataRegistry.ts` → `spcTour.ts` → `drawSpcFilm.ts`.
+
+- 마운터 PCB 경로는 장비 작업 높이의 공유 컨베이어 좌표를 사용한다. 장비 간 구간과 후드 내부가 동일한 PCB 위치를 그리며 캐비닛이 외부 시야를 가린다. 포커싱 장비에는 동일 카메라 좌표의 수렴 모서리 프레임·스캔선·추적/락온 상태를 표시한다.
+
+- 바이저 3D: 마지막 진단 후 46~50초에 버드뷰로 상승, 50~62초에 공장 중심을 기준으로 360도 회전, 63~64초에 종료한다. 장비 면 판정은 실제 카메라 좌표를 사용한다. 수동 탐색은 사용자 카메라를 우선한다.
+
+### OEE 설비종합효율
+- 메뉴 OEE → 가동률·성능·품질 링 수렴 → 설비별 OEE → 계획 시간 기준 유효 생산/정지/속도/불량 손실 분해. 기본 10개 설비 시드, 설비당 6초씩 60초 순회. DB 연결은 추가하지 않는다.
+- 계산: (계획-정지)/계획 × 이상사이클×총수량/(계획-정지) × 양품/총수량. 분모 0과 모순 데이터는 산출 불가로 표시.
+- 영향 경로: oeeData → filmSceneData/sceneDataRegistry → drawOeeFilm → drawSignalFilm; 메뉴 filmProgram/FilmChapterIcon; 음성 jarvisCommands/sceneBriefing; 피드 domainFeeds/feedScenes.
+
+
+- 큐브의 관리/AI는 HatcheryAiOverlay 내부에서 전환한다. SignalFilm은 계속 마운트된 상태를 유지하며 화면으로/닫기/ESC는 오버레이만 닫는다. 독립 관리 URL의 링크와 오버레이 콜백을 구분한다.
+
+### 음성/분석 역할 분리
+- prompt/instructions는 분석모델, voicePrompt/voiceInstructions는 음성모델 전용. 기존 프롬프트는 분석 쪽에 보존한다.
+- 일반 대화는 Realtime이 직접 응답한다. 업무 요청은 delegate_analysis 도구로 전사 원문을 텍스트 분석모델에 전달하고 분석 결과를 읽는다. 음성 세션에는 화면 조작 도구를 노출하지 않는다.
+- 설정 변경은 다음 요청/음성 재연결부터 적용. 실제 마이크 왕복은 별도 사용자 확인이 필요하다.
+
+
+- 음성 직접 조작: realtimeScreenTool이 허용한 화면/재생/메뉴/표시 설정만 control_screen으로 실행한다. 원인 분석과 복합 판단은 delegate_analysis로 위임한다. 함수 호출 ID 중복 방지, 인자 검증, 실패 후 후속 조작 중단, 완료 후 도구 재호출 차단을 적용한다. 조회 후 상대 변경만 추가 도구 호출을 허용한다.

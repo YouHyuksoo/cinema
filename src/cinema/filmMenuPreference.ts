@@ -21,7 +21,18 @@ export function createMenuLayoutPreference(getStorage?: () => PreferenceStorage 
     getServerSnapshot: (): MenuLayout => 'dock',
     subscribe(listener: () => void) {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      const refresh = () => { selected = undefined; listeners.forEach(notify => notify()); };
+      if (typeof window !== 'undefined') {
+        window.addEventListener('pageshow', refresh);
+        window.addEventListener('storage', refresh);
+      }
+      return () => {
+        listeners.delete(listener);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('pageshow', refresh);
+          window.removeEventListener('storage', refresh);
+        }
+      };
     },
     set(value: unknown) {
       if (!isMenuLayout(value)) return;

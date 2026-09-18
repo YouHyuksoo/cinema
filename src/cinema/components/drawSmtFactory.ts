@@ -7,13 +7,21 @@ import { factoryCamera, factoryWorld } from '../smtFactory';
 import { fillSpatialPolygon, inspectionCameraPoint, strokeSpatialPath } from '../inspectionSpace';
 import { drawSmtEntrance } from './drawSmtEntrance';
 import { drawProjectedFilmSurface } from './drawProjectedFilmSurface';
+import { filmCanvasClip } from '../filmCanvasClip';
+import type { FilmViewportBounds } from '../filmViewport';
+
+const SMT_SURFACE_FPS = 12;
+export const smtSurfaceFrameTime = (time: number) => Math.floor(Math.max(0, time) * SMT_SURFACE_FPS) / SMT_SURFACE_FPS;
+export const shouldRenderSmtEquipmentSurface = (stationKey: string, selectedKey: string | null) => stationKey === selectedKey;
 
 /** Draw visible cabinet faces in the same downstream perspective as the camera. */
 export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: FactoryState,
-  options: { ground?: boolean } = {}) {
+  options: { ground?: boolean; clip?: FilmViewportBounds } = {}) {
   const project=(p:FactoryPoint)=>factoryProject(p,state);
   const camera=factoryCamera(state);
   const transform=ctx.getTransform();
+  const visible=filmCanvasClip(ctx,options.clip);
+  if(visible.right<=visible.left||visible.bottom<=visible.top) return;
   const path=(points:FactoryPoint[],color:string,fill?:string)=>{
     if(fill) fillSpatialPolygon(ctx,camera,points.map(factoryWorld),fill,color);
     else strokeSpatialPath(ctx,camera,points.map(factoryWorld),color,.7);
@@ -47,33 +55,35 @@ export function drawSmtFactory(ctx: CanvasRenderingContext2D, fonts: FilmFonts, 
     if(bounds.every(p=>p.visible)) {
       const pixels=bounds.map(p=>({x:transform.a*p.x+transform.c*p.y+transform.e,
         y:transform.b*p.x+transform.d*p.y+transform.f}));
-      if(pixels.every(p=>p.x < -2)||pixels.every(p=>p.x > ctx.canvas.width+2)||
-        pixels.every(p=>p.y < -2)||pixels.every(p=>p.y > ctx.canvas.height+2)) continue;
+      if(pixels.every(p=>p.x < visible.left-2)||pixels.every(p=>p.x > visible.right+2)||
+        pixels.every(p=>p.y < visible.top-2)||pixels.every(p=>p.y > visible.bottom+2)) continue;
     }
     const selected=station.key===(state.manualSelection===undefined?state.station.key:state.manualSelection);
     ctx.globalAlpha=state.presence*(selected?1:(1-state.focus*.70)*(state.manualSelection===undefined?smooth(100,230,front.depth):1));
     const heat=selected&&state.manualSelection===undefined&&state.stop.kind==='thermal'?1:0;
     const edge=signalColor(heat,selected?.9:.48);
     if(camera.y>h) path([{x:x-w/2,y:h,z},{x:x-w/2,y:h,z:z-SMT_FACTORY_DEPTH},{x:x+w/2,y:h,z:z-SMT_FACTORY_DEPTH},{x:x+w/2,y:h,z}],edge,'#29444f');
-    if(state.cameraZ<z-SMT_FACTORY_DEPTH) {
+    if(camera.x<z-SMT_FACTORY_DEPTH) {
       const back=z-SMT_FACTORY_DEPTH;
       path([{x:x-w/2,y:0,z:back},{x:x+w/2,y:0,z:back},{x:x+w/2,y:h,z:back},{x:x-w/2,y:h,z:back}],edge,'#142b36');
       for(let panel=1;panel<4;panel++) path([
         {x:x-w/2+w*panel/4,y:12,z:back},{x:x-w/2+w*panel/4,y:h-12,z:back},
       ],signalColor(0,.2));
     }
-    const side=state.cameraX>=x?1:-1;
+    const side=camera.z>=x?1:-1;
     path([{x:x+side*w/2,y:0,z},{x:x+side*w/2,y:0,z:z-SMT_FACTORY_DEPTH},{x:x+side*w/2,y:h,z:z-SMT_FACTORY_DEPTH},{x:x+side*w/2,y:h,z}],edge,'#152e3c');
     for(let rib=1;rib<5;rib++)path([{x:x+side*w/2,y:h*.2,z:z-rib*23},{x:x+side*w/2,y:h*.75,z:z-rib*23}],signalColor(0,.17));
     const surfaceWidth=w+24,surfaceHeight=h+100;
     const surfaceProject=(u:number,v:number)=>project({x:x+u,y:h/2-v,z});
     const corners=[-1,1].flatMap(u=>[-1,1].map(v=>surfaceProject(u*surfaceWidth/2,v*surfaceHeight/2)));
-    if(state.cameraZ>z&&corners.every(p=>p.visible)) drawProjectedFilmSurface(ctx,{
+    if(camera.x>z&&corners.every(p=>p.visible)&&shouldRenderSmtEquipmentSurface(station.key, selected ? station.key : null)) drawProjectedFilmSurface(ctx,{
       width:surfaceWidth,height:surfaceHeight,project:surfaceProject,
-      cache:{key:`${station.id}:${heat}:${fonts.label}:${fonts.mono}`,time:state.time},
+      // Cabinet movement remains continuous; only the tiny machinery artwork inside each cabinet
+      // refreshes at 12fps so eight shared source textures are not rerasterized 60 times a second.
+      cache:{key:`${station.id}:${heat}:${fonts.label}:${fonts.mono}`,time:smtSurfaceFrameTime(state.time)},
       draw:surface=>{surface.translate(0,h/2);drawSmtEquipment(surface,fonts,station,state.time,heat);},
     });
-    else if(state.cameraZ>z) path([
+    else if(camera.x>z) path([
       {x:x-w/2,y:0,z},{x:x+w/2,y:0,z},{x:x+w/2,y:h,z},{x:x-w/2,y:h,z},
     ],edge,'#26404a');
     drawSmtEntrance(ctx,fonts,station,state,camera);

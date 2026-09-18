@@ -14,7 +14,7 @@ const api = cinemaApi;
 const emptySource = (): SourceDraft => ({ id: '', name: '', kind: 'oracle', host: '', port: 1521, serviceName: '', user: '', hasPassword: false, password: '' });
 
 /** Data source, feed mapping and run status management. Server only: a static deployment shows a notice. */
-export function HatcheryAdmin() {
+export function HatcheryAdmin({ onClose, onOpenAi }: { onClose?: () => void; onOpenAi?: () => void } = {}) {
   const [mode, setMode] = useState<'loading' | 'server' | 'static'>('loading');
   const [sources, setSources] = useState<SourceDraft[]>([]);
   const [feeds, setFeeds] = useState<Record<string, FeedMappingConfig>>({});
@@ -80,8 +80,10 @@ export function HatcheryAdmin() {
       <div><h1 className={styles.title}>HATCHERY 데이터 소스 관리</h1>
         <p className={styles.muted}>DB 접속 · 피드 매핑 · 실행 상태. 화면은 장면 데이터 계약(<code>docs/database/domain-feeds.md</code>)대로만 데이터를 받습니다.</p></div>
       <div className={styles.actions}>
-        <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema`}>화면으로</a>
-        <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema/ai`}>AI 설정</a>
+        {onClose ? <button type="button" className={styles.button} onClick={onClose}>화면으로</button>
+          : <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema`}>화면으로</a>}
+        {onOpenAi ? <button type="button" className={styles.button} onClick={onOpenAi}>AI 설정</button>
+          : <a className={styles.button} href={`${CINEMA_BASE_PATH}/cinema/ai`}>AI 설정</a>}
         <button type="button" className={styles.button} data-primary onClick={() => void save()} disabled={saving}>{saving ? '저장 중…' : '저장'}</button>
       </div>
     </header>

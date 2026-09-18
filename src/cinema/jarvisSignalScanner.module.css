@@ -50,3 +50,5 @@
 .scanner[data-signal-active=false] :is(.ping,.blip) { animation:none; opacity:0; }
 .scanner[data-signal-active=false] .beam { animation:none; opacity:.1; }
 .scanner[data-signal-active=false] .sweep { opacity:.12; }
+/* Low-performance machines: the pedestal is stilled by the component (data-still); its glow filters go too, so a state change repaints plain strokes. */
+:global(html[data-film-perf=low]) .scanner :is(.wallLights,.groove,.core) { filter:none; }

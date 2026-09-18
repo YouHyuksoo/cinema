@@ -49,6 +49,8 @@ export interface AiConfig {
   instructions: string;
   /** Edited copy of the built-in instructions (jarvisPrompt.ts); empty means the built-in text. */
   prompt: string;
+  voicePrompt: string;
+  voiceInstructions: string;
   /** OpenAI realtime voice model; ignored by other providers. */
   realtimeModel: string;
   voiceMode: AiVoiceMode;
@@ -63,6 +65,7 @@ export const AI_LIMITS = { temperature: { min: 0, max: 2 }, maxOutputTokens: { m
 export const DEFAULT_AI_CONFIG: AiConfig = {
   provider: 'openai', model: 'gpt-4.1-mini', apiKey: '', temperature: 0.7, maxOutputTokens: 800, instructions: '', prompt: '', realtimeModel: 'gpt-realtime-2.1-mini',
   voiceMode: 'realtime',
+  voicePrompt: '', voiceInstructions: '',
   voiceGender: 'male',
 };
 export const isAiVoiceMode = (value: unknown): value is AiVoiceMode => AI_VOICE_MODES.some(mode => mode.id === value);
@@ -74,6 +77,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | { ok: false; reason: string } {
   if (!isRecord(input)) return { ok: false, reason: 'AI 설정은 객체여야 합니다.' };
+  for (const [field, limit] of [['voicePrompt', AI_LIMITS.prompt], ['voiceInstructions', AI_LIMITS.instructions]] as const) {
+    if (input[field] !== undefined && (typeof input[field] !== 'string' || (input[field] as string).length > limit))
+      return { ok: false, reason: `${field}는 ${limit}자 이하 문자열이어야 합니다.` };
+  }
   const { provider, model, apiKey, temperature, maxOutputTokens, instructions, prompt, realtimeModel, voiceMode, voiceGender, apiKeys } = input;
   if (!isAiProvider(provider)) return { ok: false, reason: `지원하지 않는 AI 프로바이더입니다: ${String(provider)}` };
   if (typeof model !== 'string' || !model.trim()) return { ok: false, reason: '모델 이름이 필요합니다.' };
@@ -97,6 +104,8 @@ export function parseAiConfig(input: unknown): { ok: true; config: AiConfig } | 
     temperature: Math.round(temp * 100) / 100, maxOutputTokens: tokens,
     instructions: typeof instructions === 'string' ? instructions.trim() : '',
     prompt: typeof prompt === 'string' ? prompt.trim() : '',
+    voicePrompt: typeof input.voicePrompt === 'string' ? input.voicePrompt.trim() : '',
+    voiceInstructions: typeof input.voiceInstructions === 'string' ? input.voiceInstructions.trim() : '',
     realtimeModel: typeof realtimeModel === 'string' && realtimeModel.trim() ? realtimeModel.trim() : DEFAULT_AI_CONFIG.realtimeModel,
     voiceMode: isAiVoiceMode(voiceMode) ? voiceMode : DEFAULT_AI_CONFIG.voiceMode,
     voiceGender: voiceGender === 'female' ? 'female' : DEFAULT_AI_CONFIG.voiceGender,

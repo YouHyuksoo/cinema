@@ -38,20 +38,22 @@ describe('3D scene menu ring', () => {
 });
 
 describe('orbit layout around the globe', () => {
-  it('places tiles in a sawtooth around a tighter ring, front slot at twelve o\'clock', async () => {
+  it('places opaque tiles in a sawtooth around a tighter ring, front slot at twelve o\'clock', async () => {
     const { MENU_LAYOUTS, isMenuLayout, orbitPose, orbitRadius, ORBIT_INNER_SCALE, menuPoseStyle } = await import('@/cinema/filmMenuRing');
     expect(MENU_LAYOUTS.map(item => item.value)).toEqual(['dock', 'orbit']);
     expect(isMenuLayout('orbit')).toBe(true); expect(isMenuLayout('grid')).toBe(false);
-    expect(orbitRadius(240)).toBe(168); expect(orbitRadius(NaN)).toBe(48);
+    // Pad holds the tile names that sit under each hex.
+    expect(orbitRadius(240)).toBe(182); expect(orbitRadius(NaN)).toBe(62);
+    // The two nested radii stay: one wide circle needs far more room than the screen can spare.
     expect(ORBIT_INNER_SCALE).toBe(0.74);
     const front = orbitPose(3, 3, 16, 100);
-    expect(front.x).toBeCloseTo(0); expect(front.y).toBeCloseTo(-74); expect(front.scale).toBeCloseTo(1.32); expect(front.opacity).toBe(1);
+    expect(front.x).toBeCloseTo(0); expect(front.y).toBeCloseTo(-74); expect(front.scale).toBeCloseTo(1.44); expect(front.opacity).toBe(1);
     const even = orbitPose(4, 3, 16, 100);
     expect(Math.hypot(even.x, even.y)).toBeCloseTo(100);
     const odd = orbitPose(5, 3, 16, 100);
     expect(Math.hypot(odd.x, odd.y)).toBeCloseTo(74);
     const opposite = orbitPose(11, 3, 16, 100);
-    expect(opposite.y).toBeCloseTo(74); expect(opposite.scale).toBeCloseTo(1.02); expect(opposite.opacity).toBeCloseTo(.82);
+    expect(opposite.y).toBeCloseTo(74); expect(opposite.scale).toBeCloseTo(1.14);
     const quarter = orbitPose(7, 3, 16, 100);
     expect(quarter.x).toBeCloseTo(74); expect(quarter.y).toBeCloseTo(0);
     for (let index = 0; index < 16; index++) {
@@ -59,6 +61,8 @@ describe('orbit layout around the globe', () => {
       expect(Math.hypot(pose.x, pose.y)).toBeCloseTo(index % 2 === 0 ? 100 : 74);
       expect(pose.z).toBe(0); expect(pose.yaw).toBe(0);
       expect(pose.radius).toBeCloseTo(index % 2 === 0 ? 100 : 74);
+      // Opaque at every slot: a distance fade let the main screen read through the menu.
+      expect(pose.opacity).toBe(1);
     }
     expect(orbitPose(3, 3 + 16, 16, 100)).toEqual(front);
     // Live tiles pass radius 1; CSS must scale --orbit-r by a unitless tooth, not a 1px radius.
