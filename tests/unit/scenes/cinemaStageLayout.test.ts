@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  STAGE_ROOMS, STAGE_WALLS, STAGE_WIDTH, STAGE_DEPTH,
+  STAGE_ROOMS, STAGE_WALLS, STAGE_WIDTH, STAGE_DEPTH, STAGE_WALL_HEIGHT, STAGE_WALL_THICKNESS,
   roomArea, roomById, roomCenter, sensorAnchor,
 } from '@/cinema/stage/factoryLayout';
 import { DEFAULT_ENVIRONMENT_DATA } from '@/cinema/zoneEnvironment';
@@ -30,8 +30,9 @@ describe('무대 배치', () => {
 
   it('방 중심과 면적을 계산한다', () => {
     const first = STAGE_ROOMS[0];
-    expect(roomCenter(first)).toEqual({ x: (first.x0 + first.x1) / 2, y: 0, z: (first.z0 + first.z1) / 2 });
-    expect(roomArea(first)).toBe((first.x1 - first.x0) * (first.z1 - first.z0));
+    // 첫 방: x0=0, x1=12, z0=0, z1=18
+    expect(roomCenter(first)).toEqual({ x: 6, y: 0, z: 9 });
+    expect(roomArea(first)).toBe(216);
     expect(roomById('ZONE 01')?.name).toBe('자재 입고');
     expect(roomById('없는 구역')).toBeNull();
   });
@@ -51,6 +52,7 @@ describe('무대 배치', () => {
         expect(opening.at).toBeGreaterThanOrEqual(cursor);
         expect(opening.at + opening.width).toBeLessThanOrEqual(length);
         expect(opening.y1).toBeGreaterThan(opening.y0);
+        expect(opening.y1, `${wall.x0},${wall.z0} 벽의 개구부가 벽 높이를 초과한다`).toBeLessThanOrEqual(wall.height);
         cursor = opening.at + opening.width;
       }
     }
@@ -66,5 +68,37 @@ describe('무대 배치', () => {
       expect(anchor.y).toBeCloseTo(2.6);
     });
     expect(sensorAnchor(99)).toBeNull();
+  });
+
+  it('치수 상수가 정확하다', () => {
+    expect(STAGE_WIDTH).toBe(60);
+    expect(STAGE_DEPTH).toBe(40);
+    expect(STAGE_WALL_HEIGHT).toBe(4.2);
+    expect(STAGE_WALL_THICKNESS).toBe(0.35);
+  });
+
+  it('U자 배치: 뒤 띠는 x가 왼쪽에서 오른쪽으로 증가한다', () => {
+    // 뒤 띠: zone 0~4 (index 0~4)
+    const backBand = STAGE_ROOMS.slice(0, 5);
+    for (let i = 0; i < backBand.length - 1; i++) {
+      expect(backBand[i].x0).toBeLessThan(backBand[i + 1].x0);
+      expect(backBand[i].x1).toBeLessThan(backBand[i + 1].x1);
+    }
+  });
+
+  it('U자 배치: 앞 띠는 x가 오른쪽에서 왼쪽으로 감소한다', () => {
+    // 앞 띠: zone 5~9 (index 5~9)
+    const frontBand = STAGE_ROOMS.slice(5, 10);
+    for (let i = 0; i < frontBand.length - 1; i++) {
+      expect(frontBand[i].x0).toBeGreaterThan(frontBand[i + 1].x0);
+      expect(frontBand[i].x1).toBeGreaterThan(frontBand[i + 1].x1);
+    }
+  });
+
+  it('공정 흐름의 시작과 끝이 같은 bay 열에 있다', () => {
+    const first = STAGE_ROOMS[0]; // 자재 입고
+    const last = STAGE_ROOMS[9];  // 완제품 보관
+    expect(last.x0).toBe(first.x0);
+    expect(last.x1).toBe(first.x1);
   });
 });
