@@ -150,7 +150,9 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       const key: FilmFrameKey = { camera: cameraView.current, time: cameraView.current ? cameraTime : filmRenderTime(current.time, active.chapter.id),
         width: node.width, height: node.height, inset: viewport.bottomInset, theme: current.theme, texture: current.texture,
         charts: current.charts, subject: current.machineSubject, factory: factoryState, cctvManual: !!cctvState,
-        selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb') };
+        selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb'),
+        stagePose: null /* TODO: Task 5에서 실제 무대 카메라 포즈 서명으로 교체 */ };
+
       if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }
       // Nothing of the canvas is reachable under a modal overlay (it makes the page inert), the film
       // clock keeps its own time, and a bounded cadence leaves the thread idle between heavy frames.
