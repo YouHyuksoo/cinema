@@ -7,6 +7,7 @@ const base = (): FilmFrameKey => ({
   camera: false, time: 12.5, width: 1280, height: 720, inset: 96, theme: 'cyan',
   texture: { style: 'glass', intensity: .55 }, charts: DEFAULT_FILM_CHARTS, subject: 'pcb',
   factory: null, cctvManual: false, selectedZone: null, data: { production: 1 }, provenance: 'demo',
+  stagePose: null,
 });
 
 describe('film frame gate', () => {
