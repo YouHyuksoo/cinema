@@ -33,7 +33,7 @@ const FLIGHTS: Record<StageChapter, readonly [StagePose, StagePose]> = {
     { position: vec(STAGE_WIDTH / 2, 62, STAGE_DEPTH / 2 + 34), target: CENTER, fov: 40 },
     { position: vec(STAGE_WIDTH / 2, 26, STAGE_DEPTH / 2 + 14), target: vec(STAGE_WIDTH / 2, 2, STAGE_DEPTH / 2), fov: 46 },
   ],
-  // SMT 3D: 첫 구역 위로 들어가 마지막 구역까지 흐름을 따라간다.
+  // SMT 3D: 건물 밖 서쪽에서 남쪽으로 당겨보는 U자 흐름 따라가기.
   visor: [
     { position: vec(firstRoom.x - 10, 16, firstRoom.z + 22), target: vec(firstRoom.x, 1.5, firstRoom.z), fov: 46 },
     { position: vec(lastRoom.x + 10, 16, lastRoom.z + 22), target: vec(lastRoom.x, 1.5, lastRoom.z), fov: 46 },
