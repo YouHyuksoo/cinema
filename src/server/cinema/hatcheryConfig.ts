@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { EMPTY_HATCHERY_CONFIG, parseHatcheryConfig, type DataSourceConfig, type HatcheryConfig } from '@/cinema/feedConfig';
 import { mergeAiKey } from '@/cinema/aiConfig';
+import { mergeTypeSafeKey } from '@/cinema/typesafeConfig';
 
 /** Server-only file with data source credentials and feed mappings. Never committed. */
 export const configPath = () => resolve(/*turbopackIgnore: true*/ process.env.HATCHERY_CONFIG_PATH || 'config/hatchery.sources.json');
@@ -36,6 +37,7 @@ export function maskConfig(config: HatcheryConfig): MaskedConfig {
  */
 export function mergePasswords(incoming: HatcheryConfig, current: HatcheryConfig): HatcheryConfig {
   const ai = incoming.ai ? mergeAiKey(incoming.ai, current.ai) : current.ai;
+  const typesafe = incoming.typesafe ? mergeTypeSafeKey(incoming.typesafe, current.typesafe) : current.typesafe;
   return { ...incoming, sources: incoming.sources.map(source => source.password ? source
-    : { ...source, password: current.sources.find(item => item.id === source.id)?.password ?? '' }), ...(ai ? { ai } : {}) };
+    : { ...source, password: current.sources.find(item => item.id === source.id)?.password ?? '' }), ...(ai ? { ai } : {}), ...(typesafe ? { typesafe } : {}) };
 }

@@ -12,6 +12,10 @@ import { cinemaApi, cinemaApiUrl } from './cinemaApi';
 import type { AiProviderId, AiProviderOption, AiVoiceMode } from './aiConfig';
 import { isVoiceGender, realtimeVoiceFor, type VoiceGender } from './jarvisVoiceGender';
 import { describeScreenState, validateScreenCommand, type ScreenExecutor } from './screenCommands';
+import { routeCommand } from './commandRouter';
+import { executeRealtimeScreen } from './realtimeScreenTool';
+import { classifyCinemaTurn, combineCinemaTurnReply } from './agentTurn';
+import { activeConfirmation, confirmationReply, CONFIRMATION_TTL_MS, type PendingConfirmation } from './agentConfirmation';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string }
 export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, actions?: HatcheryActions) {
@@ -37,6 +41,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   const [error, setError] = useState('');
   const audioRef = useRef<JarvisAudioFrame>({ phase: 'idle', analyser: null });
   const session = useRef<JarvisRealtimeSession | null>(null);
+  const pendingConfirmation = useRef<PendingConfirmation | null>(null);
   const inputStopper = useRef<(() => void) | null>(null);
   const chapter = useRef(onChapter);
   const actionsRef = useRef(actions);
@@ -128,7 +133,29 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     if (active) return;
     local.stop(); session.current?.stop(); setRealtimeView(true); setError(''); setActive(true); setMessages([]); setTranscript('');
     const current = new JarvisRealtimeSession({
-      analyze: text => analysisAskRef.current(text, true),
+      analyze: (text, readOnly) => analysisAskRef.current(text, true, readOnly),
+      command: async (text, signal) => {
+        const pending = activeConfirmation(pendingConfirmation.current);
+        const confirmation = pending ? confirmationReply(text) : 'continue';
+        pendingConfirmation.current = null;
+        if (pending && confirmation === 'confirm')
+          return executeRealtimeScreen(JSON.stringify(pending.command), screenRef.current);
+        if (pending && confirmation === 'cancel')
+          return { ok: true, message: '알겠습니다. 실행하지 않았습니다.' };
+        const state = await screenRef.current({ action: 'get', key: 'all' });
+        signal.throwIfAborted();
+        const result = await routeCommand(text, { state: state.state,
+          execute: input => executeRealtimeScreen(JSON.stringify(input), screenRef.current), signal });
+        if (result?.source === 'conversation') return { ok: false, message: '화면 조작 요청이 아닙니다. 설명이나 대화로 응답하세요.' };
+        if (!result) return { ok: false, message: 'TypeSafe 실행 모드가 변경되었습니다. 음성을 다시 연결해 주세요.' };
+        if (result.proposal) pendingConfirmation.current = { command: result.proposal, expiresAt: Date.now() + CONFIRMATION_TTL_MS };
+        if (classifyCinemaTurn(text) === 'screen_action_with_analysis') {
+          const explanation = await analysisAskRef.current(text, true, true, result.reply);
+          signal.throwIfAborted();
+          return { ok: result.ok, message: combineCinemaTurnReply(result.reply, explanation ?? '') };
+        }
+        return { ok: result.ok, message: result.reply };
+      },
       shutdown: playJarvisShutdownSound,
       phase(value) { audioRef.current.phase = value; setPhase(value); },
       connection: setConnected,
@@ -150,7 +177,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
   }
   function stop() {
     const wasActive = active || local.active;
-    session.current?.stop(); local.stop();
+    pendingConfirmation.current = null; session.current?.stop(); local.stop();
     if (wasActive) playJarvisShutdownSound();
   }
   const registerInputStopper = useCallback((stopper: () => void) => {
@@ -177,7 +204,7 @@ export function useJarvisVoice(onChapter: (id: FilmId, subject?: MachineSubject)
     else { setRealtimeView(false); await local.ask(input); }
   }
   const selected = realtimeView ? { phase: local.phase === 'thinking' ? local.phase : phase, transcript, messages, error: error || local.error, source: '음성 대화 · 업무 요청은 분석모델',
-    supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
+    briefing: local.briefing, supported: typeof RTCPeerConnection !== 'undefined', active, audioRef } : local;
   return { ...selected, configured, realtime, realtimeAvailable, voiceMode, switching, setVoiceMode, providerLabel, statusError, refreshSettings: readStatus,
     provider, model, providers, selectProvider, voiceGender: local.speechProfile.gender, setVoiceGender,
     speechProfile: local.speechProfile,

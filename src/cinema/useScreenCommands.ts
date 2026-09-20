@@ -9,6 +9,7 @@ import type { FilmThemeId } from './filmThemes';
 import type { FilmTextureStyle } from './filmTexture';
 import type { FilmId } from './filmProgram';
 import type { ScreenObjectRegistry, ScreenObjectResult } from './screenObjectRegistry';
+import { sceneOpenMessage } from './jarvisCommands';
 
 interface Context {
   registry: ScreenObjectRegistry;
@@ -123,7 +124,8 @@ export function useScreenCommands(context: Context) {
     const state=snapshot(),actual=state[command.key as keyof typeof state],n=Number(command.value);
     const matches=typeof actual==='number'?Math.abs(actual-n)<(command.key==='seek'?1.5:.01):String(actual)===command.value;
     const setting=SCREEN_SETTINGS.find(item=>item.key===command.key),label=setting?.label??command.key,display=setting?.options?.find(option=>option.value===String(actual))?.label??actual;
-    return {ok:matches,message:matches?`${label}: ${display} 적용을 확인했습니다.`:`${label} 변경을 확인하지 못했습니다. 현재 값: ${display}`,state};
+    const successMessage = command.key === 'scene' ? sceneOpenMessage(command.value as FilmId) : `${label}: ${display} 적용을 확인했습니다.`;
+    return {ok:matches,message:matches?successMessage:`${label} 변경을 확인하지 못했습니다. 현재 값: ${display}`,state};
   };
   return execute;
 }

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JarvisRecognition } from '@/cinema/jarvisAudio';
 import { DEFAULT_FILM_SCENE_DATA } from '@/cinema/filmSceneData';
 import type { SceneDataResult } from '@/cinema/sceneDataDocument';
+// This suite exercises voice ownership; the remote intent contract is covered in cinemaTypesafe/IntentRoute.
+vi.mock('@/cinema/commandRouter', () => ({ routeCommand: vi.fn(async () => null) }));
 vi.mock('@/cinema/jarvisStartupSound', () => ({ JARVIS_STARTUP_MESSAGE: 'HATCHERY initializing.', playJarvisStartupSound: () => ({ stop: vi.fn(), finished: Promise.resolve() }) }));
 
 const hooks = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[] }));
@@ -11,6 +13,7 @@ vi.mock('react', () => ({
   useEffect: (effect: () => void | (() => void)) => { hooks.effects.push(effect); },
 }));
 import { useJarvisLocalVoice as useJarvisVoice } from '@/cinema/useJarvisLocalVoice';
+import { routeCommand } from '@/cinema/commandRouter';
 
 class Recognition implements JarvisRecognition {
   static instances: Recognition[] = [];
@@ -57,6 +60,62 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('Jarvis explicit voice session ownership', () => {
+  it('uses the TypeSafe result without invoking the conversation provider', async () => {
+    vi.mocked(routeCommand).mockResolvedValueOnce({ source: 'typesafe', reply: '화면 이동 완료', ok: true });
+    const voice = useJarvisVoice(vi.fn(), { speakReplies: false });
+    expect(await voice.ask('온도 습도 보는 곳 띄워')).toBe('화면 이동 완료');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('remembers a clarification proposal and executes it when the operator confirms', async () => {
+    vi.mocked(routeCommand).mockResolvedValueOnce({ source: 'typesafe', reply: '현재 열린 터빈 메뉴를 닫을까요?', ok: false,
+      proposal: { action: 'set', key: 'turbineMenu', value: 'false' } });
+    const screen = vi.fn(async () => ({ ok: true, message: '터빈 메뉴를 닫았습니다.' }));
+    const voice = useJarvisVoice(vi.fn(), { speakReplies: false, actions: {
+      screen, sceneData: () => DEFAULT_FILM_SCENE_DATA, applySceneObjects: vi.fn(),
+    } });
+    expect(await voice.ask('그 메뉴 닫아')).toBe('현재 열린 터빈 메뉴를 닫을까요?');
+    expect(await voice.ask('응')).toBe('터빈 메뉴를 닫았습니다.');
+    expect(routeCommand).toHaveBeenCalledOnce();
+    expect(screen).toHaveBeenLastCalledWith({ action: 'set', key: 'turbineMenu', value: 'false' });
+  });
+  it('clears a clarification proposal when the operator declines', async () => {
+    vi.mocked(routeCommand).mockResolvedValueOnce({ source: 'typesafe', reply: '현재 열린 터빈 메뉴를 닫을까요?', ok: false,
+      proposal: { action: 'set', key: 'turbineMenu', value: 'false' } });
+    const screen = vi.fn(async () => ({ ok: true, message: '터빈 메뉴를 닫았습니다.' }));
+    const voice = useJarvisVoice(vi.fn(), { speakReplies: false, actions: {
+      screen, sceneData: () => DEFAULT_FILM_SCENE_DATA, applySceneObjects: vi.fn(),
+    } });
+    await voice.ask('그 메뉴 닫아');
+    expect(await voice.ask('아니')).toBe('알겠습니다. 실행하지 않았습니다.');
+    expect(screen).not.toHaveBeenCalledWith({ action: 'set', key: 'turbineMenu', value: 'false' });
+  });
+  it('does not switch providers when command classification fails', async () => {
+    vi.mocked(routeCommand).mockRejectedValueOnce(new Error('TypeSafe 요청 실패'));
+    const voice = useJarvisVoice(vi.fn(), { speakReplies: false });
+    await voice.ask('온도 습도 보는 곳 띄워');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('does not apply model actions after TypeSafe classifies a conversation', async () => {
+    vi.mocked(routeCommand).mockResolvedValueOnce({ source: 'conversation' });
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ source: 'ai', reply: '설명입니다.', chapter: 'wave',
+      screenCommands: [{ action: 'set', key: 'scene', value: 'wave' }] }));
+    const open = vi.fn(), voice = useJarvisVoice(open, { speakReplies: false });
+    expect(await voice.ask('온습도 화면 설명해 줘')).toBe('설명입니다.');
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string).readOnly).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+  });
+  it('continues with one grounded explanation after Jev executes the action part of a combined request', async () => {
+    vi.mocked(routeCommand).mockResolvedValueOnce({ source: 'typesafe', reply: 'SPC 분석 화면을 엽니다.', ok: true });
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ source: 'ai', reply: '현재 공정능력은 안정 범위입니다.' }));
+    const voice = useJarvisVoice(vi.fn(), { speakReplies: false });
+    expect(await voice.ask('품질 관리 페이지로 넘겨 주고 현재 상태도 설명해 줘'))
+      .toBe('SPC 분석 화면을 엽니다.\n현재 공정능력은 안정 범위입니다.');
+    expect(routeCommand).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledOnce();
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+    expect(body.readOnly).toBe(true);
+    expect(body.actionResult).toBe('SPC 분석 화면을 엽니다.');
+  });
   it('speaks the English startup line before recognition and cancels it on stop', async () => {
     speak.mockImplementationOnce(u => u.onstart?.());
     const voice = useJarvisVoice(vi.fn()); await voice.start();
@@ -106,6 +165,7 @@ describe('Jarvis explicit voice session ownership', () => {
     const voice = useJarvisVoice(vi.fn());
     const pending = voice.ask('현장 요약');
     await voice.ask('중복 질문');
+    for (let i = 0; i < 6; i++) await Promise.resolve();
     expect(fetch).toHaveBeenCalledOnce();
     voice.stop();
     reply(Response.json({ reply: '늦은 응답', source: 'local' })); await pending;

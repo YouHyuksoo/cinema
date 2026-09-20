@@ -7,6 +7,7 @@ describe('screen command contract', () => {
       { action: 'set', key: 'menuLayout', value: 'orbit' }, { action: 'set', key: 'menu', value: 'true' },
     ]);
     expect(resolveScreenCommands('메뉴 접어줘')).toEqual([{ action: 'set', key: 'menu', value: 'false' }]);
+    expect(resolveScreenCommands('그 메뉴 닫아')).toBeNull();
     expect(resolveScreenCommands('터빈 메뉴 펼쳐')).toEqual([{ action: 'set', key: 'turbineMenu', value: 'true' }]);
     expect(resolveScreenCommands('터빈 메뉴 접어')).toEqual([{ action: 'set', key: 'turbineMenu', value: 'false' }]);
     expect(resolveScreenCommands('설정 메뉴 열어줘')).toEqual([{ action: 'set', key: 'turbineMenu', value: 'true' }]);

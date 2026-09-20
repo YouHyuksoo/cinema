@@ -126,6 +126,7 @@ function resolveSingleScreenCommands(text: string): ScreenCommand[] | null {
     return [{ action: 'set', key: 'menuLayout', value: 'orbit' }, { action: 'set', key: 'menu', value: String(!close) }];
   if (/터빈메뉴/.test(t) && /열|펼|닫|접/.test(t)) return [{ action: 'set', key: 'turbineMenu', value: String(!close) }];
   if (/(?:관리|큐브)메뉴/.test(t) && /열|펼|닫|접/.test(t)) return [{ action: 'set', key: 'cubeMenu', value: String(!close) }];
+  if (/(?:그|이|저)메뉴|아까.*메뉴/.test(t)) return null;
   if (/메뉴/.test(t) && /열|펼|닫|접/.test(t)) {
     const commands: ScreenCommand[] = [];
     if (/구체|둘레/.test(t)) commands.push({ action: 'set', key: 'menuLayout', value: 'orbit' });

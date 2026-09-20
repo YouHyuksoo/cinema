@@ -13,7 +13,7 @@ function setup(apply = true) {
     cctv: { manual: false, camera: null, step: vi.fn() },
     factory: { manual: false, selectedKey: null, zoom: vi.fn(), deselect: vi.fn() },
     environment: { selectedId: null, step: vi.fn(), clear: vi.fn() },
-    selectChapter: vi.fn(), seek: vi.fn(),
+    selectChapter: vi.fn((id: string) => { if (apply) player.position.chapter.id = id; }), seek: vi.fn(),
     changeSpeed: vi.fn((value: number) => { if (apply) player.speed = value; }),
   };
   const camera = { status: 'off', start: vi.fn(async () => { throw new Error('permission denied'); }) };
@@ -29,6 +29,12 @@ describe('screen executor observed results', () => {
     await vi.advanceTimersByTimeAsync(230);
     expect(await pending).toMatchObject({ ok: true, state: { speed: 1.5 } });
     expect(player.changeSpeed).toHaveBeenCalledExactlyOnceWith(1.5);
+  });
+  it('describes scene navigation as opening a screen instead of a production', async () => {
+    const { execute } = setup();
+    const pending = execute({ action: 'set', key: 'scene', value: 'spc' });
+    await vi.advanceTimersByTimeAsync(230);
+    expect(await pending).toMatchObject({ ok: true, message: 'SPC 분석 화면을 엽니다.' });
   });
   it('does not report success if the setter did not update the value', async () => {
     const { execute } = setup(false);

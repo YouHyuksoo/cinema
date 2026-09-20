@@ -11,6 +11,8 @@ describe('playback preferences', () => {
   });
   it('recovers from unavailable, corrupted or out-of-range storage values', () => {
     const defaults = normalizePlaybackPreference(null);
+    expect(defaults.mode).toBe('chapter');
+    expect(normalizePlaybackPreference({ mode: 'sequence' }).mode).toBe('chapter');
     expect(readPlaybackPreference({ getItem: () => '{broken' })).toEqual(defaults);
     expect(readPlaybackPreference({ getItem: () => { throw new Error('blocked'); } })).toEqual(defaults);
     expect(normalizePlaybackPreference({ theme: 'bad', speed: -1, texture: { intensity: 9 }, charts: { bars: { depthScale: -2 } } }))

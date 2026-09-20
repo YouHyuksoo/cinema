@@ -1,0 +1,532 @@
+[
+  {
+    "id": "ko-001",
+    "message": "온도랑 습도 보는 곳 띄워",
+    "expected": "scene:wave"
+  },
+  {
+    "id": "ko-002",
+    "message": "온습도 화면으로 전환해",
+    "expected": "scene:wave"
+  },
+  {
+    "id": "ko-003",
+    "message": "온도 습도 모니터링 화면 좀 띄워 주세요",
+    "expected": "scene:wave"
+  },
+  {
+    "id": "ko-004",
+    "message": "온습도 장면으로 가자",
+    "expected": "scene:wave"
+  },
+  {
+    "id": "ko-005",
+    "message": "SPC 화면으로 가",
+    "expected": "scene:spc"
+  },
+  {
+    "id": "ko-006",
+    "message": "관리도 화면 좀 띄워 주세요",
+    "expected": "scene:spc"
+  },
+  {
+    "id": "ko-007",
+    "message": "공정능력 장면으로 전환해",
+    "expected": "scene:spc"
+  },
+  {
+    "id": "ko-008",
+    "message": "에스피씨 화면 열어 줘",
+    "expected": "scene:spc"
+  },
+  {
+    "id": "ko-009",
+    "message": "에너지 화면 띄워",
+    "expected": "scene:energy"
+  },
+  {
+    "id": "ko-010",
+    "message": "에너지 장면으로 이동해",
+    "expected": "scene:energy"
+  },
+  {
+    "id": "ko-011",
+    "message": "에너지 파동을 틀어 줘",
+    "expected": "scene:energy"
+  },
+  {
+    "id": "ko-012",
+    "message": "에너지 화면으로 바꿔",
+    "expected": "scene:energy"
+  },
+  {
+    "id": "ko-013",
+    "message": "CCTV 화면 띄워",
+    "expected": "scene:cctv"
+  },
+  {
+    "id": "ko-014",
+    "message": "씨씨티비 감시 화면으로 가",
+    "expected": "scene:cctv"
+  },
+  {
+    "id": "ko-015",
+    "message": "감시 카메라 장면 열어 줘",
+    "expected": "scene:cctv"
+  },
+  {
+    "id": "ko-016",
+    "message": "CCTV 감시로 전환해",
+    "expected": "scene:cctv"
+  },
+  {
+    "id": "ko-017",
+    "message": "차트 분석 화면 띄워",
+    "expected": "scene:pie"
+  },
+  {
+    "id": "ko-018",
+    "message": "통합 차트 장면으로 가",
+    "expected": "scene:pie"
+  },
+  {
+    "id": "ko-019",
+    "message": "차트 분석으로 전환해",
+    "expected": "scene:pie"
+  },
+  {
+    "id": "ko-020",
+    "message": "차트 분석 화면을 열어 주세요",
+    "expected": "scene:pie"
+  },
+  {
+    "id": "ko-021",
+    "message": "장면 고르는 메뉴 좀 펼쳐",
+    "expected": "menu:true"
+  },
+  {
+    "id": "ko-022",
+    "message": "작업 메뉴를 열어",
+    "expected": "menu:true"
+  },
+  {
+    "id": "ko-023",
+    "message": "화면 목록 메뉴 보여 줘",
+    "expected": "menu:true"
+  },
+  {
+    "id": "ko-024",
+    "message": "장면 선택 메뉴 펼쳐 줘",
+    "expected": "menu:true"
+  },
+  {
+    "id": "ko-025",
+    "message": "작업 메뉴 접어",
+    "expected": "menu:false"
+  },
+  {
+    "id": "ko-026",
+    "message": "장면 고르는 메뉴 닫아",
+    "expected": "menu:false"
+  },
+  {
+    "id": "ko-027",
+    "message": "화면 선택 메뉴 좀 숨겨",
+    "expected": "menu:false"
+  },
+  {
+    "id": "ko-028",
+    "message": "열린 장면 메뉴 접어 줘",
+    "expected": "menu:false"
+  },
+  {
+    "id": "ko-029",
+    "message": "현재 장면 재생해",
+    "expected": "playing:true"
+  },
+  {
+    "id": "ko-030",
+    "message": "멈춘 화면 다시 재생해",
+    "expected": "playing:true"
+  },
+  {
+    "id": "ko-031",
+    "message": "현재 장면 재생을 계속해",
+    "expected": "playing:true"
+  },
+  {
+    "id": "ko-032",
+    "message": "일시정지한 연출 다시 시작해",
+    "expected": "playing:true"
+  },
+  {
+    "id": "ko-033",
+    "message": "현재 연출 일시정지해",
+    "expected": "playing:false"
+  },
+  {
+    "id": "ko-034",
+    "message": "지금 화면 잠깐 멈춰",
+    "expected": "playing:false"
+  },
+  {
+    "id": "ko-035",
+    "message": "장면 재생 멈춰 줘",
+    "expected": "playing:false"
+  },
+  {
+    "id": "ko-036",
+    "message": "재생을 정지해",
+    "expected": "playing:false"
+  },
+  {
+    "id": "ko-037",
+    "message": "처음 화면으로 돌아가",
+    "expected": "home:true"
+  },
+  {
+    "id": "ko-038",
+    "message": "홈 화면으로 가자",
+    "expected": "home:true"
+  },
+  {
+    "id": "ko-039",
+    "message": "메인 화면으로 돌아가 줘",
+    "expected": "home:true"
+  },
+  {
+    "id": "ko-040",
+    "message": "메인으로 복귀해",
+    "expected": "home:true"
+  },
+  {
+    "id": "ko-041",
+    "message": "이 차트를 선 그래프로 바꿔",
+    "expected": "pieStyle:line",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-042",
+    "message": "차트 형식을 선으로 변경해",
+    "expected": "pieStyle:line",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-043",
+    "message": "현재 차트를 꺾은선 그래프로 표시해",
+    "expected": "pieStyle:line",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-044",
+    "message": "차트를 라인 형식으로 바꿔",
+    "expected": "pieStyle:line",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-045",
+    "message": "이 차트를 막대 그래프로 바꿔",
+    "expected": "pieStyle:bar",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-046",
+    "message": "차트 형식을 막대로 변경해",
+    "expected": "pieStyle:bar",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-047",
+    "message": "현재 차트를 막대 형식으로 표시해",
+    "expected": "pieStyle:bar",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-048",
+    "message": "차트를 바 형식으로 바꿔",
+    "expected": "pieStyle:bar",
+    "screenState": {
+      "scene": "pie"
+    }
+  },
+  {
+    "id": "ko-049",
+    "message": "온습도 화면은 무엇을 보여 줘?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-050",
+    "message": "SPC가 무슨 뜻이야?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-051",
+    "message": "메뉴 여는 방법 설명해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-052",
+    "message": "차트 형식 바꾸면 어떻게 돼?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-053",
+    "message": "왜 습도가 높아?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-054",
+    "message": "안녕하세요",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-055",
+    "message": "고마워",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-056",
+    "message": "오늘 보고 내용을 설명해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-057",
+    "message": "현재 장면을 멈추는 방법이 뭐야?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-058",
+    "message": "에너지 화면의 의미를 알려줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-059",
+    "message": "메뉴 열지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-060",
+    "message": "온습도 화면으로 가지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-061",
+    "message": "재생하지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-062",
+    "message": "차트를 바꾸지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-063",
+    "message": "홈으로 돌아가지 말아",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-064",
+    "message": "CCTV 화면 열지 말아 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-065",
+    "message": "장면을 전환하면 안 돼",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-066",
+    "message": "재생을 멈추지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-067",
+    "message": "작업 메뉴를 닫지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-068",
+    "message": "지금 화면은 변경하지 마",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-069",
+    "message": "'메뉴 열어'라는 문장을 번역해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-070",
+    "message": "\"온습도 화면 띄워\"가 어떤 뜻이야?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-071",
+    "message": "화면 이동 명령의 예를 설명해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-072",
+    "message": "'재생 멈춰'라는 말을 설명해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-073",
+    "message": "장면 바꾸면 데이터도 바뀌나?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-074",
+    "message": "홈으로 가면 재생이 멈추니?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-075",
+    "message": "차트 분석 화면을 열려면 어디를 눌러?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-076",
+    "message": "메뉴를 열어도 될까?",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-077",
+    "message": "설비 고장의 원인을 분석해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-078",
+    "message": "이전 품질 결과를 요약해 줘",
+    "expected": "conversation"
+  },
+  {
+    "id": "ko-079",
+    "message": "그거 해 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-080",
+    "message": "저걸 띄워",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-081",
+    "message": "다른 화면으로 가",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-082",
+    "message": "뭔가 보여 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-083",
+    "message": "그걸 바꿔",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-084",
+    "message": "화면 바꿔 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-085",
+    "message": "골라 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-086",
+    "message": "모드를 바꿔",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-087",
+    "message": "아까 그거",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-088",
+    "message": "똑같이 해 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-089",
+    "message": "온습도 화면 열고 메뉴 닫아",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-090",
+    "message": "CCTV로 가고 재생 멈춰",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-091",
+    "message": "홈으로 가고 메뉴 펼쳐",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-092",
+    "message": "차트 열고 선 그래프로 바꿔",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-093",
+    "message": "메뉴 열고 재생해",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-094",
+    "message": "카메라 권한을 켜 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-095",
+    "message": "API 키를 변경해 줘",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-096",
+    "message": "설비를 정지시켜",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-097",
+    "message": "데이터베이스 테이블 삭제해",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-098",
+    "message": "로봇 속도를 올려",
+    "expected": "clarify"
+  },
+  {
+    "id": "ko-099",
+    "message": "선 그래프로 바꿔",
+    "expected": "clarify",
+    "screenState": {
+      "scene": "wave"
+    }
+  },
+  {
+    "id": "ko-100",
+    "message": "막대 그래프로 바꿔",
+    "expected": "clarify",
+    "screenState": {
+      "scene": "wave"
+    }
+  }
+]

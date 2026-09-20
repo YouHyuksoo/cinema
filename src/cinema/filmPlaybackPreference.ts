@@ -14,7 +14,8 @@ export function normalizePlaybackPreference(value: unknown): PlaybackPreference 
   const input = record(value), texture = record(input.texture), charts = record(input.charts);
   return {
     speed: typeof input.speed === 'number' && [.25, .5, .75, 1, 1.5, 2, 3, 4].includes(input.speed) ? input.speed : 1,
-    mode: input.mode === 'chapter' ? 'chapter' : 'sequence',
+    // Continuous playback is session-only and must be explicitly requested each time.
+    mode: 'chapter',
     theme: FILM_THEMES.find(theme => theme.id === input.theme)?.id ?? DEFAULT_FILM_THEME,
     texture: { style: FILM_TEXTURE_STYLES.find(style => style.value === texture.style)?.value ?? DEFAULT_FILM_TEXTURE.style,
       intensity: typeof texture.intensity === 'number' && Number.isFinite(texture.intensity) ? Math.max(0, Math.min(1, texture.intensity)) : DEFAULT_FILM_TEXTURE.intensity },

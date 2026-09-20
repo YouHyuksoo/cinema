@@ -37,6 +37,44 @@ const call = (name: string, args: unknown, id = 'call-1', responseId = 'response
 const sent = () => channel.send.mock.calls.map(([value]) => JSON.parse(value));
 const output = () => sent().filter(e => e.item?.type === 'function_call_output');
 
+describe('Realtime TypeSafe routing', () => {
+  const enable = () => vi.stubGlobal('fetch', vi.fn(async () => new Response('v=0\r\nanswer', { headers: { 'X-Cinema-Command-Router': 'typesafe' } })));
+  it('uses the exact transcript once for concurrent tool calls, without direct transcript execution', async () => {
+    enable();
+    const command = vi.fn(async () => ({ ok: true, message: '이동 완료' })), screen = vi.fn();
+    const session = new JarvisRealtimeSession({ ...callbacks(), screen, command }); await session.start('cedar');
+    await emit({ type: 'input_audio_buffer.speech_started', item_id: 'u1' });
+    await emit({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '온습도 화면으로 전환해' });
+    expect(screen).not.toHaveBeenCalled();
+    expect(command).toHaveBeenCalledExactlyOnceWith('온습도 화면으로 전환해', expect.any(AbortSignal));
+    await emit(call('route_command', { transcript: 'altered' }));
+    await emit(call('route_command', {}, 'call-2', 'response-2'));
+    expect(command).toHaveBeenCalledExactlyOnceWith('온습도 화면으로 전환해', expect.any(AbortSignal));
+    expect(output()).toHaveLength(2); session.stop();
+  });
+  it('aborts old work on interruption and does not acknowledge its result', async () => {
+    enable(); let finish!: (value: { ok: boolean; message: string }) => void;
+    const command = vi.fn((_text: string, _signal: AbortSignal) => new Promise<{ ok: boolean; message: string }>(resolve => { finish = resolve; }));
+    const session = new JarvisRealtimeSession({ ...callbacks(), command }); await session.start('cedar');
+    await emit({ type: 'input_audio_buffer.speech_started', item_id: 'u1' });
+    await emit({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '온습도 띄워' });
+    await emit(call('route_command', {}));
+    await emit({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    expect(command.mock.calls[0][1].aborted).toBe(true);
+    finish({ ok: true, message: '이전 결과' }); await emit({ type: 'noop' });
+    expect(output()).toHaveLength(0); session.stop();
+  });
+  it('rejects direct tool calls and ignores a stale transcript in TypeSafe mode', async () => {
+    enable(); const screen = vi.fn(), command = vi.fn();
+    const session = new JarvisRealtimeSession({ ...callbacks(), screen, command }); await session.start('cedar');
+    await emit({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    await emit({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1', transcript: '메뉴 열어줘' });
+    await emit(call('control_screen', { action: 'set', key: 'menu', value: 'true' }));
+    expect(screen).not.toHaveBeenCalled(); expect(command).not.toHaveBeenCalled();
+    expect(JSON.parse(output()[0].item.output).ok).toBe(false); session.stop();
+  });
+});
+
 describe('Realtime direct control and analysis routing', () => {
   it('recognizes every current scene title as a navigation request', () => {
     for (const chapter of FILM_CHAPTERS) {

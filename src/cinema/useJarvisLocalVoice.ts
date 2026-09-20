@@ -13,6 +13,9 @@ import { isMachineSubject, type MachineSubject } from './machinePresentation';
 import { cinemaApi } from './cinemaApi';
 import { resolveScreenCommands } from './screenCommands';
 import { resolveJarvisCommand } from './jarvisCommands';
+import { routeCommand } from './commandRouter';
+import { classifyCinemaTurn, combineCinemaTurnReply } from './agentTurn';
+import { activeConfirmation, confirmationReply, CONFIRMATION_TTL_MS, type PendingConfirmation } from './agentConfirmation';
 
 interface Message { role: 'user' | 'assistant'; content: string }
 export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSubject) => void, options: { speakReplies?: boolean; actions?: HatcheryActions } = {}) {
@@ -23,6 +26,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState('');
   const [source, setSource] = useState('');
+  const [briefing, setBriefing] = useState<{ scene: FilmId; text: string; source: string } | null>(null);
   const [supported, setSupported] = useState<boolean | null>(null);
   const [active, setActive] = useState(false);
   const history = useRef<Message[]>([]);
@@ -30,7 +34,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
     startupSound: null as ReturnType<typeof playJarvisStartupSound> | null,
     context: null as AudioContext | null, recognition: null as JarvisRecognition | null,
     abort: null as AbortController | null, timer: undefined as ReturnType<typeof setTimeout> | undefined,
-    speechTimer: undefined as ReturnType<typeof setTimeout> | undefined });
+    speechTimer: undefined as ReturnType<typeof setTimeout> | undefined, pendingConfirmation: null as PendingConfirmation | null });
   const chapterRef = useRef(onChapter);
   useEffect(() => { chapterRef.current = onChapter; }, [onChapter]);
   const actionsRef = useRef(options.actions);
@@ -163,7 +167,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if (token === current.generation) failure('마이크를 연결하지 못했습니다. 브라우저 권한과 장치 연결을 확인해 주세요.');
     }
   }
-  async function ask(input: string, analysisOnly = false) {
+  async function ask(input: string, analysisOnly = false, forceReadOnly = false, observedAction = '') {
     const message = analysisOnly ? input : input.trim(), current = state.current;
     if (!message || message.length > 1200 || current.busy) return;
     current.busy = true; stopRecognition(); setError(''); setTranscript(message); phaseTo('thinking');
@@ -182,26 +186,66 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
       if (current.enabled) listen(); else phaseTo('idle');
     };
     try {
-      const direct = analysisOnly ? null : resolveScreenCommands(message);
+      const turn = analysisOnly ? 'analysis' : classifyCinemaTurn(message);
+      const pending = analysisOnly ? null : activeConfirmation(current.pendingConfirmation);
+      const confirmation = pending ? confirmationReply(message) : 'continue';
+      if (pending && confirmation !== 'continue') current.pendingConfirmation = null;
+      else if (pending) current.pendingConfirmation = null;
+      const direct = analysisOnly || confirmation !== 'continue' ? null : resolveScreenCommands(message);
       let data: JarvisReply | null = null;
-      if (direct) {
+      let actionReply = observedAction;
+      let pendingAction: JarvisReply | null = null;
+      let briefingChapter: FilmId | undefined;
+      if (pending && confirmation === 'confirm') {
+        const result = await actionsRef.current?.screen?.(pending.command);
+        data = { source: 'local', reply: result?.message ?? '화면 설정 도구가 연결되지 않았습니다.' };
+      } else if (pending && confirmation === 'cancel') {
+        data = { source: 'local', reply: '알겠습니다. 실행하지 않았습니다.' };
+      } else if (direct) {
         const replies: string[] = [];
         for (const command of direct) {
           const result = await actionsRef.current?.screen?.(command);
           replies.push(result?.message ?? '화면 설정 도구가 연결되지 않았습니다.');
           if (!result?.ok) break;
         }
-        data = { source: 'local', reply: replies.join('\n') };
-      } else if (!analysisOnly) data = resolveReply(message) ?? (actionsRef.current ? resolveJarvisCommand(message, actionsRef.current.sceneData()) : null);
+        const reply = replies.join('\n');
+        if (turn === 'screen_action_with_analysis') actionReply = reply;
+        else data = { source: 'local', reply };
+      } else if (!analysisOnly) {
+        const localReply = resolveReply(message) ?? (actionsRef.current ? resolveJarvisCommand(message, actionsRef.current.sceneData()) : null);
+        if (turn === 'screen_action_with_analysis' && localReply?.chapter) {
+          actionReply = localReply.reply; pendingAction = localReply;
+        } else data = localReply;
+      }
+      let readOnly = forceReadOnly || Boolean(actionReply);
+      let screenState: Awaited<ReturnType<NonNullable<HatcheryActions['screen']>>> | undefined;
+      if (!data && !analysisOnly && !actionReply) {
+        screenState = await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
+        const routed = await routeCommand(message, { skipLocal: true, signal: abort.signal,
+          state: screenState?.state, execute: actionsRef.current?.screen });
+        if (token !== current.generation) return;
+        if (routed?.source === 'conversation') readOnly = true;
+        else if (routed && turn === 'screen_action_with_analysis') {
+          actionReply = routed.reply; readOnly = true;
+          if (routed.command?.key === 'scene' && isSceneId(routed.command.value)) briefingChapter = routed.command.value;
+        }
+        else if (routed) {
+          data = routed;
+          if (routed.proposal) current.pendingConfirmation = { command: routed.proposal, expiresAt: Date.now() + CONFIRMATION_TTL_MS };
+        }
+      }
       if (!data) {
-        const screenState = await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
-        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, analysisOnly, history: previous,
+        if (actionReply) screenState = await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
+        else screenState ??= await actionsRef.current?.screen?.({ action: 'get', key: 'all' });
+        const response = await cinemaApi('assistant', { method: 'POST', body: JSON.stringify({ message, analysisOnly, readOnly, history: previous,
+          actionResult: actionReply || undefined,
           screenState: screenState?.state ? JSON.stringify(screenState.state) : undefined }), signal: abort.signal });
         const answer = await response.json() as JarvisReply & { error?: string };
         if (token !== current.generation) return;
         if (!response.ok || !answer.reply) throw new Error(answer.error || '응답을 받지 못했습니다.');
-        data = applyReplyPatch(answer);
-        if (answer.screenCommands?.length) {
+        data = readOnly ? { source: answer.source, reply: combineCinemaTurnReply(actionReply, answer.reply),
+          ...(pendingAction?.chapter ? { chapter: pendingAction.chapter, machineSubject: pendingAction.machineSubject } : {}) } : applyReplyPatch(answer);
+        if (!readOnly && answer.screenCommands?.length) {
           const replies: string[] = [];
           for (const command of answer.screenCommands) {
             const result = await actionsRef.current?.screen?.(command);
@@ -212,8 +256,11 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
         }
       }
       history.current = [...history.current, { role: 'assistant' as const, content: data.reply }].slice(-8);
-      setMessages(history.current); setSource(data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'AI 생성 답변 · 텍스트 모델' : 'AI 연결 안내');
+      const replySource = data.source === 'typesafe' ? 'TypeSafe 명령 판단' : data.source === 'local' ? '현장 명령 응답 · 시연 데이터' : data.source === 'ai' ? 'AI 생성 답변 · 텍스트 모델' : 'AI 연결 안내';
+      setMessages(history.current); setSource(replySource);
       const chapter = isSceneId(data.chapter) ? data.chapter : undefined;
+      const responseScene = briefingChapter ?? chapter;
+      if (responseScene) setBriefing({ scene: responseScene, text: data.reply, source: replySource });
       machineSubject = chapter === 'machine' && isMachineSubject(data.machineSubject) ? data.machineSubject : undefined;
       if (options.speakReplies === false) { finish(chapter); }
       else if ('speechSynthesis' in window) {
@@ -244,7 +291,7 @@ export function useJarvisLocalVoice(onChapter: (id: FilmId, subject?: MachineSub
     // Session ownership is stable for this mounted main screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return { phase, transcript, messages, error, source, supported, active, audioRef, speechProfile, start, stop, ask,
+  return { phase, transcript, messages, error, source, briefing, supported, active, audioRef, speechProfile, start, stop, ask,
     stopReply() {
       const current = state.current;
       if (current.speechTimer) clearTimeout(current.speechTimer);

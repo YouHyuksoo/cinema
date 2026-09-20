@@ -14,6 +14,8 @@ describe('Jarvis main commands and local endpoint', () => {
     expect(reply.reply).toContain(String(jarvisMainData.energy.power.value));
     expect(reply.reply).toContain('공정 병목');
     expect(reply.reply).toContain('SPC');
+    expect(reply.reply).toContain('상세 화면');
+    expect(reply.reply).not.toContain('상세 연출');
     expect(resolveJarvisCommand('온습도 요약')?.reply).toContain(overview.temperature.toFixed(1));
     expect(resolveJarvisCommand('온습도 요약')?.reply).toContain(overview.humidity.toFixed(1));
     expect(reply.reply).toContain('시연');
@@ -36,6 +38,15 @@ describe('Jarvis main commands and local endpoint', () => {
     expect(resolveJarvisCommand('온습도 알려줘')?.chapter).toBeUndefined();
     expect(resolveJarvisCommand('모든 설비 정지해')).toBeNull();
   });
+  it('describes opened content as a screen or monitoring view without saying production', () => {
+    expect(resolveJarvisCommand('SPC 분석 보여줘')?.reply).toBe('SPC 분석 화면을 엽니다.');
+    expect(resolveJarvisCommand('온습도 보여줘')?.reply).toBe('온습도 모니터링을 엽니다.');
+    expect(resolveJarvisCommand('CCTV 보여줘')?.reply).toBe('CCTV 모니터링을 엽니다.');
+    expect(resolveJarvisCommand('PCB 불량 보여줘')?.reply).toBe('PCB 불량 분석 화면을 엽니다.');
+    for (const command of ['SPC 분석 보여줘', '온습도 보여줘', 'CCTV 보여줘', 'PCB 불량 보여줘']) {
+      expect(resolveJarvisCommand(command)?.reply).not.toContain('연출');
+    }
+  });
   it('maps every visible scene-menu name without relying on the AI model', () => {
     const menus: [string, FilmId][] = [
       ['온습도', 'wave'], ['기어', 'gears'], ['설비 스캔', 'scan'], ['지표', 'unfold'], ['변화 추적', 'trace'],
@@ -51,6 +62,7 @@ describe('Jarvis main commands and local endpoint', () => {
   });
   it.each(['HATCHERY', 'hatchery', '헤처리', '해처리', '해쳐리', '자비스'])('introduces HATCHERY when addressed as %s', name => {
     expect(resolveJarvisCommand(name)).toMatchObject({ source: 'local', reply: expect.stringContaining('HATCHERY입니다.') });
+    expect(resolveJarvisCommand(name)?.reply).not.toContain('연출');
     expect(resolveJarvisCommand(`${name}, 생산성을 어떻게 개선할까?`)).toBeNull();
   });
   it('keeps AI unconnected and handles unknown questions honestly without external calls', async () => {

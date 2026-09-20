@@ -1,8 +1,11 @@
 import { apiFailure, openAiRequest, REALTIME_VOICES, realtimeConfiguration, realtimeRuntime, rejectExternalRequest } from '@/server/cinema/openai';
+import { typesafeStatus } from '@/server/cinema/typesafeClient';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const rejected = rejectExternalRequest(request); if (rejected) return rejected;
+  const typesafe = typesafeStatus();
+  if (typesafe.mode === 'on' && !typesafe.configured) return Response.json({ error: 'TypeSafe API 키를 설정한 뒤 음성을 연결해 주세요.' }, { status: 503 });
   const runtime = realtimeRuntime();
   if (!runtime) return Response.json({ error: '실시간 음성은 OpenAI 키가 필요합니다. AI 설정에서 OpenAI 키를 저장하거나 OPENAI_API_KEY를 설정해 주세요.' }, { status: 503 });
   if (!request.headers.get('content-type')?.startsWith('application/sdp')) return Response.json({ error: 'SDP 요청이 필요합니다.' }, { status: 415 });
@@ -14,6 +17,7 @@ export async function POST(request: Request) {
   const body = new FormData(); body.set('sdp', sdp); body.set('session', JSON.stringify(realtimeConfiguration(voice)));
   try {
     const response = await openAiRequest('realtime/calls', body, request.signal, true, runtime.apiKey);
-    return new Response(await response.text(), { headers: { 'Content-Type': 'application/sdp', 'Cache-Control': 'no-store' } });
+    return new Response(await response.text(), { headers: { 'Content-Type': 'application/sdp', 'Cache-Control': 'no-store',
+      'X-Cinema-Command-Router': typesafe.mode === 'on' ? 'typesafe' : 'legacy' } });
   } catch (error) { return apiFailure(error); }
 }

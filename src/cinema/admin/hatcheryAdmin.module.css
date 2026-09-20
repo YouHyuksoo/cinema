@@ -13,6 +13,7 @@
 .notice { margin:0 0 16px; padding:10px 14px; border-left:3px solid var(--hud-cyan); background:oklch(0.18 0.03 240); font-size:13px; }
 .notice[data-kind=error] { border-left-color:var(--hud-red); }
 .section { margin:0 0 32px; padding-top:16px; border-top:1px solid oklch(0.3 0.03 240); }
+.jevFields { min-width:0; padding:0; margin:0; border:0; }
 .card { margin:0 0 14px; padding:14px 16px; border:1px solid oklch(0.28 0.03 240); border-radius:4px; background:oklch(0.15 0.02 240); }
 .summary { cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none; }
 .summary::-webkit-details-marker { display:none; }

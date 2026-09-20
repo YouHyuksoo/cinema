@@ -25,6 +25,15 @@ vi.mock('@/cinema/filmTransitionSound', () => ({ playFilmTransitionSound: transi
 beforeEach(() => { hooks.refs = []; transitionSound.mockClear(); });
 
 describe('manual machine subject selection', () => {
+  it('shows one selected screen until continuous playback is explicitly requested', () => {
+    const player = useFilmPlayback({ current: null }, { current: {} } as never, { current: false });
+    const clock = hooks.refs[0].current as { mode: string };
+    expect(clock.mode).toBe('chapter');
+    player.changeMode('sequence');
+    expect(clock.mode).toBe('sequence');
+    player.selectChapter('spc');
+    expect(clock.mode).toBe('chapter');
+  });
   it('starts with PCB, rewinds only machine and preserves pause and other playback settings', () => {
     const player = useFilmPlayback({ current: null }, { current: {} } as never, { current: false });
     const clock = hooks.refs[0].current as { time: number; paused: boolean; machineSubject: string; speed: number; mode: string };

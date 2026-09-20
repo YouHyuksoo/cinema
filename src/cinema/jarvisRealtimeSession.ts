@@ -11,7 +11,8 @@ import { resolveJarvisCommand } from './jarvisCommands';
 import { executeRealtimeScreen } from './realtimeScreenTool';
 
 export interface RealtimeCallbacks {
-  analyze?(text: string): Promise<string | void>;
+  analyze?(text: string, readOnly?: boolean): Promise<string | void>;
+  command?(text: string, signal: AbortSignal): Promise<ScreenResult>;
   screen?: ScreenExecutor;
   shutdown?(): void;
   phase(value: JarvisPhase): void;
@@ -73,6 +74,10 @@ export class JarvisRealtimeSession {
   private chapterReplyId = '';
   private ignoredResponses = new Set<string>();
   private handledScreenCommands = new Map<string, ScreenResult>();
+  private typesafeRouting = false;
+  private commandAbort?: AbortController;
+  private commandResult?: Promise<ScreenResult>;
+  private speechItem?: string;
   private responseId = '';
   private partial = new Map<string, string>();
   constructor(private callbacks: RealtimeCallbacks) {}
@@ -158,6 +163,7 @@ export class JarvisRealtimeSession {
         const data = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(data.error || 'OpenAI 음성을 연결하지 못했습니다.');
       }
+      this.typesafeRouting = response.headers.get('X-Cinema-Command-Router') === 'typesafe';
       const sdp = await response.text(); if (this.closed) return;
       await peer.setRemoteDescription({ type: 'answer', sdp });
     } catch (error) {
@@ -173,6 +179,16 @@ export class JarvisRealtimeSession {
     this.callbacks.analyser(phase === 'speaking' ? this.outputMeter : this.inputMeter);
     this.callbacks.phase(phase);
   }
+  private routeSpokenCommand(transcript: string): Promise<ScreenResult> {
+    if (!this.commandResult) {
+      this.commandAbort = new AbortController();
+      this.commandResult = transcript && this.callbacks.command
+        ? this.callbacks.command(transcript, this.commandAbort.signal).catch(error => ({ ok: false,
+          message: error instanceof Error ? error.message : 'TypeSafe 명령 판단에 실패했습니다.' }))
+        : Promise.resolve({ ok: false, message: '음성 전사 또는 명령 판단 기능이 없습니다.' });
+    }
+    return this.commandResult;
+  }
   private finishStartup() {
     if (!this.startupPending) return;
     this.startupPending = false; clearTimeout(this.startupTimer);
@@ -183,6 +199,8 @@ export class JarvisRealtimeSession {
     if (responseId && this.ignoredResponses.has(responseId)) return;
     switch (event.type) {
       case 'input_audio_buffer.speech_started':
+        this.commandAbort?.abort(); this.commandAbort = undefined; this.commandResult = undefined;
+        this.speechItem = event.item_id;
         this.resolveTranscript?.(''); this.latestTranscript = '';
         this.transcriptReady = new Promise(resolve => { this.resolveTranscript = resolve; });
         this.speechGeneration++; this.interrupt();
@@ -194,9 +212,16 @@ export class JarvisRealtimeSession {
         this.toPhase('listening'); break;
       case 'input_audio_buffer.speech_stopped': this.toPhase('thinking'); break;
       case 'conversation.item.input_audio_transcription.completed':
+        if (this.typesafeRouting && this.speechItem && event.item_id && this.speechItem !== event.item_id) break;
         if (event.transcript?.trim()) {
           this.callbacks.transcript(event.transcript); this.callbacks.message('user', event.transcript, event.item_id ?? 'input');
           this.latestTranscript = event.transcript; this.resolveTranscript?.(event.transcript);
+          if (this.typesafeRouting) {
+            // Known local commands must still execute even when the voice model only answers conversationally.
+            if (resolveScreenCommands(event.transcript) || resolveJarvisCommand(event.transcript)?.chapter)
+              await this.routeSpokenCommand(event.transcript);
+            break;
+          }
           const mapped = resolveScreenCommands(event.transcript);
           if (mapped) {
             for (const command of mapped) {
@@ -279,7 +304,14 @@ export class JarvisRealtimeSession {
           if (this.closed || generation !== this.speechGeneration) return;
           let output: unknown;
           if (failed) output = { ok: false, message: '앞선 호출이 실패하여 후속 조작을 중단했습니다.' };
-          else if (call.name === 'control_screen') {
+          else if (call.name === 'route_command' && this.typesafeRouting) {
+            queryOnly = false;
+            const transcript = this.latestTranscript || await this.transcriptReady;
+            if (this.closed || generation !== this.speechGeneration) return;
+            const result = await this.routeSpokenCommand(transcript);
+            output = result; failed = !result.ok;
+          }
+          else if (call.name === 'control_screen' && !this.typesafeRouting) {
             try { if (JSON.parse(call.arguments ?? '{}').action !== 'get') queryOnly = false; } catch { queryOnly = false; }
             let command: ScreenCommand | null = null;
             try { command = validateScreenCommand(JSON.parse(call.arguments ?? '')); } catch { command = null; }
@@ -294,7 +326,8 @@ export class JarvisRealtimeSession {
             queryOnly = false;
             const transcript = this.latestTranscript || await this.transcriptReady;
             if (this.closed || generation !== this.speechGeneration) return;
-            const reply = transcript ? await this.callbacks.analyze?.(transcript) : undefined;
+            const reply = transcript ? await (this.typesafeRouting
+              ? this.callbacks.analyze?.(transcript, true) : this.callbacks.analyze?.(transcript)) : undefined;
             output = { reply: reply || '분석 요청을 처리하지 못했습니다.' };
             failed = !reply;
           } else if (call.name === 'end_voice_session') {
@@ -370,6 +403,7 @@ export class JarvisRealtimeSession {
     if (this.context) void this.context.close().catch(() => {});
     this.context = null; this.pendingChapter = undefined; this.pendingMachineSubject = undefined;
     this.pendingEnd = false; this.endReplyId = ''; this.handledScreenCommands.clear();
+    this.commandAbort?.abort(); this.commandAbort = undefined; this.commandResult = undefined; this.speechItem = undefined;
     this.callbacks.analyser(null); this.callbacks.phase('idle'); this.callbacks.ended();
   }
 }

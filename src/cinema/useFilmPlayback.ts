@@ -32,13 +32,13 @@ const INPUT_YIELD_MS = 90;
 
 export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
   cameraRef: RefObject<FilmCameraFrame>, cameraView: RefObject<boolean>) {
-  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'sequence' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, machineSubject: DEFAULT_MACHINE_SUBJECT as MachineSubject });
+  const clock = useRef({ time: 0, paused: false, speed: 1, mode: 'chapter' as PlaybackMode, texture: DEFAULT_FILM_TEXTURE, charts: DEFAULT_FILM_CHARTS, theme: DEFAULT_FILM_THEME, machineSubject: DEFAULT_MACHINE_SUBJECT as MachineSubject });
   const preferencesLoaded = useRef(false);
   const [machineSubject, setMachineSubject] = useState<MachineSubject>(DEFAULT_MACHINE_SUBJECT);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [mode, setMode] = useState<PlaybackMode>('sequence');
+  const [mode, setMode] = useState<PlaybackMode>('chapter');
   const [texture, setTexture] = useState<FilmTextureSettings>(DEFAULT_FILM_TEXTURE);
   const [charts, setCharts] = useState<FilmChartSettings>(DEFAULT_FILM_CHARTS);
   const [theme, setTheme] = useState<FilmThemeId>(DEFAULT_FILM_THEME);
@@ -136,6 +136,13 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       previous = now;
       const active = chapterAt(current.time);
+      // Publish even when the final frame is unchanged: the render gate must not
+      // leave React at 89.9s while the canvas clock has already settled at 90s.
+      if (now - lastPublished > 180 && !cameraView.current) {
+        lastPublished = now;
+        setPosition(previous => previous.index === active.index && Math.round(previous.localTime * 10) === Math.round(active.localTime * 10)
+          ? previous : active);
+      }
       const data = store.get();
       const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, data.environment);
       const factoryState = readFactoryState(), cctvState = readCctvState();
@@ -180,14 +187,6 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       reportRenderPressure(renderBudget.pressured);
       // Publish the position to React only when the readout would change; the preview freezes film
       // time, and the dock's time display has 0.1s resolution, so identical frames must not re-render.
-      if (now - lastPublished > 180 && !cameraView.current) {
-        lastPublished = now;
-        setPosition(previous => {
-          const next = chapterAt(current.time);
-          const same = previous.index === next.index && Math.round(previous.localTime * 10) === Math.round(next.localTime * 10);
-          return same ? previous : next;
-        });
-      }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
@@ -249,8 +248,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       if (forceTransitionSound || chapterAt(clock.current.time).chapter.id !== id) playFilmTransitionSound();
       factory.clear(); cctv.clear();
       environment.clear();
-      clock.current.time = chapterStart(id); clock.current.paused = false;
-      setPosition(chapterAt(clock.current.time)); setPlaying(true);
+      clock.current.time = chapterStart(id); clock.current.paused = false; clock.current.mode = 'chapter';
+      setPosition(chapterAt(clock.current.time)); setPlaying(true); setMode('chapter'); savePlaybackPreference(clock.current);
     },
     seek(value: number) {
       factory.clear(); cctv.clear();

@@ -8,6 +8,7 @@ import { CINEMA_BASE_PATH, cinemaApi } from '../cinemaApi';
 import { DEFAULT_JARVIS_PROMPT, JARVIS_VOICE_PLACEHOLDER } from '../jarvisPrompt';
 import styles from './hatcheryAdmin.module.css';
 import { DEFAULT_ANALYSIS_PROMPT } from '../aiPrompts';
+import { TypesafeSettings } from './TypesafeSettings';
 
 type Draft = AiConfig & { hasApiKey: boolean; keySource: MaskedAiConfig['keySource'] };
 const emptyDraft = (): Draft => ({ ...DEFAULT_AI_CONFIG, hasApiKey: false, keySource: 'none' });
@@ -116,6 +117,7 @@ export function HatcheryAiSettings({ onClose, onOpenAdmin, initialSection }: {
     </header>
     {notice && <p className={styles.notice} data-kind={notice.kind}>{notice.text}</p>}
 
+    <TypesafeSettings />
     <section className={styles.section}>
       <h2>1. 프로바이더 · 모델</h2>
       <div className={styles.card}>

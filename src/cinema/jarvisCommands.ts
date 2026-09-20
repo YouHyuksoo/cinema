@@ -6,7 +6,12 @@ import type { SceneObjectPatch } from './sceneDataDocument';
 import { MACHINE_PRESENTATIONS, type MachineSubject } from './machinePresentation';
 
 /** chapter opens a scene; patch changes scene object values (docs/standards/scene-data-contract.md). Both may be present. */
-export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'unavailable'; chapter?: FilmId; machineSubject?: MachineSubject; patch?: SceneObjectPatch; screenCommands?: import('./screenCommands').ScreenCommand[] }
+export interface JarvisReply { reply: string; source: 'local' | 'ai' | 'typesafe' | 'unavailable'; chapter?: FilmId; machineSubject?: MachineSubject; patch?: SceneObjectPatch; screenCommands?: import('./screenCommands').ScreenCommand[] }
+export function sceneOpenMessage(id: FilmId, title: string = FILM_CHAPTERS.find(chapter => chapter.id === id)?.title ?? id) {
+  if (id === 'wave') return '온습도 모니터링을 엽니다.';
+  if (id === 'cctv') return 'CCTV 모니터링을 엽니다.';
+  return `${title} 화면을 엽니다.`;
+}
 export function jarvisOverview(data:FilmSceneData=DEFAULT_FILM_SCENE_DATA) {
   const zones = data.environment.zones;
   return { zones, normal: zones.filter(z => environmentZoneStatus(z) === 'normal').length,
@@ -24,7 +29,7 @@ export function resolveJarvisCommand(input: string, data:FilmSceneData=DEFAULT_F
     const pcbRequested = /pcb|기판|불량\s*부품|투명\s*설비/.test(targetText);
     if (carRequested && pcbRequested) return { source: 'local', reply: 'PCB 불량 분석과 자동차 중 어느 대상을 열까요?' };
     const machineSubject: MachineSubject | undefined = carRequested ? 'car' : pcbRequested ? 'pcb' : undefined;
-    if (machineSubject) return { reply: `${MACHINE_PRESENTATIONS[machineSubject].title} 연출을 엽니다.`, source: 'local', chapter: 'machine', machineSubject };
+    if (machineSubject) return { reply: sceneOpenMessage('machine', MACHINE_PRESENTATIONS[machineSubject].title), source: 'local', chapter: 'machine', machineSubject };
     const aliases: [RegExp, FilmId][] = [[/oee|오이이|설비\s*종합\s*효율/, 'oee'], [/온습도|온도|습도/, 'wave'], [/spc|공정능력|관리도/, 'spc'], [/cctv|씨씨티비|감시\s*카메라|감시/, 'cctv'],
       [/기어/, 'gears'], [/설비\s*스캔|스캔/, 'scan'], [/지표\s*펼침|지표/, 'unfold'], [/변화\s*추적|추적/, 'trace'],
       [/정보\s*(?:콘솔|창)|콘솔/, 'console'], [/공정망|공정\s*네트워크/, 'network'], [/제품\s*내부\s*검사|내부\s*검사/, 'product'],
@@ -32,7 +37,7 @@ export function resolveJarvisCommand(input: string, data:FilmSceneData=DEFAULT_F
       [/바이저.*평면/, 'visorPan'], [/바이저/, 'visor']];
     const id = aliases.find(([pattern]) => pattern.test(targetText))?.[1]
       ?? FILM_CHAPTERS.find(c => targetText.includes(c.title.toLowerCase()))?.id;
-    if (id) return { reply: `${FILM_CHAPTERS.find(c => c.id === id)!.title} 연출을 엽니다.`, source: 'local', chapter: id,
+    if (id) return { reply: sceneOpenMessage(id), source: 'local', chapter: id,
       ...(id === 'machine' ? { machineSubject: 'pcb' as const } : {}) };
   }
   const zoneMatch = text.match(/(?:zone|존|구역)\s*0?(10|[1-9])(?!\d)/i)
@@ -47,9 +52,9 @@ export function resolveJarvisCommand(input: string, data:FilmSceneData=DEFAULT_F
     reply: `시연 중인 10개 구역의 평균 온도는 ${overview.temperature.toFixed(1)}도, 평균 습도는 ${overview.humidity.toFixed(1)}퍼센트입니다. 관리 범위 내 ${overview.normal}곳, 이탈 ${overview.outside.length}곳입니다. 구역 번호를 말씀하시면 상세 값을 알려드리겠습니다.` };
   if (/현황|요약|현장.*상태|상태.*현장/.test(text)) {
     const { energy, bottlenecks, quality } = hatcheryMainData(data);
-    return { source: 'local', reply: `시연 데이터 기준, 생산량은 ${energy.production.value}개, 목표 ${energy.production.capacity}개입니다. 공정 병목 ${bottlenecks.length}곳, ${quality.valid ? `SPC 관리 한계 이탈 ${quality.violationCount}개 부분군` : '품질 데이터 확인 필요'}입니다. 사용 전력은 ${energy.power.value}킬로와트입니다. 좌우 정보에서 공정·품질·에너지 상세 연출을 열 수 있습니다.` };
+    return { source: 'local', reply: `시연 데이터 기준, 생산량은 ${energy.production.value}개, 목표 ${energy.production.capacity}개입니다. 공정 병목 ${bottlenecks.length}곳, ${quality.valid ? `SPC 관리 한계 이탈 ${quality.violationCount}개 부분군` : '품질 데이터 확인 필요'}입니다. 사용 전력은 ${energy.power.value}킬로와트입니다. 좌우 정보에서 공정·품질·에너지 상세 화면을 열 수 있습니다.` };
   }
   if (/^(?:(?:hatchery|헤처리|해처리|해쳐리|자비스)[야,\s]*)?(?:안녕(?:하세요)?|도움말|무엇을 할 수 있(?:어|나요))?[.!?\s]*$/.test(text)) return { source: 'local',
-    reply: '네, HATCHERY입니다. 현장 요약, 이상 구역, ZONE 6 온습도처럼 질문하거나 SPC 분석 보여줘처럼 연출을 선택해 주세요. 현재 현장 정보는 시연 데이터입니다.' };
+    reply: '네, HATCHERY입니다. 현장 요약, 이상 구역, ZONE 6 온습도처럼 질문하거나 SPC 분석 보여줘처럼 화면을 선택해 주세요. 현재 현장 정보는 시연 데이터입니다.' };
   return null;
 }

@@ -1,5 +1,6 @@
 import { DOMAIN_FEEDS, type DomainFeed } from './domainFeeds';
 import { parseAiConfig, type AiConfig } from './aiConfig';
+import { TypeSafeConfigSchema, type TypeSafeConfig } from './typesafeConfig';
 
 /**
  * Data source and feed mapping configuration. Stored server-side as JSON (never committed);
@@ -32,7 +33,7 @@ export interface FeedMappingConfig {
   header: Record<string, string>;
   collections: Record<string, CollectionMapping>;
 }
-export interface HatcheryConfig { sources: DataSourceConfig[]; feeds: FeedMappingConfig[]; /** AI assistant settings (see aiConfig.ts); absent until saved from /cinema/ai. */ ai?: AiConfig }
+export interface HatcheryConfig { sources: DataSourceConfig[]; feeds: FeedMappingConfig[]; /** AI assistant settings (see aiConfig.ts); absent until saved from /cinema/ai. */ ai?: AiConfig; typesafe?: TypeSafeConfig }
 
 export const EMPTY_HATCHERY_CONFIG: HatcheryConfig = { sources: [], feeds: [] };
 export const MIN_FEED_INTERVAL_SECONDS = 5;
@@ -105,10 +106,17 @@ export function parseHatcheryConfig(input: unknown): { ok: true; config: Hatcher
     if (parsed.mapping.enabled && !sources.some(source => source.id === parsed.mapping.sourceId)) return { ok: false, reason: `${parsed.mapping.feed}: 활성 피드에는 존재하는 데이터 소스가 필요합니다.` };
     feeds.push(parsed.mapping);
   }
-  if (input.ai === undefined || input.ai === null) return { ok: true, config: { sources, feeds } };
+  let typesafe: TypeSafeConfig | undefined;
+  if (input.typesafe !== undefined) {
+    const parsed = TypeSafeConfigSchema.safeParse(input.typesafe);
+    if (!parsed.success) return { ok: false, reason: 'TypeSafe/Jev 설정이 올바르지 않습니다.' };
+    typesafe = parsed.data;
+  }
+  const base = { sources, feeds, ...(typesafe ? { typesafe } : {}) };
+  if (input.ai === undefined || input.ai === null) return { ok: true, config: base };
   const ai = parseAiConfig(input.ai);
   if (!ai.ok) return ai;
-  return { ok: true, config: { sources, feeds, ai: ai.config } };
+  return { ok: true, config: { ...base, ai: ai.config } };
 }
 
 /** Admin-screen starting point: every contract field mapped to an upper-case column of the same name. */
