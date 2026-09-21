@@ -14,14 +14,14 @@ export const WAVE_FILM_SECONDS = ENVIRONMENT_FILM_SECONDS;
 /** Stable chapter ID; the scene now tours manufacturing temperature and humidity stations. */
 export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
   fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA,
-  frame?: ZoneEnvironmentState | null, stage: boolean = false) {
+  frame?: ZoneEnvironmentState | null) {
   const state = frame ?? zoneEnvironmentState(time, data);
   if (isEnvironmentPortrait(width, height)) {
     drawEnvironmentMobile(ctx, width, height, fonts, state, data, data === DEFAULT_ENVIRONMENT_DATA, insets);
     return;
   }
   const view = beginFilmViewport(ctx, width, height, insets);
-  if (!stage) drawCornerField(ctx, view, state.elapsed, state.focus * .35);
+  drawCornerField(ctx, view, state.elapsed, state.focus * .35);
   const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false, heat = 0) =>
     filmText(ctx, fonts, value, x, y, size, alpha * state.reveal, mono, 'left', signalColor(heat, 1));
   text('ENVIRONMENT / ZONE MONITOR', 72, 76, 14, .75, true);
@@ -39,7 +39,7 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   text(`${isMap ? '온도 ' : ''}범위 내 ${normal}  /  이탈 ${outside}  /  미확인 ${missing}`, 945, 136, 11, .8, false, outside ? 1 : 0);
   drawEnvironmentZones(ctx, fonts, state);
   drawEnvironmentFocus(ctx, fonts, state);
-  if (!stage) drawEnvironmentHeatmap(ctx, fonts, state);
+  drawEnvironmentHeatmap(ctx, fonts, state);
   if (!state.zones.length && !state.selected && state.showIntro && map < .001) {
     text('ZONE 데이터 대기 중', 433, 356, 32, .9);
   }

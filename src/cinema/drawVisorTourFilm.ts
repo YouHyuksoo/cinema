@@ -7,16 +7,14 @@ import { factoryProject, factoryTarget, smtFactoryState, SMT_FACTORY_STOPS } fro
 
 /** Navigate the aisles at equipment height, then approach each inspection target. */
 export function drawVisorTourFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
-  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, stage: boolean = false) {
+  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets) {
   const view=beginFilmViewport(ctx,width,height,insets),state=smtFactoryState(time);
   const {station,stop,presence,readout,focus}=state;
   const heat=stop.kind==='thermal'?1:0;
-  if(!stage){
-    const wash=ctx.createRadialGradient(620,350,40,640,350,950);
-    wash.addColorStop(0,'#16313d');wash.addColorStop(.6,'#071720');wash.addColorStop(1,'#02080e');
-    ctx.fillStyle=wash;ctx.fillRect(view.left,view.top,view.right-view.left,view.bottom-view.top);
-    drawSmtFactory(ctx,fonts,state);
-  }
+  const wash=ctx.createRadialGradient(620,350,40,640,350,950);
+  wash.addColorStop(0,'#16313d');wash.addColorStop(.6,'#071720');wash.addColorStop(1,'#02080e');
+  ctx.fillStyle=wash;ctx.fillRect(view.left,view.top,view.right-view.left,view.bottom-view.top);
+  drawSmtFactory(ctx,fonts,state);
   const target=factoryTarget(state);
   const label=`LINE ${String(station.line).padStart(2,'0')} / ${station.label}`;
   drawTargetReticle(ctx,fonts,{...target,time:state.localTime,reveal:presence*focus,lock:focus,heat,label});
