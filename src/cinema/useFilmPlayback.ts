@@ -26,6 +26,8 @@ import { createFilmRenderBudget } from './filmRenderBudget';
 import { isLowPerformance, performancePreference, prefersLowDetail, reportRenderPressure } from './filmPerformanceMode';
 import { createFilmShadowGate } from './filmShadowGate';
 import { playFilmTransitionSound } from './filmTransitionSound';
+import { createFactoryStage } from './stage/factoryStage';
+import { poseSignature, stagePose } from './stage/stageCamera';
 
 /** How long the canvas yields to an input so its handler, the React commit and the paint go first. */
 const INPUT_YIELD_MS = 90;
@@ -78,6 +80,13 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
     const unsubscribePreference = performancePreference.subscribe(() => { resizeForBudget = true; });
     // Low mode paints every canvas shadow without blur; renderers keep their own shadowBlur values.
     const shadowGate = createFilmShadowGate(ctx);
+    // 무대는 비동기로 준비된다. 준비 전과 WebGL 이 없는 환경에서는 null 로 남아 합성을 건너뛴다.
+    let stage: Awaited<ReturnType<typeof createFactoryStage>> = null;
+    let stageDisposed = false;
+    void createFactoryStage().then(ready => {
+      if (stageDisposed) { ready?.dispose(); return; }
+      stage = ready;
+    });
     let frame = 0;
     let previous = performance.now();
     let painted = previous;
@@ -146,12 +155,13 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       const data = store.get();
       const environmentFrame = updateEnvironment(!cameraView.current && active.chapter.id === 'wave' ? active.localTime : null, data.environment);
       const factoryState = readFactoryState(), cctvState = readCctvState();
+      const pose = stage && !cameraView.current ? stagePose(active.chapter.id, active.localTime, active.chapter.duration) : null;
       // Identical inputs paint an identical frame: a paused scene or backdrop costs nothing until something moves.
       const key: FilmFrameKey = { camera: cameraView.current, time: cameraView.current ? cameraTime : filmRenderTime(current.time, active.chapter.id),
         width: node.width, height: node.height, inset: viewport.bottomInset, theme: current.theme, texture: current.texture,
         charts: current.charts, subject: current.machineSubject, factory: factoryState, cctvManual: !!cctvState,
         selectedZone: environmentFrame?.manualSelectedId ?? null, data, provenance: store.provenance('pcb'),
-        stagePose: null /* TODO: Task 5에서 실제 무대 카메라 포즈 서명으로 교체 */ };
+        stagePose: pose ? poseSignature(pose) : null };
       if (!filmFrameChanged(lastKey, key)) { frame = requestAnimationFrame(render); return; }
       // Nothing of the canvas is reachable under a modal overlay (it makes the page inert), the film
       // clock keeps its own time, and a bounded cadence leaves the thread idle between heavy frames.
@@ -171,6 +181,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       }
       else {
         cameraTime = 3;
+        if (stage && pose) stage.compose(themed.ctx, node.width, node.height, pose);
         // Manual CCTV browsing pauses the film clock but the feeds keep running on wall-clock time.
         drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, factoryState, environmentFrame, data,
           { subject: current.machineSubject, provenance: store.provenance('pcb') }, cctvState ? { ...cctvState, live: now / 1000 } : null);
@@ -195,6 +206,7 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
       cancelAnimationFrame(frame); cancelAnimationFrame(sync); observer.disconnect(); dockObserver.disconnect(); unsubscribePreference();
       window.removeEventListener('pointerdown', noteInput, { capture: true });
       window.removeEventListener('keydown', noteInput, { capture: true });
+      stageDisposed = true; stage?.dispose(); stage = null;
     };
   }, [canvasRef, cameraRef, cameraView, readFactoryState, readCctvState, updateEnvironment, store]);
 

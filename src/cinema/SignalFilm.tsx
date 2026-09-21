@@ -29,6 +29,9 @@ import { ScreenObjectInspector } from './ScreenObjectInspector';
 import { HatcheryAiOverlay } from './admin/HatcheryAiOverlay';
 import { playFilmTransitionSound } from './filmTransitionSound';
 import { applyPerformanceMode } from './filmPerformanceMode';
+import { FilmQuickMenu } from './FilmQuickMenu';
+import { ENVIRONMENT_TIMING } from './zoneEnvironment';
+import { EnvironmentFloorMonitor } from './EnvironmentFloorMonitor';
 
 export function SignalFilm() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -127,8 +130,10 @@ export function SignalFilm() {
           : `${description.title}: ${description.subtitle} 시뮬레이션 연출.`} />
         {!preview && player.ready && player.position.chapter.id === 'visor'
           && <SmtFactoryExplorer canvas={canvas} controller={player.factory} onAuto={player.resumeTour} />}
-        {!preview && player.ready && player.position.chapter.id === 'wave'
-          && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} />}
+        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime < ENVIRONMENT_TIMING.monitoringStart
+          && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} monitoring={player.position.localTime >= ENVIRONMENT_TIMING.monitoringStart} />}
+        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime >= ENVIRONMENT_TIMING.monitoringStart
+          && <EnvironmentFloorMonitor data={player.sceneData.environment} feedStatus={player.feedStatus} />}
         {!preview && player.ready && player.position.chapter.id === 'cctv'
           && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
         {!preview && !['visor', 'wave', 'cctv'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
@@ -136,6 +141,7 @@ export function SignalFilm() {
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}
       </div>
+      {!preview && <FilmQuickMenu player={player} />}
       {preview && <JarvisMain data={player.sceneData} feedStatus={player.feedStatus} provenance={player.sceneProvenance} externalBriefing theme={player.theme} camera={camera} voice={turbine.voice} onChapter={turbine.selectScene}
         onCardFocusClose={() => {
           if (objectInspectorReturnRef.current !== 'focus') return;
@@ -145,8 +151,11 @@ export function SignalFilm() {
         actions={{ sceneData: () => player.sceneData, applySceneObjects: player.applySceneObjects }} />}
       <FilmBriefing key={preview ? 'main' : player.position.chapter.id}
         text={preview ? turbine.voice.messages.filter(message => message.role === 'assistant').at(-1)?.content ?? ''
-          : sceneBriefing(player.position.chapter.id, player.sceneData)}
-        source={preview ? turbine.voice.source : `${player.position.chapter.title} · ${player.feedStatus?.mode === 'server' ? '피드 데이터' : '시연 데이터'}`}/>
+          : turbine.voice.briefing?.scene === player.position.chapter.id ? turbine.voice.briefing.text
+            : sceneBriefing(player.position.chapter.id, player.sceneData)}
+        source={preview ? turbine.voice.source
+          : turbine.voice.briefing?.scene === player.position.chapter.id ? turbine.voice.briefing.source
+            : `${player.position.chapter.title} · ${player.feedStatus?.mode === 'server' ? '피드 데이터' : '시연 데이터'}`}/>
       <FilmDock player={player} camera={cameraMode} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
       {preview && <FilmMenuCube onSelect={id => {
         if (id === 'voice') { playFilmTransitionSound(); setManagementPage('ai'); setManagementSection('voice'); aiSettingsOpenRef.current = true; setAiSettingsOpen(true); return; }

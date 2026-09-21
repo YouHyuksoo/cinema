@@ -19,8 +19,11 @@ export function drawZoneTemperatureHistory(ctx: CanvasRenderingContext2D, fonts:
     align: CanvasTextAlign = 'left') => filmText(ctx, fonts, value, x + dx, top + dy,
     size, alpha * opacity, true, align);
   ctx.save();
-  const source = environmentCardPoint(item, 80, item.band === 'top' ? 38 : -43);
-  const routeX = anchor.x + 99, end = { x: x + width, y: top + height / 2 };
+  const beside = Math.abs(top + height / 2 - anchor.y) < 10;
+  const left = item.side === 'left';
+  const source = environmentCardPoint(item, beside ? (left ? 84 : -84) : 80, beside ? 0 : 39);
+  const routeX = beside ? (left ? x - 18 : x + width + 18) : anchor.x + 99;
+  const end = { x: beside && left ? x : x + width, y: top + height / 2 };
   drawEnvironmentLink(ctx, [source, { x: routeX, y: source.y }, { x: routeX, y: end.y }, end],
     alpha * .7, .25, state.elapsed + item.index * .1, 1.3);
   text('24H', 0, -15, 10, .75);
@@ -53,6 +56,14 @@ export function drawZoneTemperatureHistory(ctx: CanvasRenderingContext2D, fonts:
     ctx.strokeStyle = signalColor(outside ? 1 : .35, alpha * .95);
     ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 1.5;
     if (previous?.value !== null && previous !== undefined && point.at - previous.at <= 2 * TEMPERATURE_HOUR_MS) {
+      const fill = ctx.createLinearGradient(0, top, 0, top + height);
+      fill.addColorStop(0, signalColor(outside ? 1 : .35, alpha * .22));
+      fill.addColorStop(1, signalColor(outside ? 1 : .35, 0));
+      ctx.fillStyle = fill;
+      ctx.beginPath(); ctx.moveTo(x + previous.position * width, top + height);
+      ctx.lineTo(x + previous.position * width, y(previous.value)); ctx.lineTo(px, py);
+      ctx.lineTo(px, top + height); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = ctx.strokeStyle;
       ctx.beginPath(); ctx.moveTo(x + previous.position * width, y(previous.value)); ctx.lineTo(px, py);
       ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 5; ctx.stroke(); ctx.shadowBlur = 0;
     }

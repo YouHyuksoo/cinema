@@ -8,7 +8,7 @@ export const ENVIRONMENT_TIMING = {
   tourStart: 2.5, tourEnd: 21.5,
   chartsStart: 23, chartsEnd: 25.5, chartsOut: 34,
   heatmapStart: 35, heatmapFull: 38, heatmapOut: 89,
-  fadeOut: 89,
+  fadeOut: 89, monitoringStart: 90,
 } as const;
 export const ZONE_COUNT = 10;
 export interface EnvironmentRange { min: number; max: number }
@@ -53,8 +53,9 @@ export function environmentZoneStatus(zone: EnvironmentZone): ReadingStatus {
 
 export function environmentCardVisibility(elapsed: number, index: number) {
   const reveal = smooth(.25 + index * .09, 1.2 + index * .09, elapsed);
-  const cardOpacity = 1 - smooth(ENVIRONMENT_TIMING.chartsOut, ENVIRONMENT_TIMING.heatmapStart + .5, elapsed);
-  return { reveal, cardOpacity, selectable: elapsed < ENVIRONMENT_TIMING.heatmapStart
+  const cardOpacity = 1 - smooth(ENVIRONMENT_TIMING.chartsOut, ENVIRONMENT_TIMING.heatmapStart + .5, elapsed)
+    + smooth(ENVIRONMENT_TIMING.heatmapOut, ENVIRONMENT_TIMING.monitoringStart, elapsed);
+  return { reveal, cardOpacity, selectable: (elapsed < ENVIRONMENT_TIMING.heatmapStart || elapsed >= ENVIRONMENT_TIMING.monitoringStart)
     && smooth(0, 1, elapsed) * reveal * cardOpacity > .001 };
 }
 
@@ -64,6 +65,7 @@ export function zoneEnvironmentState(time: number, data: ZoneEnvironmentData = D
   const elapsed = Number.isFinite(time) ? Math.max(0, Math.min(ENVIRONMENT_FILM_SECONDS, time)) : 0;
   const source = data.zones.slice(0, ZONE_COUNT);
   const count = source.length;
+  const rows = Math.max(1, Math.ceil(count / 2));
   const timing = ENVIRONMENT_TIMING;
   const tourDuration = timing.tourEnd - timing.tourStart;
   const dwell = count ? tourDuration / count : tourDuration;
@@ -82,41 +84,38 @@ export function zoneEnvironmentState(time: number, data: ZoneEnvironmentData = D
   const zones = source.map((zone, index) => {
     const selected = index === selectedIndex;
     const lift = selected ? focus : 0;
-    const band = index < 5 ? 'top' : 'bottom';
-    const x = 200 + (index % 5) * 220, y = band === 'top' ? 185 : 580;
-    const side = index < 5 ? 'left' : 'right';
-    const row = index % 5, stagger = row * .16;
-    const project = createHoloProjection({ x, y, yaw: (2 - index % 5) * .05,
-      pitch: .3, distance: 850, scale: 1 });
+    const band = index < rows ? 'top' : 'bottom';
+    const spread = smooth(timing.tourEnd, timing.chartsStart, elapsed);
+    const x = index < rows ? 280 - 100 * spread : 1000 + 100 * spread;
+    const y = 394 - (rows - 1) * 51 + (index % rows) * 102;
+    const side = index < rows ? 'left' : 'right';
+    const row = index % rows, stagger = row * .16;
+    const project = createHoloProjection({ x, y, yaw: 0,
+      pitch: 0, distance: 850, scale: 1 });
     const front = project({ x: 0, y: 0, z: 0 });
-    // A different phase/period per station creates gentle suspended motion, not a moving row.
-    // Cards stay on their top/bottom anchors while the fixed central gauges switch readings.
-    const hover = smooth(.5, 1.8, elapsed) * (1 - smooth(timing.fadeOut, ENVIRONMENT_FILM_SECONDS, elapsed)) * (1 - lift * .7);
-    const phase = elapsed * Math.PI * 2 / (6.2 + index % 4 * .45) + index * 2.399;
-    const driftX = Math.sin(phase * .73) * 2 * hover;
-    const driftY = Math.sin(phase) * 5 * hover;
-    const driftDepth = Math.cos(phase * .81) * 4 * hover;
-    const anchor = { ...front, x: front.x + driftX, y: front.y + driftY,
-      scale: (1 + lift * .06) * (1 - driftDepth / 1000), depth: front.depth + driftDepth };
+    // Level sensor rows slide outward once, then remain still beside their histories.
+    const anchor = { ...front, scale: 1 };
     const history = temperatureHistoryPoints(zone.temperatureHistory, historyEnd);
     return { zone, index, selected, focus: lift, status: environmentZoneStatus(zone), anchor,
       band, side, row, history,
       cardOpacity: environmentCardVisibility(elapsed, index).cardOpacity,
       chartReveal: smooth(timing.chartsStart + stagger, timing.chartsEnd + stagger, elapsed)
-        * (1 - smooth(timing.chartsOut, timing.heatmapStart + .5, elapsed)),
-      tilt: (2 - index % 5) * .016 + Math.sin(phase * .67) * .012 * hover,
+        * (1 - smooth(timing.chartsOut, timing.heatmapStart + .5, elapsed))
+        + smooth(timing.heatmapOut, timing.monitoringStart, elapsed),
+      tilt: 0,
       reveal: environmentCardVisibility(elapsed, index).reveal, project };
   });
   const historyDomain = temperatureHistoryDomain(zones.flatMap(z => z.history.map(p => p.value)), source.map(z => z.temperatureRange));
-  return { elapsed, zones, selected: zones[selectedIndex], focus, historyEnd, historyDomain,
+  return { elapsed, monitoring: elapsed >= timing.monitoringStart, zones, selected: zones[selectedIndex], focus, historyEnd, historyDomain,
     manualSelectedId: manualIndex >= 0 ? source[manualIndex].id : null,
     focusOpacity: (.5 + focus * .5) * (1 - smooth(timing.tourEnd - .6, timing.tourEnd, elapsed)),
     showIntro: elapsed < timing.tourStart || !count,
     historyPhase: smooth(timing.chartsStart, timing.chartsStart + 1, elapsed)
-      * (1 - smooth(timing.chartsOut, timing.heatmapStart + .5, elapsed)),
+      * (1 - smooth(timing.chartsOut, timing.heatmapStart + .5, elapsed))
+      + smooth(timing.heatmapOut, timing.monitoringStart, elapsed),
     heatmapReveal: smooth(timing.heatmapStart, timing.heatmapFull, elapsed)
-      * (1 - smooth(timing.heatmapOut, ENVIRONMENT_FILM_SECONDS, elapsed)),
-    reveal: smooth(0, 1, elapsed) * (1 - smooth(timing.fadeOut, ENVIRONMENT_FILM_SECONDS, elapsed)),
+      * (1 - smooth(timing.heatmapOut, timing.monitoringStart, elapsed)),
+    reveal: smooth(0, 1, elapsed),
     normal: zones.filter(z => z.status === 'normal').length,
     outside: zones.filter(z => z.status === 'outside').length,
     missing: zones.filter(z => z.status === 'missing').length };

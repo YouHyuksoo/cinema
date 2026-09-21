@@ -6,8 +6,8 @@ import { isEnvironmentPortrait } from './environmentMobileLayout';
 import type { EnvironmentSelectionController } from './useEnvironmentSelection';
 import styles from './environmentInteraction.module.css';
 
-export function EnvironmentZoneInteraction({ canvas, controller }: {
-  canvas: RefObject<HTMLCanvasElement | null>; controller: EnvironmentSelectionController;
+export function EnvironmentZoneInteraction({ canvas, controller, monitoring = false }: {
+  canvas: RefObject<HTMLCanvasElement | null>; controller: EnvironmentSelectionController; monitoring?: boolean;
 }) {
   return <>
     <div className={styles.surface} role="group" tabIndex={0}
@@ -30,9 +30,9 @@ export function EnvironmentZoneInteraction({ canvas, controller }: {
       }} />
     <div className={styles.status}>
       <span role="status" aria-live="polite" aria-atomic="true" data-selected-zone={controller.selectedId ?? ''}>
-        {controller.selectedId ? `${controller.selectedId} 선택 중` : '자동 순회'}
+        {controller.selectedId ? `${controller.selectedId} 선택 중` : monitoring ? '고정 모니터링' : '자동 순회'}
       </span>
-      <span id="environment-selection-help">카드 클릭·방향키 선택 / 빈 곳 클릭·Esc 해제 / 하단에서 재생·정지</span>
+      <span id="environment-selection-help">카드 클릭·방향키 선택 / 빈 곳 클릭·Esc 해제 / 우측 상단 재생 제어</span>
     </div>
   </>;
 }

@@ -4,6 +4,8 @@ import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING,
 import { advanceFilm, chapterAt, FILM_CHAPTERS } from '@/cinema/filmProgram';
 import { sensorReading } from '@/cinema/components/drawSensorInstrument';
 import { environmentCardPoint, environmentFocusConnection, environmentHistoryLayout } from '@/cinema/environmentLayout';
+import { drawWaveFilm } from '@/cinema/drawWaveFilm';
+import { canvasFixture } from '../support/canvasFixture';
 
 describe('ten-zone temperature and humidity scene', () => {
   it('uses the same finite physical scale for the number, segmented bars and management band', () => {
@@ -27,13 +29,13 @@ describe('ten-zone temperature and humidity scene', () => {
     expect(environmentReadingStatus(state.zones[7].zone.humidity, { min: 40, max: 60 }, true)).toBe('outside');
   });
 
-  it('visits all ten zones while the small stations stay in their top and bottom bands', () => {
+  it('visits ten level stations, then slides them into two aligned history columns', () => {
     for (let index = 0; index < 10; index++) {
       const focused = zoneEnvironmentState(2.5 + index * 1.9 + .9);
       expect(focused.selected?.index).toBe(index);
       expect(focused.focus).toBe(1);
       const station = focused.zones[index], base = station.project({ x: 0, y: 0, z: 0 });
-      expect(station.anchor.scale / base.scale).toBeGreaterThan(1);
+      expect(station.anchor.scale / base.scale).toBe(1);
       expect(station.anchor.scale / base.scale).toBeLessThanOrEqual(1.07);
       expect(Math.abs(station.anchor.x - base.x)).toBeLessThanOrEqual(2);
       expect(Math.abs(station.anchor.y - base.y)).toBeLessThanOrEqual(5);
@@ -51,14 +53,15 @@ describe('ten-zone temperature and humidity scene', () => {
     expect(unfolded.zones.filter(z => z.band === 'top')).toHaveLength(5);
     expect(unfolded.zones.filter(z => z.band === 'bottom')).toHaveLength(5);
     for (const item of unfolded.zones) {
-      expect(Math.abs(item.anchor.x - (200 + item.index % 5 * 220))).toBeLessThanOrEqual(2);
-      expect(Math.abs(item.anchor.y - (item.index < 5 ? 185 : 580))).toBeLessThanOrEqual(5);
+      expect(item.anchor.x).toBe(item.index < 5 ? 180 : 1100);
+      expect(item.anchor.y).toBe(190 + item.index % 5 * 102);
+      expect(item.tilt).toBe(0);
       expect(Math.abs(item.anchor.scale - 1)).toBeLessThanOrEqual(.004);
       expect(Math.abs(item.anchor.depth)).toBeLessThanOrEqual(4);
       expect(item.chartReveal).toBe(1);
     }
-    expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).zones.every(z => z.cardOpacity === 0 && z.chartReveal === 0)).toBe(true);
-    expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).reveal).toBe(0);
+    expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).zones.every(z => z.cardOpacity === 1 && z.chartReveal === 1)).toBe(true);
+    expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).reveal).toBe(1);
   });
 
   it('never classifies unavailable readings or impossible humidity as normal', () => {
@@ -93,13 +96,13 @@ describe('ten-zone temperature and humidity scene', () => {
 
   it('keeps the small stations inside the viewport and leaves the central readout area clear', () => {
     for (let time = 0; time <= ENVIRONMENT_FILM_SECONDS; time += .05) {
-      for (const { anchor, band } of zoneEnvironmentState(time).zones) {
+      for (const { anchor, side } of zoneEnvironmentState(time).zones) {
         expect(anchor.x - 88 * anchor.scale).toBeGreaterThan(72);
         expect(anchor.x + 88 * anchor.scale).toBeLessThan(1208);
         expect(anchor.y - 48 * anchor.scale).toBeGreaterThan(126);
         expect(anchor.y + 55 * anchor.scale).toBeLessThan(655);
-        if (band === 'top') expect(anchor.y + 55 * anchor.scale).toBeLessThan(250);
-        else expect(anchor.y - 48 * anchor.scale).toBeGreaterThan(520);
+        if (side === 'left') expect(anchor.x + 84).toBeLessThan(420);
+        else expect(anchor.x - 84).toBeGreaterThan(860);
       }
     }
   });
@@ -137,10 +140,8 @@ describe('ten-zone temperature and humidity scene', () => {
       for (const { item, plot } of plots) {
         expect(plot.x - 26).toBeGreaterThan(72);
         expect(plot.x + plot.width).toBeLessThan(1208);
-        const cardTop = Math.min(...[-84, 84].map(x => environmentCardPoint(item, x, -43).y));
-        const cardBottom = Math.max(...[-84, 84].map(x => environmentCardPoint(item, x, 55).y));
-        if (item.band === 'top') expect(plot.top - 20).toBeGreaterThan(cardBottom);
-        else expect(plot.top + plot.height + 18).toBeLessThan(cardTop);
+        if (item.side === 'left') expect(plot.x - 26).toBeGreaterThan(environmentCardPoint(item, 84, 0).x);
+        else expect(plot.x + plot.width).toBeLessThan(environmentCardPoint(item, -84, 0).x);
       }
       for (let i = 0; i < plots.length; i++) for (let j = i + 1; j < plots.length; j++) {
         const a = plots[i].plot, b = plots[j].plot;
@@ -158,13 +159,9 @@ describe('ten-zone temperature and humidity scene', () => {
       expect(path).toHaveLength(4);
       const start = path[0], end = path.at(-1)!;
       expect(end.x).toBeGreaterThan(222); expect(end.x).toBeLessThan(1058);
-      if (index < 5) {
-        expect(start.y).toBeLessThan(end.y);
-        expect(path.every(point => point.y > 200 && point.y <= 282)).toBe(true);
-      } else {
-        expect(start.y).toBeGreaterThan(end.y);
-        expect(path.every(point => point.y >= 496 && point.y < 570)).toBe(true);
-      }
+      if (index < 5) expect(start.x).toBeLessThan(end.x);
+      else expect(start.x).toBeGreaterThan(end.x);
+      expect(path.every(point => point.x >= Math.min(start.x, end.x) && point.x <= Math.max(start.x, end.x))).toBe(true);
     }
     expect(environmentFocusConnection(zoneEnvironmentState(30))).toEqual([]);
   });
@@ -186,14 +183,36 @@ describe('ten-zone temperature and humidity scene', () => {
     expect(heatmap.historyPhase).toBe(0);
     expect(heatmap.zones.every(z => z.chartReveal === 0 && z.cardOpacity === 0)).toBe(true);
     expect(heatmap.heatmapReveal).toBe(1);
-    expect(zoneEnvironmentState(ENVIRONMENT_TIMING.heatmapOut + 1).heatmapReveal).toBeCloseTo(.5);
+    expect(zoneEnvironmentState(ENVIRONMENT_TIMING.heatmapOut + .5).heatmapReveal).toBeCloseTo(.5);
     expect(zoneEnvironmentState(ENVIRONMENT_FILM_SECONDS).heatmapReveal).toBe(0);
   });
 
-  it('allows every hotspot to dwell and keeps selection and looping aligned', () => {
+  it('holds the final monitoring board in both playback modes until explicit navigation', () => {
     expect(FILM_CHAPTERS[0]).toMatchObject({ id: 'wave', title: '온습도 모니터링', duration: ENVIRONMENT_FILM_SECONDS, previewAt: 30 });
     expect(chapterAt(ENVIRONMENT_FILM_SECONDS - .001).chapter.id).toBe('wave');
     expect(chapterAt(ENVIRONMENT_FILM_SECONDS).chapter.id).toBe('gears');
-    expect(chapterAt(advanceFilm(ENVIRONMENT_FILM_SECONDS - .1, .2, 'chapter')).localTime).toBeCloseTo(.1);
+    for (const mode of ['chapter', 'sequence'] as const) {
+      const time = advanceFilm(89, 200, mode);
+      expect(chapterAt(time).chapter.id).toBe('wave');
+      expect(chapterAt(time).localTime).toBe(ENVIRONMENT_TIMING.monitoringStart);
+      expect(advanceFilm(time, 3600, mode)).toBe(time);
+    }
+    const changed = { ...DEFAULT_ENVIRONMENT_DATA, zones: DEFAULT_ENVIRONMENT_DATA.zones.map(z => ({ ...z, temperature: 27.5 })) };
+    const live = zoneEnvironmentState(ENVIRONMENT_TIMING.monitoringStart, changed);
+    expect(live.monitoring).toBe(true);
+    expect(live.zones.every(z => z.zone.temperature === 27.5 && z.cardOpacity === 1 && z.chartReveal === 1)).toBe(true);
+    expect(live.heatmapReveal).toBe(0);
+    const canvas = canvasFixture();
+    drawWaveFilm(canvas.ctx, 1280, 720, ENVIRONMENT_TIMING.monitoringStart, undefined, undefined, changed);
+    const labels = canvas.texts.filter(t => t.opacity > 0).map(t => t.value);
+    expect(labels).toContain('구역별 온습도 / 모니터링');
+    expect(labels.filter(t => t === '27.5')).toHaveLength(10);
+    expect(labels.filter(t => t === '24H')).toHaveLength(10);
+    expect(labels).not.toContain('센서 설치 공간 / 온도 히트맵');
+    const six = zoneEnvironmentState(90, { ...changed, zones: changed.zones.slice(0, 6) }, changed.zones[5].id);
+    expect(six.zones.filter(z => z.side === 'left')).toHaveLength(3);
+    expect(six.zones.filter(z => z.side === 'right')).toHaveLength(3);
+    expect(six.manualSelectedId).toBe(changed.zones[5].id);
+    expect(six.zones.every(z => z.tilt === 0 && z.anchor.scale === 1)).toBe(true);
   });
 });

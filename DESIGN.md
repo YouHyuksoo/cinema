@@ -1,5 +1,18 @@
 # CINEMA 시각 시스템
 
+## 온습도 마지막 고정 모니터링 (2026-09-20)
+
+- 온습도 글래스 카드 폭은 104~138px로 축소하고 10개 위치를 표시한다. 수신 센서가 10개 미만이면 남는 자리는 비활성 미연결 슬롯으로 표시하며 데이터/관리범위/이력을 생성하지 않는다. 실센서의 이름과 값을 우선한다.
+
+- 센서 카드는 배경이 비치는 청색 투명 글래스(얇은 밝은 테두리/정적 반사 그라디언트)로 표현한다. 글자 그림자로 판독성을 보완하고 이탈은 앰버 테두리를 유지한다. 성능상 backdrop-filter 및 반복 반사 애니메이션은 사용하지 않는다.
+
+- 90초부터 EnvironmentFloorMonitor를 표시한다. 앞선 연출과 정지 시점, 기존 센서 polling은 유지한다. 마지막 공간은 AI 시안에서 모든 예시 UI/수치를 제거한 정적 이미지이며 WebGL을 실행하지 않는다.
+- 배경 public/cinema/environment-factory.png 위 DOM 센서 카드를 배치한다. 설치 위치는 예시임을 명시하고 숫자는 sceneData.environment만 사용한다. 기본 시연 데이터는 별도 표시. 결측값은 —, 없는 이력은 이력 없음. 센서 선택 시 기존 timestamp 기반 24시간 온도 이력 표시, 결측 구간은 연결하지 않는다.
+- 작은 화면은 같은 배경 아래 2열 센서 목록으로 재배치한다. 키보드 선택/포커스와 reduced motion 지원. 새 프레임 루프 없음.
+- 영향: SignalFilm → EnvironmentFloorMonitor / environmentFloorMonitor.module.css → 기존 sceneData.environment / temperatureHistory. 별도 /cinema/studio는 실제 Three.js 시제품으로 유지하며 마지막 모니터링에서 import하지 않는다.
+- 2026-09-21: 공장 이미지의 센서 카드는 설비 환경 태그로 표시한다. 카드에는 실제 구역명·센서 ID·온도·습도·상태만 사용하고, 별도 설비 ID는 만들지 않는다. 카드 하단에서 이미지 속 설치점까지 꺾인 연결선을 그리며 정보상자는 반투명 글래스 톤을 유지한다. 미연결 슬롯은 같은 연결 구조를 쓰되 값은 `—`로 표시한다. 영향 경로: EnvironmentFloorMonitor.tsx → environmentFloorMonitor.module.css → cinemaFloorMonitor.test.ts.
+- 배경 제작: 내장 imagegen 편집, 원 시안 구조/재질 보존, 모든 UI/문자/차트/센서 핀 제거 프롬프트. 배포용 자산은 public/cinema에 보관한다.
+
 ## 렌더링 구조
 
 - 렌더러는 세 층이며 WebGL/Three.js는 쓰지 않는다(2026-09-08 구체 설계, 2026-09-10 재확인). (1) Canvas 2D + 자체 원근 투영: 모든 장면·리액터·비행 연출. (2) CSS 3D 변환: 메뉴 큐브·구체·HUD 프레임·자이로처럼 접근성 트리와 포커스가 필요한 입체 위젯. (3) SVG/React DOM: 아이콘·게이지·텍스트. 카메라가 거의 고정된 얕은 원근이므로 Canvas 2D가 충분하며, 자유 카메라·조명·재질이 필요해지기 전에는 엔진을 추가하지 않는다.

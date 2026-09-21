@@ -87,7 +87,7 @@ function drawFilmChapter(ctx: CanvasRenderingContext2D, width: number, height: n
   // Chapter fades and navigation marks must not inherit an object's local opacity.
   resetFilmPaint(ctx);
   ctx.save();
-  const visible = (chapter.id === 'visor' && factory) || (chapter.id === 'cctv' && cctv) ? 1
+  const visible = (chapter.id === 'wave' && localTime >= chapter.duration - 1) || (chapter.id === 'visor' && factory) || (chapter.id === 'cctv' && cctv) ? 1
     : smooth(0, .4, localTime) * (1 - smooth(chapter.duration - .4, chapter.duration, localTime));
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = `rgba(4,11,16,${1 - visible})`; ctx.fillRect(0, 0, width, height);

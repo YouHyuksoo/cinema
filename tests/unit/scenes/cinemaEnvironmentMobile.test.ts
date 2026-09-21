@@ -23,7 +23,7 @@ describe('portrait environment composition', () => {
     }
   });
 
-  it.each([2, 8, 21.5, 22, 23, 28, 34.5])('keeps ten nonoverlapping cards and source data at time %s', time => {
+  it.each([2, 8, 21.5, 22, 23, 28, 34.5, 90])('keeps ten nonoverlapping cards and source data at time %s', time => {
     const source = zoneEnvironmentState(time, DEFAULT_ENVIRONMENT_DATA, 'ZONE 08');
     const original = source.zones.map(item => ({ ...item.anchor }));
     const mobile = environmentMobileState(source);

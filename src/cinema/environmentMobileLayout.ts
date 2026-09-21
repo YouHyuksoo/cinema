@@ -21,7 +21,7 @@ export function environmentMobileState(state: ZoneEnvironmentState): ZoneEnviron
     const row = Math.floor(item.index / 2);
     const tourY = 350 + row * 130, historyY = 140 + row * 180;
     return { ...item, anchor: { ...item.anchor, x: 110 + item.index % 2 * 220,
-      y: tourY + (historyY - tourY) * charts, scale: 1 + item.focus * .03 }, tilt: item.tilt * .3 };
+      y: tourY + (historyY - tourY) * charts, scale: 1 }, tilt: 0 };
   });
   return { ...state, zones, selected: zones.find(item => item.selected)! };
 }

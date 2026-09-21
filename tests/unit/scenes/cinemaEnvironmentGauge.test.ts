@@ -40,27 +40,20 @@ describe('fixed central environment gauges', () => {
     }
   });
 
-  it('attaches floating cards to the exact rim and keeps the middle column on one gauge', () => {
+  it('attaches level card rows to the compact central gauge rim', () => {
     for (let time = 2.51; time < 21.5; time += .071) {
       const state = zoneEnvironmentState(time);
       const item = state.selected!;
-      const gauge = item.index % 5 <= 2 ? ENVIRONMENT_GAUGES.temperature : ENVIRONMENT_GAUGES.humidity;
+      const original = item.side === 'left' ? ENVIRONMENT_GAUGES.temperature : ENVIRONMENT_GAUGES.humidity;
+      const gauge = { x: 640 * .35 + original.x * .65, y: 390 * .35 + original.y * .65, radius: original.radius * .65 };
       const path = environmentFocusConnection(state);
       const start = path[0], end = path.at(-1)!;
       expect(Math.hypot(end.x - gauge.x, end.y - gauge.y)).toBeCloseTo(gauge.radius, 9);
-      const exitX = item.anchor.x < gauge.x ? 78 : -78;
-      const exitY = item.band === 'top' ? 39 : exitX === 78 ? -34.25 : -43;
-      expect(start).toEqual(environmentCardPoint(item, exitX, exitY));
-      expect(path[1].x).toBe(start.x);
-      expect(path[2].x).toBe(end.x);
-      expect(path[1].y).toBe(path[2].y);
-      if (item.band === 'top') {
-        expect(end.y).toBeLessThanOrEqual(282);
-        expect(path.every(point => point.y >= start.y && point.y <= end.y)).toBe(true);
-      } else {
-        expect(end.y).toBeGreaterThanOrEqual(496);
-        expect(path.every(point => point.y <= start.y && point.y >= end.y)).toBe(true);
-      }
+      expect(start).toEqual(environmentCardPoint(item, item.side === 'left' ? 84 : -84, 0));
+      expect(path[1].y).toBe(start.y);
+      expect(path[2].y).toBe(end.y);
+      expect(path[1].x).toBe(path[2].x);
+      expect(path.every(point => point.x >= Math.min(start.x, end.x) && point.x <= Math.max(start.x, end.x))).toBe(true);
     }
   });
 
@@ -75,5 +68,12 @@ describe('fixed central environment gauges', () => {
       expect(environmentFocusConnection(zoneEnvironmentState(time))).toEqual(path);
       expect(state.selected?.zone).toEqual(DEFAULT_ENVIRONMENT_DATA.zones[state.selected!.index]);
     }
+  });
+
+  it('keeps zone cards anchored instead of floating during the scene', () => {
+    const early = zoneEnvironmentState(4, DEFAULT_ENVIRONMENT_DATA, 'ZONE 01');
+    const later = zoneEnvironmentState(12, DEFAULT_ENVIRONMENT_DATA, 'ZONE 01');
+    expect(later.zones.map(item => item.anchor)).toEqual(early.zones.map(item => item.anchor));
+    expect(later.zones.map(item => item.tilt)).toEqual(early.zones.map(item => item.tilt));
   });
 });

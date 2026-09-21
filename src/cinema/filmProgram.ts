@@ -5,7 +5,7 @@ import { RACE_CAR_SECONDS } from './raceCar';
 import { PROCESS_NETWORK_SECONDS } from './processNetwork';
 import { ENERGY_CORE_SECONDS } from './energyCore';
 import { PRODUCT_INSPECTION_SECONDS } from './productInspection';
-import { ENVIRONMENT_FILM_SECONDS } from './zoneEnvironment';
+import { ENVIRONMENT_FILM_SECONDS, ENVIRONMENT_TIMING } from './zoneEnvironment';
 import { SPC_FILM_SECONDS } from './spcScene';
 import { TRACE_LOOP, TRACE_TIMING } from './workOrderTraceTiming';
 import { CCTV_FILM_SECONDS } from './cctvScene';
@@ -64,8 +64,9 @@ export function chapterAt(time: number) {
 }
 
 export function advanceFilm(time: number, seconds: number, mode: PlaybackMode) {
-  if (mode === 'sequence') return (time + seconds) % FILM_SECONDS;
   const { chapter, start, localTime } = chapterAt(time);
+  if (chapter.id === 'wave') return start + Math.max(0, Math.min(ENVIRONMENT_TIMING.monitoringStart, localTime + seconds));
+  if (mode === 'sequence') return (time + seconds) % FILM_SECONDS;
   if ('loop' in chapter) {
     const next = localTime + seconds;
     if (next >= 0 && next < chapter.loop.end) return start + next;

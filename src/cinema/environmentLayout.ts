@@ -13,30 +13,26 @@ export function environmentCardPaintOrder(state: ZoneEnvironmentState) {
   return [...state.zones].sort((a, b) => a.focus - b.focus);
 }
 
-/** Matches the mini-card's actual scale and tilted drawing plane. */
+/** Matches the level card drawing plane and pointer hit area. */
 export function environmentCardPoint(item: ZoneItem, x: number, y: number): EnvironmentPoint {
   return { x: item.anchor.x + x * item.anchor.scale,
-    y: item.anchor.y + (item.tilt * x + .96 * y) * item.anchor.scale };
+    y: item.anchor.y + (item.tilt * x + y) * item.anchor.scale };
 }
 
-/** Each history stays on the inner side of its fixed top/bottom station. */
+/** Each history unfolds inward from its sensor row. */
 export function environmentHistoryLayout(item: ZoneItem) {
-  return { x: item.anchor.x - 83, top: item.band === 'top' ? 280 : 424, width: 166, height: 65 };
+  return { x: item.side === 'left' ? item.anchor.x + 128 : item.anchor.x - 388,
+    top: item.anchor.y - 23, width: 260, height: 48 };
 }
 
 export function environmentFocusConnection(state: ZoneEnvironmentState): EnvironmentPoint[] {
   const item = state.selected;
   if (!item) return [];
-  const upper = item.band === 'top';
-  // Stable columns prevent a floating middle card from switching between the two gauges.
-  const gauge = item.index % 5 <= 2 ? ENVIRONMENT_GAUGES.temperature : ENVIRONMENT_GAUGES.humidity;
-  const exitX = item.anchor.x < gauge.x ? 78 : -78;
-  // The upper-right card corner is cut from (68,-43) to (84,-29).
-  const exitY = upper ? 39 : exitX > 68 ? -43 + (exitX - 68) * 14 / 16 : -43;
-  const start = environmentCardPoint(item, exitX, exitY);
-  const offset = Math.asin(Math.max(-Math.sin(.35), Math.min(Math.sin(.35), (start.x - gauge.x) / gauge.radius)));
-  const angle = upper ? -Math.PI / 2 + offset : Math.PI / 2 - offset;
-  const end = { x: gauge.x + Math.cos(angle) * gauge.radius, y: gauge.y + Math.sin(angle) * gauge.radius };
-  const bendY = (start.y + end.y) / 2;
-  return [start, { x: start.x, y: bendY }, { x: end.x, y: bendY }, end];
+  const left = item.side === 'left';
+  const gauge = left ? ENVIRONMENT_GAUGES.temperature : ENVIRONMENT_GAUGES.humidity;
+  const start = environmentCardPoint(item, left ? 84 : -84, 0);
+  const end = { x: 640 * .35 + (gauge.x + (left ? -gauge.radius : gauge.radius)) * .65,
+    y: 390 * .35 + gauge.y * .65 };
+  const bendX = (start.x + end.x) / 2;
+  return [start, { x: bendX, y: start.y }, { x: bendX, y: end.y }, end];
 }

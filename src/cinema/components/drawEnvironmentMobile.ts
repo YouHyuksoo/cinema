@@ -66,11 +66,11 @@ export function drawEnvironmentMobile(ctx: CanvasRenderingContext2D, width: numb
   fonts: FilmFonts, frame: ZoneEnvironmentState, data: ZoneEnvironmentData, demo: boolean, insets?: FilmViewportInsets) {
   const view = environmentViewportTransform(width, height, insets);
   ctx.setTransform(view.scale, 0, 0, view.scale, view.offsetX, view.offsetY);
-  const state = environmentMobileState(frame), isMap = state.elapsed >= ENVIRONMENT_TIMING.heatmapStart;
+  const state = environmentMobileState(frame), isMap = state.elapsed >= ENVIRONMENT_TIMING.heatmapStart && state.elapsed < ENVIRONMENT_TIMING.heatmapOut;
   const text = (value: string, x: number, y: number, size: number, alpha = 1) =>
     filmText(ctx, fonts, value, x, y, size, alpha * state.reveal);
   text('ENVIRONMENT / ZONE MONITOR', 26, 22, 13, .7);
-  text(isMap ? '센서 설치 공간 / 온도 히트맵' : state.elapsed >= ENVIRONMENT_TIMING.chartsStart ? '구역별 24시간 온도 변화' : data.title, 26, 51, 21);
+  text(state.monitoring ? '구역별 온습도 / 모니터링' : isMap ? '센서 설치 공간 / 온도 히트맵' : state.elapsed >= ENVIRONMENT_TIMING.chartsStart ? '구역별 24시간 온도 변화' : data.title, 26, 51, 21);
   const statuses = state.zones.map(item => isMap ? environmentReadingStatus(item.zone.temperature, item.zone.temperatureRange) : item.status);
   text(`${state.zones.length} ZONES  ·  ${isMap ? '온도 ' : ''}범위 내 ${statuses.filter(s => s === 'normal').length} / 이탈 ${statuses.filter(s => s === 'outside').length} / 미확인 ${statuses.filter(s => s === 'missing').length}`, 26, 76, 12, .8);
   drawEnvironmentZones(ctx, fonts, state, environmentMobileHistoryLayout);

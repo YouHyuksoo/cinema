@@ -8,7 +8,7 @@ import { ENVIRONMENT_GAUGES, environmentGaugeState } from '../environmentGauge';
 import { drawEnvironmentGauge } from './drawEnvironmentGauge';
 import type { environmentHistoryLayout } from '../environmentLayout';
 
-/** Ten suspended sensor stations share their projection with the selected station's tether. */
+/** Level sensor rows share geometry with picking and their history connections. */
 export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state: ZoneEnvironmentState,
   historyLayout?: typeof environmentHistoryLayout) {
   for (const item of state.zones) drawZoneTemperatureHistory(ctx, fonts, state, item, historyLayout?.(item));
@@ -18,7 +18,7 @@ export function drawEnvironmentZones(ctx: CanvasRenderingContext2D, fonts: FilmF
     if (alpha <= .001) continue;
     ctx.save();
     ctx.translate(anchor.x, anchor.y); ctx.scale(anchor.scale, anchor.scale);
-    ctx.transform(1, item.tilt, 0, .96, 0, 0);
+    ctx.transform(1, item.tilt, 0, 1, 0, 0);
     const line = (x1: number, y1: number, x2: number, y2: number, opacity: number) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
       ctx.strokeStyle = signalColor(heat, alpha * opacity); ctx.lineWidth = .7; ctx.stroke();
@@ -71,8 +71,11 @@ export function drawEnvironmentFocus(ctx: CanvasRenderingContext2D, fonts: FilmF
   const motion = environmentGaugeState(state);
   const alpha = state.reveal * motion.opacity, zone = selected.zone;
   const { temperature, humidity } = ENVIRONMENT_GAUGES;
+  // Compact central instruments leave both level card columns unobstructed.
   drawEnvironmentLink(ctx, environmentFocusConnection(state), alpha * motion.assembly * state.focus,
-    selected.status === 'outside' ? 1 : .25, state.elapsed, 2.1);
+    selected.status === 'outside' ? 1 : .25, state.elapsed, 1.3);
+  ctx.save();
+  ctx.translate(640 * .35, 390 * .35); ctx.scale(.65, .65);
   filmText(ctx, fonts, zone.id, 640, 313, 18, alpha * motion.readingOpacity, true, 'center');
   filmText(ctx, fonts, zone.name, 640, 335, 13, alpha * motion.readingOpacity * .85, false, 'center');
   // Both channels stay mounted while the selected station and its tether advance.
@@ -84,4 +87,5 @@ export function drawEnvironmentFocus(ctx: CanvasRenderingContext2D, fonts: FilmF
   drawSensorRotor(ctx, 640, temperature.y, 15, 1, state.elapsed, .1, linkAlpha);
   drawEnvironmentGauge(ctx, fonts, temperature, zone.temperature, zone.temperatureRange, false, motion, alpha);
   drawEnvironmentGauge(ctx, fonts, humidity, zone.humidity, zone.humidityRange, true, motion, alpha);
+  ctx.restore();
 }

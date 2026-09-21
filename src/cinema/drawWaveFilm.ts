@@ -26,8 +26,8 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
     filmText(ctx, fonts, value, x, y, size, alpha * state.reveal, mono, 'left', signalColor(heat, 1));
   text('ENVIRONMENT / ZONE MONITOR', 72, 76, 14, .75, true);
   const map = state.heatmapReveal;
-  const isMap = state.elapsed >= ENVIRONMENT_TIMING.heatmapStart;
-  text(isMap ? '센서 설치 공간 / 온도 히트맵'
+  const isMap = state.elapsed >= ENVIRONMENT_TIMING.heatmapStart && state.elapsed < ENVIRONMENT_TIMING.heatmapOut;
+  text(state.monitoring ? '구역별 온습도 / 모니터링' : isMap ? '센서 설치 공간 / 온도 히트맵'
     : state.elapsed >= ENVIRONMENT_TIMING.chartsStart ? '구역별 24시간 온도 변화' : data.title, 72, 110, 20);
   text('공통 온도 눈금 · 점선은 관리 범위', 565, 110, 11, state.historyPhase * (1 - map) * .6);
   text(`${pad2(state.zones.length)} ZONES`, 945, 112, 18, .85, true);
