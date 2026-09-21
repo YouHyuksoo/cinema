@@ -17,6 +17,7 @@
     "oracledb": "^7.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "three": "^0.186.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
     "@types/oracledb": "^7.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMT 4개 생산라인 3D 공간</title>
+<style>
+:root{color-scheme:dark;--panel:#07111de8;--line:#24435f;--text:#e7f2fa;--dim:#89a1b4;--cyan:#56d7e5;--amber:#ffc968}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#07101a;color:var(--text);font:13px/1.45 Inter,"Segoe UI","Malgun Gothic",sans-serif}canvas{display:block}
+#hud{position:fixed;left:16px;top:16px;width:286px;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(10px);box-shadow:0 14px 50px #0008}
+h1{font-size:15px;letter-spacing:.13em;margin:0;color:var(--cyan)}.sub{margin:4px 0 14px;color:var(--dim);font-size:11px}.modes{display:flex;gap:7px;margin-bottom:13px}
+button{font:inherit;color:var(--text);background:#10263a;border:1px solid #294b67;border-radius:7px;padding:8px;cursor:pointer}button:hover{border-color:var(--cyan)}button[aria-pressed=true]{background:var(--cyan);color:#041018;border-color:var(--cyan);font-weight:700}
+#lines{display:grid;gap:5px}#lines button{text-align:left;display:flex;justify-content:space-between;width:100%}#lines small{color:var(--dim)}#lines button.active{border-color:var(--amber);color:var(--amber)}
+#detail{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);color:var(--dim);font-size:11px}#detail b{display:block;color:var(--text);font-size:12px;margin-bottom:3px}
+#help{position:fixed;left:16px;bottom:16px;padding:10px 13px;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--dim);font-size:11px;line-height:1.75}
+#legend{position:fixed;right:16px;top:16px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--dim);font-size:11px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}.run{background:#4de18d}.inspect{background:#ffc968}.safe{background:#56d7e5}
+#crosshair{display:none;position:fixed;left:50%;top:50%;width:18px;height:18px;margin:-9px}.walk #crosshair{display:block}#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff9}#crosshair:before{left:8px;width:2px;height:18px}#crosshair:after{top:8px;height:2px;width:18px}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#07101a;color:var(--dim);letter-spacing:.08em}
+</style>
+</head>
+<body><div id="loading">SMT 4개 라인을 구성하는 중…</div>
+<aside id="hud" hidden><h1>SMT PRODUCTION FLOOR</h1><p class="sub">참조 이미지 기반 개념 배치 · 76 × 44 m</p><div class="modes"><button id="orbit" aria-pressed="true">둘러보기</button><button id="walk" aria-pressed="false">내부 걷기</button></div><div id="lines"></div><div id="detail"><b>전체 공정</b>4개 평행 라인 · 각 라인 58m<br>투입 → 인쇄/SPI → 마운터 → 리플로우 → AOI → ICT</div></aside>
+<div id="legend"><div><i class="dot run"></i>생산 설비</div><div><i class="dot inspect"></i>검사 셀</div><div><i class="dot safe"></i>안전 통로</div></div>
+<div id="help"><b>둘러보기</b> 드래그 회전 · 휠 확대<br><b>내부 걷기</b> 화면 클릭 · WASD 이동 · ESC 해제</div><div id="crosshair"></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {PointerLockControls} from 'three/addons/controls/PointerLockControls.js';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const W=76,D=44,H=10.5;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x07101a);scene.fog=new THREE.Fog(0x07101a,90,190);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;document.body.appendChild(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,300);camera.position.set(-19,34,56);
+scene.add(new THREE.HemisphereLight(0xcce8ff,0x172434,2.4));const sun=new THREE.DirectionalLight(0xfff7e9,3);sun.position.set(28,54,22);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-65,right:65,top:65,bottom:-65,near:5,far:140});sun.shadow.camera.updateProjectionMatrix();scene.add(sun);
+const M={floor:new THREE.MeshStandardMaterial({color:0xaeb8c1,roughness:.82}),aisle:new THREE.MeshStandardMaterial({color:0x254c5c,roughness:.7}),mark:new THREE.MeshStandardMaterial({color:0x54d9e4,emissive:0x123a42}),white:new THREE.MeshStandardMaterial({color:0xe9edf0,roughness:.34,metalness:.48}),shell:new THREE.MeshPhysicalMaterial({color:0xe9edf0,roughness:.26,metalness:.08,clearcoat:.5,clearcoatRoughness:.2}),light:new THREE.MeshStandardMaterial({color:0xc9d0d5,roughness:.4,metalness:.55}),mid:new THREE.MeshStandardMaterial({color:0x74808a,roughness:.46,metalness:.62}),dark:new THREE.MeshPhysicalMaterial({color:0x171d23,roughness:.2,metalness:.45,clearcoat:.28,clearcoatRoughness:.18}),glass:new THREE.MeshPhysicalMaterial({color:0x172b38,roughness:.06,metalness:.08,transmission:.08,transparent:true,opacity:.82,clearcoat:.75}),red:new THREE.MeshStandardMaterial({color:0xdb2e36,roughness:.5}),green:new THREE.MeshStandardMaterial({color:0x42e282,emissive:0x0b4a26}),amber:new THREE.MeshStandardMaterial({color:0xffbd46,emissive:0x5b3508}),belt:new THREE.MeshStandardMaterial({color:0x303940,roughness:.65,metalness:.4}),frame:new THREE.MeshStandardMaterial({color:0x8e999f,roughness:.38,metalness:.72})};
+const BOX=new THREE.BoxGeometry(1,1,1),CYL=new THREE.CylinderGeometry(1,1,1,16),ROUNDED=new Map(),world=new THREE.Group();scene.add(world);
+function box(parent,mat,x,y,z,sx,sy,sz,ry=0){const m=new THREE.Mesh(BOX,mat);m.position.set(x,y+sy/2,z);m.scale.set(sx,sy,sz);m.rotation.y=ry;m.castShadow=m.receiveShadow=true;parent.add(m);return m}
+function roundedBox(parent,mat,x,y,z,sx,sy,sz,r=.12,segments=4,ry=0){const radius=Math.min(r,sx/2,sy/2,sz/2)*.98,key=`${sx}:${sy}:${sz}:${radius}:${segments}`;if(!ROUNDED.has(key))ROUNDED.set(key,new RoundedBoxGeometry(sx,sy,sz,segments,radius));const m=new THREE.Mesh(ROUNDED.get(key),mat);m.position.set(x,y+sy/2,z);m.rotation.y=ry;m.castShadow=m.receiveShadow=true;parent.add(m);return m}
+function cyl(parent,mat,x,y,z,r,h){const m=new THREE.Mesh(CYL,mat);m.position.set(x,y+h/2,z);m.scale.set(r,h,r);m.castShadow=true;parent.add(m);return m}
+function label(parent,text,x,y,z,color='#dff8ff',scale=1,role='생산 설비'){
+  const width=7.2*scale,anchor=new THREE.Vector3(x,y-1.25,z-.55),tag=new THREE.Vector3(x+width*.58,y,z+.72),elbow=new THREE.Vector3(tag.x-width*.65,tag.y-.38,tag.z);
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([anchor,elbow,tag]),new THREE.LineBasicMaterial({color,transparent:true,opacity:.96,depthTest:false}));line.renderOrder=20;parent.add(line);
+  const c=document.createElement('canvas');c.width=640;c.height=180;const ctx=c.getContext('2d');ctx.fillStyle='rgba(7,20,32,.68)';ctx.strokeStyle=color;ctx.lineWidth=4;ctx.roundRect(5,5,630,170,22);ctx.fill();ctx.stroke();
+  const glow=ctx.createLinearGradient(0,0,640,180);glow.addColorStop(0,'rgba(255,255,255,.2)');glow.addColorStop(.32,'rgba(255,255,255,.03)');glow.addColorStop(1,'rgba(255,255,255,.1)');ctx.fillStyle=glow;ctx.roundRect(8,8,624,164,20);ctx.fill();
+  ctx.fillStyle='#effcff';ctx.font='600 40px Segoe UI';ctx.fillText(text,30,62);ctx.fillStyle='#9bb8c8';ctx.font='25px Segoe UI';ctx.fillText(role,30,111);ctx.fillStyle=color;ctx.font='600 23px Segoe UI';ctx.fillText('RUN',520,111);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));s.position.copy(tag);s.scale.set(width,2.05*scale,1);s.renderOrder=21;parent.add(s);return s
+}
+box(world,M.floor,W/2,-.4,D/2,W,.4,D);
+function feet(g,x,z,w,d){for(const sx of [-1,1])for(const sz of [-1,1])box(g,M.dark,x+sx*(w/2-.15),0,z+sz*(d/2-.15),.14,.28,.14)}
+function conveyor(g,x,z,len=4,w=1.15,h=.78){box(g,M.frame,x,0,z,.14,h,w);box(g,M.frame,x+len,0,z,.14,h,w);box(g,M.belt,x+.05,h,z,len-.1,.12,w);for(let i=.35;i<len;i+=.42)cyl(g,M.mid,x+i,h+.1,z,.045,w);for(const px of [x,x+len])for(const pz of [-.42,.42])box(g,M.dark,px,0,z+pz,.1,h,.1)}
+function tower(g,x,z,y=2.7){cyl(g,M.dark,x,y,z,.075,.12);cyl(g,M.green,x,y+.12,z,.075,.18);cyl(g,M.amber,x,y+.3,z,.075,.15);cyl(g,M.red,x,y+.45,z,.075,.15)}
+function monitor(g,x,y,z,arm=.52){box(g,M.frame,x,y-.06,z-arm/2,.08,.08,arm);box(g,M.dark,x,y,z-arm,1.05,.68,.1);box(g,M.glass,x,y+.06,z-arm-.06,.88,.49,.02)}
+function controls(g,x,y,z){for(let i=0;i<4;i++)cyl(g,i===0?M.red:i===1?M.amber:M.green,x,y-i*.2,z,.065,.06)}
+function loader(g,x,z){
+  // 참조 이미지의 개방형 PCB 승강 로더: 네 기둥, 매거진, 하부 이송부.
+  for(const px of [-1.05,1.05])for(const pz of [-.82,.82])box(g,M.frame,x+px,0,z+pz,.12,2.9,.12);
+  box(g,M.frame,x,2.78,z,2.25,.16,1.78);box(g,M.frame,x,.15,z,2.25,.16,1.78);box(g,M.belt,x-.15,.55,z,2.15,.12,1.05);
+  for(let y=.85;y<2.6;y+=.28){box(g,M.dark,x-.32,y,z,.06,.06,1.25);box(g,M.dark,x+.32,y,z,.06,.06,1.25)}
+  roundedBox(g,M.shell,x+1.48,0,z,1.05,2.55,1.45,.1);box(g,M.dark,x+1.48,.62,z+.74,.62,.98,.05);controls(g,x+1.98,1.72,z+.76);tower(g,x+1.72,z,2.55);conveyor(g,x+2,z,2.15)
+}
+function printer(g,x,z){
+  // 솔더 페이스트 프린터: 흰 측면 셸과 큰 검은 전면 도어, 외부 모니터.
+  roundedBox(g,M.shell,x,0,z,4.15,2.45,2.6,.16);roundedBox(g,M.dark,x+.28,.56,z+1.31,2.72,1.68,.12,.08);box(g,M.glass,x+.28,1.18,z+1.36,2.36,.8,.02);
+  box(g,M.light,x-1.62,.32,z+1.34,.48,.64,.08);box(g,M.red,x-1.65,1.78,z+1.36,.13,.13,.05);monitor(g,x+2.43,1.42,z+1.2,.76);controls(g,x+1.92,1.42,z+1.29);tower(g,x-1.55,z,2.45);feet(g,x,z,4.15,2.6);conveyor(g,x+2.05,z,1.35)
+}
+function inspector(g,x,z,name='SPI'){
+  roundedBox(g,M.shell,x,0,z,2.8,2.75,2.5,.15);roundedBox(g,M.dark,x-.18,1.15,z+1.27,1.92,.78,.1,.06);box(g,M.glass,x-.18,1.22,z+1.32,1.7,.6,.02);
+  box(g,M.light,x-.25,.38,z+1.3,1.65,.42,.09);monitor(g,x+.08,1.53,z+1.25,.15);controls(g,x+1.16,1.63,z+1.31);box(g,M.dark,x+1.18,.48,z+1.32,.3,.98,.08);tower(g,x+1.08,z,2.75);label(g,name,x,3.55,z+1.4,'#ffc968',.62,'솔더 페이스트 검사')
+}
+function mounter(g,x,z,wide=false){
+  const w=wide?5.4:4.55;roundedBox(g,M.shell,x,0,z,w,2.62,2.62,.16);roundedBox(g,M.dark,x,1.45,z+1.34,w*.7,.72,.1,.06);box(g,M.glass,x,1.51,z+1.39,w*.62,.52,.02);
+  // 전면 피더 뱅크와 릴 슬롯.
+  for(let i=0;i<(wide?13:10);i++){const fx=x-w*.4+i*(w*.8/(wide?12:9));box(g,M.frame,fx,.22,z+1.48,.12,.92,.18);cyl(g,M.dark,fx,.98,z+1.5,.12,.09)}
+  box(g,M.dark,x-w/2+.2,.42,z+1.36,.35,1.2,.09);monitor(g,x+w/2+.65,1.38,z+1.12,.55);controls(g,x+w/2-.25,1.42,z+1.35);tower(g,x+w/2-.35,z,2.62);feet(g,x,z,w,2.62);conveyor(g,x+w/2,z,1.2)
+}
+function reflow(g,x,z){
+  // 다중 존 리플로우: 챔버 도어, 상부 배기 후드, 하부 서비스 패널.
+  roundedBox(g,M.shell,x,0,z,10.7,2.18,2.66,.14);for(let i=-4.25;i<=4.25;i+=1.7){roundedBox(g,M.light,x+i,.35,z+1.36,1.42,.78,.08,.035,2);box(g,M.dark,x+i,.55,z+1.41,.72,.1,.02);roundedBox(g,M.light,x+i,2.18,z,1.45,.32,2.36,.08,3);box(g,M.mid,x+i,2.5,z,.42,.36,.62)}
+  box(g,M.frame,x,2.84,z,9.9,.12,.24);monitor(g,x-4.75,1.2,z+1.16,.52);controls(g,x+4.88,1.45,z+1.38);tower(g,x+4.65,z,2.5);feet(g,x,z,10.7,2.66);conveyor(g,x+5.3,z,1.55);label(g,'REFLOW',x,3.72,z+1.48,'#65e6ef',.66,'다중 존 열처리')
+}
+function aoi(g,x,z){
+  roundedBox(g,M.shell,x,0,z,3.15,2.88,2.5,.16);roundedBox(g,M.dark,x-.12,1.32,z+1.27,2.02,.9,.1,.06);box(g,M.glass,x-.12,1.4,z+1.32,1.78,.68,.02);box(g,M.dark,x+1.28,.48,z+1.29,.3,1.28,.08);monitor(g,x+.15,1.52,z+1.28,.12);controls(g,x+1.29,1.72,z+1.34);tower(g,x+1.18,z,2.88);feet(g,x,z,3.15,2.5);label(g,'AOI',x,3.7,z+1.4,'#ffc968',.6,'자동 광학 검사')
+}
+function ict(g,x,z){
+  // ICT 인라인 검사 셀: 세 개 검사창, 전면 서비스 도어, 상태등.
+  roundedBox(g,M.shell,x,0,z,6.65,2.5,3.08,.18);roundedBox(g,M.light,x,2.5,z,6.2,.22,2.72,.08,3);for(let i=-2;i<=2;i+=2){roundedBox(g,M.dark,x+i,1.08,z+1.57,1.48,1,.1,.06);box(g,M.glass,x+i,1.17,z+1.62,1.25,.76,.02);box(g,M.dark,x+i,.28,z+1.61,.72,.1,.02)}
+  box(g,M.dark,x-3,.48,z+1.6,.34,1.42,.09);monitor(g,x+2.5,1.5,z+1.45,.38);controls(g,x+3.04,1.68,z+1.6);tower(g,x+2.82,z,2.72);feet(g,x,z,6.65,3.08);label(g,'ICT',x,3.62,z+1.76,'#ffc968',.62,'인서킷 전기 검사')
+}
+function makeLine(index,z){const g=new THREE.Group();g.position.set(5,0,z);world.add(g);const stations=[];loader(g,0,0);stations.push('Loader');printer(g,6,0);stations.push('Printer');inspector(g,10.4,0,'SPI');stations.push('SPI');mounter(g,15.4,0);mounter(g,21,0,true);stations.push('Mounter ×2');reflow(g,31.4,0);stations.push('Reflow');aoi(g,39.3,0);stations.push('AOI');conveyor(g,40.8,0,4.6);ict(g,49.2,0);stations.push('ICT');conveyor(g,52.5,0,5.2);label(g,`LINE ${index}`,8,4.65,0,'#56d7e5',.72,'SMT 생산 라인');box(world,M.mark,34,.08,z-2.25,64,.035,.11);box(world,M.mark,34,.08,z+2.25,64,.035,.11);return{index,z,stations,center:new THREE.Vector3(34,0,z)}}
+const lines=[makeLine(1,6),makeLine(2,16),makeLine(3,26),makeLine(4,36)];
+// 자재 대기와 AGV 통로
+for(let i=0;i<8;i++){box(world,M.light,69,.15,4.5+i*4.8,2.4,.9,1.2);box(world,M.dark,69,.1,4.5+i*4.8,2.7,.12,1.5)}label(world,'MATERIAL BUFFER',69,3.2,21,'#56d7e5',.65,'자재 대기 구역');
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.target.set(W/2,0,D/2);orbit.enableDamping=true;orbit.minDistance=12;orbit.maxDistance=135;orbit.maxPolarAngle=Math.PI*.48;orbit.update();
+const walk=new PointerLockControls(camera,renderer.domElement);const keys={};addEventListener('keydown',e=>keys[e.code]=true);addEventListener('keyup',e=>keys[e.code]=false);let mode='orbit';
+function setMode(next){mode=next;document.body.classList.toggle('walk',next==='walk');document.querySelector('#orbit').setAttribute('aria-pressed',String(next==='orbit'));document.querySelector('#walk').setAttribute('aria-pressed',String(next==='walk'));orbit.enabled=next==='orbit';if(next==='walk'){camera.position.set(8,1.72,11);camera.lookAt(20,1.2,11)}else{walk.unlock();camera.position.set(-19,34,56);orbit.target.set(W/2,0,D/2);orbit.update()}}
+document.querySelector('#orbit').onclick=()=>setMode('orbit');document.querySelector('#walk').onclick=()=>{setMode('walk');renderer.domElement.requestPointerLock()};renderer.domElement.addEventListener('click',()=>{if(mode==='walk'&&!walk.isLocked)walk.lock()});
+const list=document.querySelector('#lines'),detail=document.querySelector('#detail');for(const line of lines){const b=document.createElement('button');b.innerHTML=`<span>LINE ${line.index}</span><small>58 m · 8 ST</small>`;b.onclick=()=>{setMode('orbit');document.querySelectorAll('#lines button').forEach(x=>x.classList.remove('active'));b.classList.add('active');orbit.target.copy(line.center);camera.position.set(0,24,line.z+28);orbit.update();detail.innerHTML=`<b>LINE ${line.index}</b>${line.stations.join(' → ')}<br>참조 이미지 기반 개념 모델`};list.appendChild(b)}
+let last=performance.now();function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;if(mode==='walk'&&walk.isLocked){const s=8*dt;if(keys.KeyW)walk.moveForward(s);if(keys.KeyS)walk.moveForward(-s);if(keys.KeyA)walk.moveRight(-s);if(keys.KeyD)walk.moveRight(s);camera.position.y=1.72;camera.position.x=THREE.MathUtils.clamp(camera.position.x,1,W-1);camera.position.z=THREE.MathUtils.clamp(camera.position.z,1,D-1)}orbit.update();renderer.render(scene,camera)}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});document.querySelector('#loading').remove();document.querySelector('#hud').hidden=false;animate(performance.now());
+</script></body></html>
