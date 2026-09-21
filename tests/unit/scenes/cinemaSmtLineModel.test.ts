@@ -186,6 +186,28 @@ describe('SMT 3D 고온 구역 비행 연출 (Round 3-2: 2D 히트맵이 사라�
     expect(frame.pose.position[0]).toBeCloseTo(OVERVIEW.position[0], 5);
     expect(frame.pose.target[0]).toBeCloseTo(OVERVIEW.target[0], 5);
   });
+
+  // Round 5-3: 순회가 끝나면 호출부(SmtLineExplorer.tsx)가 이 신호로 자동 회전으로 넘긴다.
+  it('finished 는 순회 도중에는 false, 상공 복귀가 끝나 자리 잡은 뒤로는 true다', () => {
+    expect(smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull - 1, ordered, OVERVIEW).finished).toBe(false);
+    expect(smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull + .1, ordered, OVERVIEW).finished).toBe(false);
+    // 복귀 비행 시작 직후(아직 상공에 닿기 전)에는 returning 은 true 여도 finished 는 아직 false 다.
+    const returnStart = ENVIRONMENT_TIMING.heatmapFull + DWELL * ordered.length + .1;
+    const midReturn = smtHotspotTour(returnStart, ordered, OVERVIEW);
+    expect(midReturn.returning).toBe(true);
+    expect(midReturn.finished).toBe(false);
+    // 복귀(3초)가 끝나 자리 잡은 뒤로는 true.
+    const settled = smtHotspotTour(returnStart + 3, ordered, OVERVIEW);
+    expect(settled.returning).toBe(true);
+    expect(settled.finished).toBe(true);
+  });
+
+  it('돌 구역이 하나도 없으면(온도값 전부 결측) 시작부터 finished 다 — 자동 회전으로 곧바로 넘어가야 한다', () => {
+    const empty = smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull + .1, [], OVERVIEW);
+    expect(empty.finished).toBe(true);
+    expect(empty.touring).toBe(false);
+    expect(empty.active).toBeNull();
+  });
 });
 
 describe('SMT 3D 좌측 패널 드래그 (Round 3-5)', () => {

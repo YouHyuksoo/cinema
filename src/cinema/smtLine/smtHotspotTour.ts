@@ -16,6 +16,9 @@ export interface SmtHotspotEntry { id: string; name: string; temperature: number
 export interface SmtHotspotPose { position: readonly [number, number, number]; target: readonly [number, number, number] }
 export interface SmtHotspotFrame {
   touring: boolean; returning: boolean; retreating: boolean;
+  /** 순회가 전부 끝나 상공으로 복귀해 자리 잡은 순간부터 true — 구역이 하나도 없어(온도값 전부
+   * 결측) 애초에 돌 것이 없을 때도 true다(Round 5-3: 호출부가 이 신호로 다음 자동 연출로 넘어간다). */
+  finished: boolean;
   active: SmtHotspotEntry | null; rank: number; total: number; phase: string; pose: SmtHotspotPose;
 }
 
@@ -82,8 +85,11 @@ export function smtHotspotTour(elapsed: number, ordered: readonly SmtHotspotEntr
     : touring ? smooth(0, ENTER_END, local)
     : returning ? smooth(0, RETURN_DURATION, tourTime - ordered.length * ENVIRONMENT_HOTSPOT_DWELL)
     : 1;
+  // returning 은 index 가 마지막 구역을 넘긴 뒤로는 시간이 아무리 흘러도 계속 true다 — "복귀
+  // 비행 중"과 "이미 복귀해 자리 잡음"을 구분하려면 progress 가 끝(1)에 닿았는지까지 봐야 한다.
+  const finished = ordered.length === 0 || (returning && progress >= 1);
   return {
-    touring, returning, retreating, active, rank: touring ? index + 1 : 0, total: ordered.length,
+    touring, returning, retreating, finished, active, rank: touring ? index + 1 : 0, total: ordered.length,
     phase: retreating ? '뒤로 빠지며 완만하게 상승'
       : touring ? (progress < 1 ? '완만하게 센서 옆으로 진입' : '측면에서 온도 확인')
       : returning ? '상공 복귀' : '상공 평면',

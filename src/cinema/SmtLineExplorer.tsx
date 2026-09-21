@@ -271,11 +271,11 @@ export function SmtLineExplorer({ onManual, environment }: {
       startOrbitTour.current = () => { manual.current?.(); beginTransition(orbitTourPose()); };
       stopAutoDrive.current = () => { stopAuto(); manual.current?.(); };
 
-      // Round 4-2: 자동 회전을 기본값으로 시작한다. 고온 구역 순회는 이제 버튼으로만 켠다 — 마운트
-      // 시점에 둘 다 자동으로 켜면 "동시에 돌면 안 된다" 규약과 충돌한다. 카메라가 이미
-      // OVERVIEW_POSE 에 있어 전환 없이 그 자리에서 바로 궤도를 시작해도 화면이 튀지 않는다.
-      const startPose = orbitTourPose();
-      camera.position.set(...startPose.position); orbit.target.set(...startPose.target);
+      // Round 5-3: 연출(필름 재생)로 들어오면 고온 구역 순회를 먼저 보여주고, 다 돌면 자동 회전으로
+      // 잇는다(전환은 아래 render() 의 'hotspot' 분기가 tour.finished 를 보고 한다). 순회할 구역이
+      // 하나도 없어도(온도값 전부 결측) smtHotspotTour 가 곧바로 finished 를 돌려주므로 별도 분기
+      // 없이 첫 프레임에서 바로 자동 회전으로 넘어간다 — 카메라는 이미 OVERVIEW_POSE 에 있다.
+      autoDriveRef.current = 'hotspot';
 
       const resize = () => {
         const { width, height } = node.getBoundingClientRect();
@@ -299,12 +299,22 @@ export function SmtLineExplorer({ onManual, environment }: {
           // 자동 회전(orbitAngle)과 같은 방식 — 필름 재생 여부와 무관하게 매 프레임 delta 만큼 흐른다.
           hotspotClockRef.current += delta;
           const tour = smtHotspotTour(hotspotElapsed(), hotspotOrderRef.current, OVERVIEW_POSE);
-          camera.position.set(...tour.pose.position); orbit.target.set(...tour.pose.target);
-          const signature = tour.active ? `${tour.active.id}:${tour.rank}:${tour.phase}` : `overview:${tour.phase}`;
-          if (signature !== hotspotSignature) {
-            hotspotSignature = signature;
-            setHotspot(tour.active ? { name: tour.active.name, temperature: tour.active.temperature,
-              rank: tour.rank, total: tour.total, phase: tour.phase } : null);
+          if (tour.finished) {
+            // Round 5-3: 순회가 끝나면 자동 회전으로 잇는다. orbitTourPose() 는 "지금 카메라 위치"에서
+            // 각도를 구하는데, 지금 카메라는 순회의 마지막 포즈(상공 복귀 = overview 포즈)에 이미
+            // 와 있다 — 다만 높이가 다르므로(순회 34m, 회전 17.68m) 그대로 넘기면 화면이 뚝 끊긴다.
+            // 버튼으로 자동 회전을 시작할 때와 같은 beginTransition 으로 부드럽게 잇는다.
+            // orbitTourPose() 가 autoDriveRef 를 'orbit' 으로 바꾸므로 다음 프레임부터는 이 분기
+            // 대신 아래 'orbit' 분기가 넘겨받는다 — 별도 종료 플래그 없이 자연히 한 번만 실행된다.
+            beginTransition(orbitTourPose());
+          } else {
+            camera.position.set(...tour.pose.position); orbit.target.set(...tour.pose.target);
+            const signature = tour.active ? `${tour.active.id}:${tour.rank}:${tour.phase}` : `overview:${tour.phase}`;
+            if (signature !== hotspotSignature) {
+              hotspotSignature = signature;
+              setHotspot(tour.active ? { name: tour.active.name, temperature: tour.active.temperature,
+                rank: tour.rank, total: tour.total, phase: tour.phase } : null);
+            }
           }
         } else if (autoDriveRef.current === 'orbit') {
           // 경과시간(delta) 기반 각속도 — 프레임레이트가 흔들려도 한 바퀴 도는 실제 시간은 같다.
