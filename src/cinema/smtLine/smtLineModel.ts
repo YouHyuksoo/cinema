@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { environmentTemperatureAt, environmentTemperatureColor, type HeatmapDomain } from '../environmentHeatmap';
 
 /**
  * SMT 4개 생산라인 3D 공간. `artifacts/smt-4line-space/scene.html` (2026-09-20 시안)을 그대로 옮긴 지오메트리다.
@@ -7,9 +8,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
  * `buildSmtLines(T, zones)` 는 매 마운트마다 새 재질·지오메트리를 만든다 (모듈 스코프 캐시 금지):
  * FactoryExplorer3D 의 언마운트 cleanup 이 씬을 traverse 해 geometry/material 을 dispose 하므로,
  * 모듈 레벨에서 공유하면 재마운트 시 이미 dispose 된 객체를 재사용하게 된다.
- * `zones` 는 온습도 히트맵 구역 바닥(SmtZoneFloor)의 이름표다 — 온도값은 여기서 다루지 않는다.
- * 실시간으로 바뀌는 온도는 씬을 다시 만들지 않고 `SmtZoneFloor.material.color`/`paintLabel()` 만
- * 갱신해야 한다 (호출부: SmtLineExplorer.tsx).
+ * 온습도 히트맵은 `heatmap`(SmtHeatmapFloor) 하나다 — 씬을 다시 만들지 않고 `repaint()`(캔버스
+ * 다시 그리기 + `texture.needsUpdate`)만으로 갱신해야 한다 (호출부: SmtLineExplorer.tsx).
  */
 export const SMT_FLOOR_WIDTH = 76;
 export const SMT_FLOOR_DEPTH = 44;
@@ -17,18 +17,26 @@ export const SMT_FLOOR_DEPTH = 44;
 export const SMT_LINE_COUNT = 4;
 
 /**
- * 환경 히트맵 구역 바닥. 온습도 구역은 10개, SMT 공간은 4라인뿐이라 구역을 라인에 1:1로
+ * 환경 히트맵 센서 핀. 온습도 구역은 10개, SMT 공간은 4라인뿐이라 구역을 라인에 1:1로
  * 대응시킬 수 없다 — 2D 히트맵(`environmentHeatmap.ts`)이 이미 10개 구역을 5열×2행 격자로
  * 배치하므로, 그 순서(row = index/5, column = index%5)를 3D 바닥 전체(76×44m)에 그대로
- * 펼쳐 2D/3D 배치 감각을 맞춘다. 타일 사이 간격이 곧 구역 경계선이다.
+ * 펼쳐 2D/3D 배치 감각을 맞춘다. 각 격자 칸의 중심이 센서 핀이고, `environmentTemperatureAt`
+ * 로 핀 사이를 거리 가중 보간해 사각 타일이 아니라 연속된 색번짐으로 그린다(2D 히트맵과 동일한
+ * 보간 규칙).
  */
 export const SMT_ZONE_COLUMNS = 5;
 export const SMT_ZONE_ROWS = 2;
 export const SMT_ZONE_COUNT = SMT_ZONE_COLUMNS * SMT_ZONE_ROWS;
-const ZONE_TILE_GAP = .6;
+/** 브리프가 제안한 256폭 기준, 바닥 종횡비(76:44)에 맞춘 높이. 핀마다 10개 거리 계산을 하는
+ * 픽셀 루프라 해상도를 낮게 잡고 텍스처 필터링(Linear)으로 부드럽게 늘린다. */
+export const SMT_HEATMAP_CANVAS_WIDTH = 256;
+export const SMT_HEATMAP_CANVAS_HEIGHT = Math.round(SMT_HEATMAP_CANVAS_WIDTH * (SMT_FLOOR_DEPTH / SMT_FLOOR_WIDTH));
 /** 바닥 상판(y=0)뿐 아니라 기존 차선 마크(y=.08~.115)보다도 위로 확실히 띄워 z-파이팅을 피한다. */
-const ZONE_TILE_BASE_Y = .16;
-const ZONE_TILE_HEIGHT = .06;
+const HEATMAP_BASE_Y = .16;
+/** 순수 hsl 색은 채도 88%로 쨍하다 — 바닥 재질 색(M.floor, 0xaeb8c1)과 섞어 "바닥 정보"로 눅인다. */
+const HEATMAP_FLOOR_BLEND = .35;
+const HEATMAP_OPACITY = .8;
+const HEATMAP_FLOOR_RGB: readonly [number, number, number] = [0xae, 0xb8, 0xc1];
 
 export interface SmtLine {
   index: number;
@@ -39,31 +47,56 @@ export interface SmtLine {
 
 export interface SmtZoneInput { id: string; name: string }
 
-export interface SmtZoneFloor {
+export interface SmtHeatmapPin { id: string; name: string; index: number; x: number; z: number }
+export interface SmtHeatmapSample { id: string; temperature: number | null }
+export interface SmtHeatmapLabel {
   id: string;
-  name: string;
   index: number;
-  mesh: THREE.Mesh;
-  /** 구역마다 독립 인스턴스다 — 공유하면 모든 구역이 같은 색이 된다. */
-  material: THREE.MeshBasicMaterial;
-  bounds: { x: number; z: number; width: number; depth: number };
   /** 온도 텍스트/색 갱신. `document` 가 없는 테스트 환경에서는 조용히 아무 것도 하지 않는다. */
   paintLabel(reading: string, color: string): void;
+}
+
+export interface SmtHeatmapFloor {
+  mesh: THREE.Mesh;
+  material: THREE.MeshBasicMaterial;
+  pins: SmtHeatmapPin[];
+  labels: SmtHeatmapLabel[];
+  /** 캔버스를 다시 그리고 texture.needsUpdate 만 세운다 — 텍스처·재질을 새로 만들지 않는다.
+   * `document` 가 없는 테스트 환경에서는 조용히 아무 것도 하지 않는다. */
+  repaint(samples: readonly SmtHeatmapSample[], domain: HeatmapDomain): void;
+  /** 캔버스 텍스처(바닥 1개 + 라벨 최대 10개)를 명시적으로 해제한다. 씬을 traverse 해 dispose 하는
+   * 언마운트 정리는 Mesh 의 geometry/material 만 훑고 Sprite 는 건드리지 않으므로, 이 히트맵의
+   * 텍스처는 호출부가 따로 불러서 지워야 한다. */
+  dispose(): void;
 }
 
 export interface SmtLineModel {
   root: THREE.Group;
   lines: SmtLine[];
-  zones: SmtZoneFloor[];
+  heatmap: SmtHeatmapFloor;
+}
+
+/**
+ * 지정한 월드 좌표(x,z)의 히트맵 색 — `environmentTemperatureAt` 로 보간한 온도에
+ * `environmentTemperatureColor` 를 적용한다(둘 다 environmentHeatmap.ts, 2D 히트맵과 같은 규칙).
+ * three.js 없이 순수 계산만 하므로 테스트에서 그대로 쓸 수 있다. 캔버스 픽셀 루프(빌드 후 `repaint`)는
+ * 같은 두 함수를 픽셀마다 부르되, `pins`→`rooms` 변환을 루프 밖에서 한 번만 해 성능을 아낀다.
+ */
+export function smtHeatmapColorAt(pins: readonly SmtHeatmapPin[], samples: readonly SmtHeatmapSample[],
+  domain: HeatmapDomain, x: number, z: number) {
+  const rooms = pins.map(pin => ({ pin: { x: pin.x, y: pin.z },
+    temperature: samples.find(sample => sample.id === pin.id)?.temperature ?? null }));
+  const temperature = environmentTemperatureAt(rooms, x, z);
+  return { temperature, ...environmentTemperatureColor(temperature, domain) };
 }
 
 /**
  * `environmentTemperatureColor()`(environmentHeatmap.ts) 는 CSS4 공백 문법(`hsl(H S% L%)`)을
  * 돌려준다 — 2D canvas의 `fillStyle` 은 이를 그대로 받아들이지만, three.js `Color.setStyle()` 의
  * hsl 파서는 옛 콤마 문법(`hsl(H,S%,L%)`)만 인식한다(three/src/math/Color.js 의 hsl 정규식 참고).
- * 공백 문법을 그대로 넘기면 파싱에 실패해 `Color` 가 이전 값(신규 재질이면 흰색)에 머문 채 "Unknown
- * color model" 경고만 찍고 조용히 무시된다. `SmtZoneFloor.material.color.setStyle()` 을 부를 때는
- * 반드시 이 함수를 거쳐 콤마 문법으로 바꾼 뒤 넘긴다.
+ * 공백 문법을 그대로 넘기면 파싱에 실패해 `Color` 가 이전 값(신규 인스턴스면 흰색)에 머문 채 "Unknown
+ * color model" 경고만 찍고 조용히 무시된다. three.js `Color`에 이 문자열을 넘길 때는 반드시 이 함수를
+ * 거쳐 콤마 문법으로 바꾼 뒤 넘긴다.
  */
 export function threeHslStyle(cssHsl: string): string {
   return cssHsl.replace(/^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/, 'hsl($1,$2%,$3%)');
@@ -146,49 +179,108 @@ export function buildSmtLines(T: typeof THREE, zones: readonly SmtZoneInput[] = 
     sprite.position.copy(tag); sprite.scale.set(width, 2.05 * scale, 1); sprite.renderOrder = 21; parent.add(sprite);
     return sprite;
   }
-  /** Flat billboard readout above a zone tile — no elbow leader line, unlike `label()`'s equipment tags. */
-  function zoneLabelSprite(parent: THREE.Object3D, x: number, z: number, y = 1.35) {
+  /** 구역 위에 뜨는 작은 온도 팻말 — 이름은 넣지 않는다(어느 구역이 뜨거운지 색으로 이미 읽히고,
+   * LINE/REFLOW 등 기존 설비 라벨과 겹쳐 조감도가 빽빽해지지 않게 크기도 작게 잡는다). */
+  function zoneLabelSprite(parent: THREE.Object3D, x: number, z: number, y = 1.1) {
     if (typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 176;
+    const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 150;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     const texture = new T.CanvasTexture(canvas);
-    const sprite = new T.Sprite(new T.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }));
-    sprite.position.set(x, y, z); sprite.scale.set(4.2, 1.45, 1); sprite.renderOrder = 22;
+    const material = new T.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false });
+    const sprite = new T.Sprite(material);
+    sprite.position.set(x, y, z); sprite.scale.set(1.85, .87, 1); sprite.renderOrder = 22;
     parent.add(sprite);
-    return { canvas, ctx, texture };
+    return { canvas, ctx, texture, material };
   }
   function paintZoneLabel(readout: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture },
-    name: string, reading: string, color: string) {
+    reading: string, color: string) {
     const { canvas, ctx, texture } = readout;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(6,14,20,.72)'; ctx.strokeStyle = color; ctx.lineWidth = 5;
-    ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 20); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#eef7fb'; ctx.font = '600 38px Segoe UI'; ctx.fillText(name, 26, 68);
-    ctx.fillStyle = color; ctx.font = '700 54px Segoe UI'; ctx.fillText(reading, 26, 142);
+    ctx.fillStyle = 'rgba(6,14,20,.7)'; ctx.strokeStyle = color; ctx.lineWidth = 6;
+    ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 26); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.font = '700 64px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(reading, canvas.width / 2, canvas.height / 2 + 4);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     texture.needsUpdate = true;
   }
-  /** Zone floor tiles, independent of the 4 lines above — see SMT_ZONE_COLUMNS/ROWS doc comment. */
-  function buildZoneFloors(zoneInputs: readonly SmtZoneInput[]): SmtZoneFloor[] {
+  /**
+   * 76×44m 바닥 전체를 덮는 히트맵 평면 하나. 10개 구역 타일 대신 CanvasTexture 한 장에 픽셀마다
+   * `environmentTemperatureAt`(거리 가중 보간) + `environmentTemperatureColor` 를 적용해, 2D
+   * 히트맵과 같은 방식으로 센서 사이가 부드럽게 번지게 그린다(사각 경계 없음). 데이터가 바뀌어도
+   * 이 함수는 다시 부르지 않는다 — `repaint()` 가 같은 캔버스/텍스처를 재사용한다.
+   */
+  function buildHeatmapFloor(zoneInputs: readonly SmtZoneInput[]): SmtHeatmapFloor {
     const cellWidth = W / SMT_ZONE_COLUMNS, cellDepth = D / SMT_ZONE_ROWS;
-    const tileWidth = cellWidth - ZONE_TILE_GAP, tileDepth = cellDepth - ZONE_TILE_GAP;
-    return zoneInputs.slice(0, SMT_ZONE_COUNT).map((zone, index) => {
+    const pins: SmtHeatmapPin[] = zoneInputs.slice(0, SMT_ZONE_COUNT).map((zone, index) => {
       const row = Math.floor(index / SMT_ZONE_COLUMNS), column = index % SMT_ZONE_COLUMNS;
-      const x = column * cellWidth + cellWidth / 2, z = row * cellDepth + cellDepth / 2;
-      // Own material per zone (never shared) so color.setStyle() on one never touches another.
-      const material = new T.MeshBasicMaterial({ color: 0x3a4650, transparent: true, opacity: .85, toneMapped: false });
-      const mesh = new T.Mesh(BOX, material);
-      mesh.position.set(x, ZONE_TILE_BASE_Y + ZONE_TILE_HEIGHT / 2, z);
-      mesh.scale.set(tileWidth, ZONE_TILE_HEIGHT, tileDepth);
-      mesh.name = `zone-floor:${zone.id}`;
-      world.add(mesh);
-      const readout = zoneLabelSprite(world, x, z);
-      return {
-        id: zone.id, name: zone.name, index, mesh, material,
-        bounds: { x, z, width: tileWidth, depth: tileDepth },
-        paintLabel(reading: string, color: string) { if (readout) paintZoneLabel(readout, zone.name, reading, color); },
-      };
+      return { id: zone.id, name: zone.name, index,
+        x: column * cellWidth + cellWidth / 2, z: row * cellDepth + cellDepth / 2 };
     });
+
+    const canvas = typeof document === 'undefined' ? null : document.createElement('canvas');
+    if (canvas) { canvas.width = SMT_HEATMAP_CANVAS_WIDTH; canvas.height = SMT_HEATMAP_CANVAS_HEIGHT; }
+    const ctx = canvas?.getContext('2d') ?? null;
+    const texture = canvas ? new T.CanvasTexture(canvas) : null;
+    if (texture) {
+      texture.minFilter = T.LinearFilter; texture.magFilter = T.LinearFilter; texture.colorSpace = T.SRGBColorSpace;
+    }
+    const material = new T.MeshBasicMaterial({ color: 0xaeb8c1, transparent: true, opacity: HEATMAP_OPACITY,
+      toneMapped: false, depthWrite: true });
+    if (texture) material.map = texture;
+    const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(W / 2, HEATMAP_BASE_Y, D / 2);
+    mesh.scale.set(W, D, 1);
+    mesh.name = 'heatmap-floor';
+    world.add(mesh);
+
+    // hsl(H,S%,L%) → 0-255 RGB. three.Color 를 재사용해 threeHslStyle 의 파싱·색공간 변환을 그대로 탄다.
+    const scratch = new T.Color();
+    const readRgb = (cssHsl: string): [number, number, number] => {
+      scratch.setStyle(threeHslStyle(cssHsl));
+      const hex = scratch.getHexString();
+      return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+    };
+
+    const readouts: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture; material: THREE.SpriteMaterial }[] = [];
+    const labels: SmtHeatmapLabel[] = pins.map(pin => {
+      const readout = zoneLabelSprite(world, pin.x, pin.z);
+      if (readout) readouts.push(readout);
+      return { id: pin.id, index: pin.index,
+        paintLabel(reading: string, color: string) { if (readout) paintZoneLabel(readout, reading, color); } };
+    });
+
+    return {
+      mesh, material, pins, labels,
+      repaint(samples, domain) {
+        if (!ctx || !canvas || !texture) return;
+        const rooms = pins.map(pin => ({ pin: { x: pin.x, y: pin.z },
+          temperature: samples.find(sample => sample.id === pin.id)?.temperature ?? null }));
+        const image = ctx.createImageData(canvas.width, canvas.height);
+        const data = image.data;
+        for (let py = 0; py < canvas.height; py++) {
+          const worldZ = (py + .5) / canvas.height * D;
+          for (let px = 0; px < canvas.width; px++) {
+            const worldX = (px + .5) / canvas.width * W;
+            const temperature = environmentTemperatureAt(rooms, worldX, worldZ);
+            const { color } = environmentTemperatureColor(temperature, domain);
+            const [r, g, b] = readRgb(color);
+            const offset = (py * canvas.width + px) * 4;
+            data[offset] = Math.round(r * (1 - HEATMAP_FLOOR_BLEND) + HEATMAP_FLOOR_RGB[0] * HEATMAP_FLOOR_BLEND);
+            data[offset + 1] = Math.round(g * (1 - HEATMAP_FLOOR_BLEND) + HEATMAP_FLOOR_RGB[1] * HEATMAP_FLOOR_BLEND);
+            data[offset + 2] = Math.round(b * (1 - HEATMAP_FLOOR_BLEND) + HEATMAP_FLOOR_RGB[2] * HEATMAP_FLOOR_BLEND);
+            data[offset + 3] = 255;
+          }
+        }
+        ctx.putImageData(image, 0, 0);
+        texture.needsUpdate = true;
+      },
+      dispose() {
+        texture?.dispose();
+        for (const readout of readouts) { readout.texture.dispose(); readout.material.dispose(); }
+      },
+    };
   }
   function feet(g: THREE.Object3D, x: number, z: number, w: number, d: number) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1])
@@ -317,7 +409,7 @@ export function buildSmtLines(T: typeof THREE, zones: readonly SmtZoneInput[] = 
     box(world, M.dark, 69, .1, 4.5 + i * 4.8, 2.7, .12, 1.5);
   }
   label(world, 'MATERIAL BUFFER', 69, 3.2, 21, '#56d7e5', .65, '자재 대기 구역');
-  const zoneFloors = buildZoneFloors(zones);
+  const heatmap = buildHeatmapFloor(zones);
 
-  return { root: world, lines, zones: zoneFloors };
+  return { root: world, lines, heatmap };
 }

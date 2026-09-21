@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
-import { threeHslStyle, type SmtLine, type SmtZoneFloor } from './smtLine/smtLineModel';
-import { environmentHeatmapDomain, environmentTemperatureColor } from './environmentHeatmap';
+import { smtHeatmapColorAt, type SmtHeatmapFloor, type SmtHeatmapSample, type SmtLine } from './smtLine/smtLineModel';
+import { environmentHeatmapDomain } from './environmentHeatmap';
 import { environmentReadingStatus, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT } from './zoneEnvironment';
 import styles from './smtLineExplorer.module.css';
 
@@ -25,17 +25,18 @@ const CAMERA_FOV = 46;
 type ViewMode = 'orbit' | 'walk';
 interface LineButton { index: number; z: number; stations: readonly string[]; center: readonly [number, number, number] }
 
-/** 온습도 구역 바닥 색을 칠한다 — 2D 히트맵과 같은 색 규칙(environmentHeatmap.ts)을 그대로 쓴다.
- * 씬을 다시 만들지 않고 재질 색과 라벨 텍스트만 갱신한다. */
-function paintZoneFloors(zones: readonly SmtZoneFloor[], data: readonly EnvironmentZone[]) {
-  const domain = environmentHeatmapDomain(data);
-  for (const floor of zones) {
-    const zone = data.find(item => item.id === floor.id) ?? null;
-    const status = zone ? environmentReadingStatus(zone.temperature, zone.temperatureRange) : 'missing';
-    const temperature = status === 'missing' ? null : zone!.temperature;
-    const { color } = environmentTemperatureColor(temperature, domain);
-    floor.material.color.setStyle(threeHslStyle(color));
-    floor.paintLabel(temperature === null ? '--' : `${temperature.toFixed(1)}℃`, color);
+/** 히트맵 평면을 다시 칠하고 핀 위치 온도 팻말을 갱신한다 — 2D 히트맵과 같은 색·보간 규칙
+ * (environmentHeatmap.ts)을 그대로 쓴다. 씬은 그대로 두고 캔버스/재질만 갱신한다. */
+function paintHeatmap(heatmap: SmtHeatmapFloor, zones: readonly EnvironmentZone[]) {
+  const domain = environmentHeatmapDomain(zones);
+  const samples: SmtHeatmapSample[] = zones.map(zone => ({ id: zone.id,
+    temperature: environmentReadingStatus(zone.temperature, zone.temperatureRange) === 'missing' ? null : zone.temperature }));
+  heatmap.repaint(samples, domain);
+  for (const label of heatmap.labels) {
+    const pin = heatmap.pins.find(item => item.id === label.id);
+    if (!pin) continue;
+    const { temperature, color } = smtHeatmapColorAt(heatmap.pins, samples, domain, pin.x, pin.z);
+    label.paintLabel(temperature === null ? '--' : `${temperature.toFixed(1)}℃`, color);
   }
 }
 
@@ -48,10 +49,10 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
   const enterWalk = useRef(() => {});
   const manual = useRef(onManual);
   manual.current = onManual;
-  // 마운트 시점의 스냅샷일 뿐이다 — 갱신은 아래 별도 useEffect(zoneFloorsRef 경유)가 맡는다.
+  // 마운트 시점의 스냅샷일 뿐이다 — 갱신은 아래 별도 useEffect(heatmapRef 경유)가 맡는다.
   const environmentRef = useRef(environment);
   environmentRef.current = environment;
-  const zoneFloorsRef = useRef<readonly SmtZoneFloor[]>([]);
+  const heatmapRef = useRef<SmtHeatmapFloor | null>(null);
   const [mode, setModeState] = useState<ViewMode>('orbit');
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -91,8 +92,8 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
       scene.add(model.root);
       setLines(model.lines.map((line: SmtLine) => ({ index: line.index, z: line.z, stations: line.stations,
         center: [line.center.x, line.center.y, line.center.z] })));
-      paintZoneFloors(model.zones, zoneSource);
-      zoneFloorsRef.current = model.zones;
+      paintHeatmap(model.heatmap, zoneSource);
+      heatmapRef.current = model.heatmap;
 
       const orbit = new OrbitControls(camera, renderer.domElement);
       orbit.target.set(...OVERVIEW_POSE.target);
@@ -178,22 +179,24 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
           if (mesh.isMesh) { mesh.geometry.dispose(); (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(m => mats.add(m)); }
         });
         mats.forEach(material => material.dispose());
+        // 위 traverse 는 Mesh 의 geometry/material 만 훑는다 — 히트맵 캔버스 텍스처와 라벨 Sprite
+        // 재질/텍스처는 Sprite 라 걸리지 않으므로 직접 해제한다.
+        heatmapRef.current?.dispose(); heatmapRef.current = null;
         // renderer.dispose() 는 그림자맵(렌더타깃)을 해제하지 않는다 — 직접 해제하지 않으면
         // 마운트할 때마다 2048² 렌더타깃이 샌다.
         sun.shadow.map?.dispose();
         renderer.dispose(); renderer.domElement.remove();
         goOverview.current = () => {}; goLine.current = () => {}; enterWalk.current = () => {};
-        zoneFloorsRef.current = [];
       };
     }
     void start().catch(error => { if (!stopped) setStatus(`3D 초기화 실패: ${error instanceof Error ? error.message : String(error)}`); });
     return () => { stopped = true; cleanup(); };
   }, []);
 
-  // 실시간으로 바뀌는 온습도 데이터: 씬은 그대로 두고 구역 재질 색과 라벨만 다시 칠한다.
+  // 실시간으로 바뀌는 온습도 데이터: 씬은 그대로 두고 히트맵 캔버스와 라벨만 다시 칠한다.
   useEffect(() => {
-    if (!environment || !zoneFloorsRef.current.length) return;
-    paintZoneFloors(zoneFloorsRef.current, environment.zones.slice(0, ZONE_COUNT));
+    if (!environment || !heatmapRef.current) return;
+    paintHeatmap(heatmapRef.current, environment.zones.slice(0, ZONE_COUNT));
   }, [environment]);
 
   return <div className={styles.overlay}>
