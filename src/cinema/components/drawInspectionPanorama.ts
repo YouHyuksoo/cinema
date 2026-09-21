@@ -22,33 +22,31 @@ export function smtPanoramaLayout(time: number, focus: number) {
 
 /** Eight distinct machines, never repeated to fill the viewport. */
 export function drawInspectionPanorama(ctx: CanvasRenderingContext2D, fonts: FilmFonts,
-  time: number, focus: number, heat: number, view: PanoramaViewport, stage: boolean = false) {
+  time: number, focus: number, heat: number, view: PanoramaViewport) {
   const layout = smtPanoramaLayout(time, focus);
   const { amount, scale, driftX, driftY, centerX, screenX, floorY } = layout;
   ctx.save();
-  if (!stage) {
-    const ambient = ctx.createLinearGradient(0, view.top, 0, view.bottom);
-    ambient.addColorStop(0, '#071821'); ambient.addColorStop(.5, '#18343e'); ambient.addColorStop(1, '#06141e');
-    ctx.fillStyle = ambient; ctx.fillRect(view.left, view.top, view.right-view.left, view.bottom-view.top);
-    ctx.strokeStyle=signalColor(0,.075); ctx.lineWidth=1;
-    for(let x=Math.floor(view.left/160)*160;x<view.right;x+=160) {
-      ctx.beginPath();ctx.moveTo(x,view.top);ctx.lineTo(x,view.bottom);ctx.stroke();
-    }
-    for(const y of [183,199,488,510,540]) {
-      ctx.beginPath();ctx.moveTo(view.left,y);ctx.lineTo(view.right,y);ctx.stroke();
-    }
-    ctx.save();ctx.translate(screenX+driftX,floorY+driftY);ctx.scale(scale,scale);ctx.translate(-centerX,0);
-    ctx.fillStyle='#152c34';ctx.fillRect(0,-79,SMT_LINE_WIDTH,9);
-    ctx.strokeStyle=signalColor(0,.4);ctx.strokeRect(0,-79,SMT_LINE_WIDTH,9);
-    for(const station of SMT_STATIONS) {
-      ctx.save();ctx.translate(station.x,0);
-      ctx.globalAlpha=station.id==='reflow'?1:1-amount*.55;
-      drawSmtEquipment(ctx,fonts,station,time,station.id==='reflow'?heat:0);
-      filmText(ctx,fonts,String(station.order).padStart(2,'0'),0,-station.height-55,12,ctx.globalAlpha*.72,true,'center');
-      ctx.restore();
-    }
+  const ambient = ctx.createLinearGradient(0, view.top, 0, view.bottom);
+  ambient.addColorStop(0, '#071821'); ambient.addColorStop(.5, '#18343e'); ambient.addColorStop(1, '#06141e');
+  ctx.fillStyle = ambient; ctx.fillRect(view.left, view.top, view.right-view.left, view.bottom-view.top);
+  ctx.strokeStyle=signalColor(0,.075); ctx.lineWidth=1;
+  for(let x=Math.floor(view.left/160)*160;x<view.right;x+=160) {
+    ctx.beginPath();ctx.moveTo(x,view.top);ctx.lineTo(x,view.bottom);ctx.stroke();
+  }
+  for(const y of [183,199,488,510,540]) {
+    ctx.beginPath();ctx.moveTo(view.left,y);ctx.lineTo(view.right,y);ctx.stroke();
+  }
+  ctx.save();ctx.translate(screenX+driftX,floorY+driftY);ctx.scale(scale,scale);ctx.translate(-centerX,0);
+  ctx.fillStyle='#152c34';ctx.fillRect(0,-79,SMT_LINE_WIDTH,9);
+  ctx.strokeStyle=signalColor(0,.4);ctx.strokeRect(0,-79,SMT_LINE_WIDTH,9);
+  for(const station of SMT_STATIONS) {
+    ctx.save();ctx.translate(station.x,0);
+    ctx.globalAlpha=station.id==='reflow'?1:1-amount*.55;
+    drawSmtEquipment(ctx,fonts,station,time,station.id==='reflow'?heat:0);
+    filmText(ctx,fonts,String(station.order).padStart(2,'0'),0,-station.height-55,12,ctx.globalAlpha*.72,true,'center');
     ctx.restore();
   }
+  ctx.restore();
   const stepWidth=134;
   SMT_STATIONS.forEach((station,index)=>{
     const x=640+(index-3.5)*stepWidth;

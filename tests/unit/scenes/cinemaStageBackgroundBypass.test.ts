@@ -3,13 +3,12 @@ import { drawSignalFilm } from '@/cinema/drawSignalFilm';
 import { drawWaveFilm } from '@/cinema/drawWaveFilm';
 import { drawVisorTourFilm } from '@/cinema/drawVisorTourFilm';
 import { drawSmtExploreFilm } from '@/cinema/drawSmtExploreFilm';
-import { drawPlanarVisorFilm } from '@/cinema/drawPlanarVisorFilm';
 import { chapterStart } from '@/cinema/filmProgram';
 import { createFactoryInteraction } from '@/cinema/smtFactoryInteraction';
 import { canvasFixture, type Fill } from '../support/canvasFixture';
 
 /**
- * 무대(3D)가 켜져 있으면 공간 챕터(wave/visor/visorPan)의 2D 배경 묘사는 건너뛰어야 한다.
+ * 무대(3D)가 켜져 있으면 공간 챕터(wave/visor)의 2D 배경 묘사는 건너뛰어야 한다.
  * 이 조건이 하나라도 빠지면 3D 무대 위에 불투명한 2D 배경이 겹쳐 그려져, 화면상으로는
  * 미묘하지만 무대가 통째로 가려진다. HUD 렌더러(drawEnvironmentZones 등)는 무대와 무관하게
  * 항상 그려져야 한다.
@@ -18,10 +17,6 @@ const drawEnvironmentHeatmap = vi.fn();
 const drawSmtFactory = vi.fn();
 const drawEnvironmentZones = vi.fn();
 const drawEnvironmentFocus = vi.fn();
-// visorPan은 drawInspectionPanorama가 레이아웃(target/detail)을 반환해 항상 호출되므로
-// (drawSmtFactory처럼 호출 자체를 끊을 수 없다) 실제 구현을 통과시키는 스파이로 감싸,
-// stage 인자 전달(플러밍)과 실제 fillRect 동작(아래 두 번째 describe)을 모두 검증한다.
-const drawInspectionPanoramaSpy = vi.fn();
 
 vi.mock('@/cinema/components/drawEnvironmentHeatmap', () => ({
   drawEnvironmentHeatmap: (...args: unknown[]) => drawEnvironmentHeatmap(...args),
@@ -33,28 +28,16 @@ vi.mock('@/cinema/components/drawZoneEnvironment', () => ({
   drawEnvironmentZones: (...args: unknown[]) => drawEnvironmentZones(...args),
   drawEnvironmentFocus: (...args: unknown[]) => drawEnvironmentFocus(...args),
 }));
-vi.mock('@/cinema/components/drawInspectionPanorama', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/cinema/components/drawInspectionPanorama')>();
-  return {
-    ...actual,
-    drawInspectionPanorama: (...args: Parameters<typeof actual.drawInspectionPanorama>) => {
-      drawInspectionPanoramaSpy(...args);
-      return actual.drawInspectionPanorama(...args);
-    },
-  };
-});
 
 const fonts = { label: 'Label', mono: 'Mono' };
 const waveTime = chapterStart('wave') + 5;
 const visorTime = chapterStart('visor') + 5;
-const visorPanTime = chapterStart('visorPan') + 5;
 
 beforeEach(() => {
   drawEnvironmentHeatmap.mockClear();
   drawSmtFactory.mockClear();
   drawEnvironmentZones.mockClear();
   drawEnvironmentFocus.mockClear();
-  drawInspectionPanoramaSpy.mockClear();
 });
 
 describe('무대가 켜졌을 때 공간 챕터의 2D 배경 우회', () => {
@@ -94,20 +77,6 @@ describe('무대가 켜졌을 때 공간 챕터의 2D 배경 우회', () => {
     const fixture = canvasFixture();
     drawSignalFilm(fixture.ctx, 1280, 720, visorTime, fonts, undefined, undefined, interaction, null, undefined, undefined, null, false);
     expect(drawSmtFactory).toHaveBeenCalledTimes(1);
-  });
-
-  it('visorPan 챕터: stage=true 가 drawInspectionPanorama 까지 전달된다', () => {
-    const fixture = canvasFixture();
-    drawSignalFilm(fixture.ctx, 1280, 720, visorPanTime, fonts, undefined, undefined, null, null, undefined, undefined, null, true);
-    expect(drawInspectionPanoramaSpy).toHaveBeenCalledTimes(1);
-    expect(drawInspectionPanoramaSpy.mock.calls[0].at(-1)).toBe(true);
-  });
-
-  it('visorPan 챕터: stage=false(기본값) 면 drawInspectionPanorama 에 false 가 전달된다', () => {
-    const fixture = canvasFixture();
-    drawSignalFilm(fixture.ctx, 1280, 720, visorPanTime, fonts, undefined, undefined, null, null, undefined, undefined, null, false);
-    expect(drawInspectionPanoramaSpy).toHaveBeenCalledTimes(1);
-    expect(drawInspectionPanoramaSpy.mock.calls[0].at(-1)).toBe(false);
   });
 
   it('HUD 렌더러(drawEnvironmentZones/drawEnvironmentFocus)는 stage 값과 무관하게 항상 호출된다', () => {
@@ -178,21 +147,5 @@ describe('무대가 켜졌을 때 공간 챕터의 불투명 배경(뷰포트 �
     const fixture = canvasFixture();
     drawSmtExploreFilm(fixture.ctx, 1280, 720, 5, fonts, undefined, interaction, false);
     expect(fixture.fills.some(isFullViewportFill)).toBe(true);
-  });
-
-  // visorPan(drawInspectionPanorama)은 뷰노트 전체를 덮는 방사형/선형 vignette를 stage 값과 무관하게
-  // 항상 그리므로(HUD 성격의 은은한 광원 효과, 알파값이 매우 낮음) isFullViewportFill 만으로는
-  // stage=true 인 경우를 구분할 수 없다. 대신 우회 대상 블록 안에서만 그려지는 컨베이어 레일
-  // fillRect('#152c34')를 표식으로 삼는다 — wave 챕터의 '#040b10' 코너필드 배경과 같은 방식이다.
-  it('visorPan 챕터: stage=true 면 인스펙션 파노라마의 불투명 배경 · 설비 묘사가 그려지지 않는다', () => {
-    const fixture = canvasFixture();
-    drawPlanarVisorFilm(fixture.ctx, 1280, 720, 15, fonts, undefined, true);
-    expect(fixture.fills.some(f => f.fillStyle === '#152c34')).toBe(false);
-  });
-
-  it('visorPan 챕터: stage=false 면 인스펙션 파노라마의 불투명 배경 · 설비 묘사를 그린다', () => {
-    const fixture = canvasFixture();
-    drawPlanarVisorFilm(fixture.ctx, 1280, 720, 15, fonts, undefined, false);
-    expect(fixture.fills.some(f => f.fillStyle === '#152c34')).toBe(true);
   });
 });
