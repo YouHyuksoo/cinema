@@ -4,14 +4,31 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 /**
  * SMT 4개 생산라인 3D 공간. `artifacts/smt-4line-space/scene.html` (2026-09-20 시안)을 그대로 옮긴 지오메트리다.
  * 새로 디자인하지 않는다 — 재질 팔레트, 헬퍼, 설비 빌더, 라인 배치 모두 시안 값을 그대로 따른다.
- * `buildSmtLines(T)` 는 매 마운트마다 새 재질·지오메트리를 만든다 (모듈 스코프 캐시 금지):
+ * `buildSmtLines(T, zones)` 는 매 마운트마다 새 재질·지오메트리를 만든다 (모듈 스코프 캐시 금지):
  * FactoryExplorer3D 의 언마운트 cleanup 이 씬을 traverse 해 geometry/material 을 dispose 하므로,
  * 모듈 레벨에서 공유하면 재마운트 시 이미 dispose 된 객체를 재사용하게 된다.
+ * `zones` 는 온습도 히트맵 구역 바닥(SmtZoneFloor)의 이름표다 — 온도값은 여기서 다루지 않는다.
+ * 실시간으로 바뀌는 온도는 씬을 다시 만들지 않고 `SmtZoneFloor.material.color`/`paintLabel()` 만
+ * 갱신해야 한다 (호출부: SmtLineExplorer.tsx).
  */
 export const SMT_FLOOR_WIDTH = 76;
 export const SMT_FLOOR_DEPTH = 44;
 /** 라인 중심(z)이 이 값들이고, 각 라인은 58m 8공정이다 (시안 makeLine 배치 그대로). */
 export const SMT_LINE_COUNT = 4;
+
+/**
+ * 환경 히트맵 구역 바닥. 온습도 구역은 10개, SMT 공간은 4라인뿐이라 구역을 라인에 1:1로
+ * 대응시킬 수 없다 — 2D 히트맵(`environmentHeatmap.ts`)이 이미 10개 구역을 5열×2행 격자로
+ * 배치하므로, 그 순서(row = index/5, column = index%5)를 3D 바닥 전체(76×44m)에 그대로
+ * 펼쳐 2D/3D 배치 감각을 맞춘다. 타일 사이 간격이 곧 구역 경계선이다.
+ */
+export const SMT_ZONE_COLUMNS = 5;
+export const SMT_ZONE_ROWS = 2;
+export const SMT_ZONE_COUNT = SMT_ZONE_COLUMNS * SMT_ZONE_ROWS;
+const ZONE_TILE_GAP = .6;
+/** 바닥 상판(y=0)뿐 아니라 기존 차선 마크(y=.08~.115)보다도 위로 확실히 띄워 z-파이팅을 피한다. */
+const ZONE_TILE_BASE_Y = .16;
+const ZONE_TILE_HEIGHT = .06;
 
 export interface SmtLine {
   index: number;
@@ -20,12 +37,39 @@ export interface SmtLine {
   center: THREE.Vector3;
 }
 
+export interface SmtZoneInput { id: string; name: string }
+
+export interface SmtZoneFloor {
+  id: string;
+  name: string;
+  index: number;
+  mesh: THREE.Mesh;
+  /** 구역마다 독립 인스턴스다 — 공유하면 모든 구역이 같은 색이 된다. */
+  material: THREE.MeshBasicMaterial;
+  bounds: { x: number; z: number; width: number; depth: number };
+  /** 온도 텍스트/색 갱신. `document` 가 없는 테스트 환경에서는 조용히 아무 것도 하지 않는다. */
+  paintLabel(reading: string, color: string): void;
+}
+
 export interface SmtLineModel {
   root: THREE.Group;
   lines: SmtLine[];
+  zones: SmtZoneFloor[];
 }
 
-export function buildSmtLines(T: typeof THREE): SmtLineModel {
+/**
+ * `environmentTemperatureColor()`(environmentHeatmap.ts) 는 CSS4 공백 문법(`hsl(H S% L%)`)을
+ * 돌려준다 — 2D canvas의 `fillStyle` 은 이를 그대로 받아들이지만, three.js `Color.setStyle()` 의
+ * hsl 파서는 옛 콤마 문법(`hsl(H,S%,L%)`)만 인식한다(three/src/math/Color.js 의 hsl 정규식 참고).
+ * 공백 문법을 그대로 넘기면 파싱에 실패해 `Color` 가 이전 값(신규 재질이면 흰색)에 머문 채 "Unknown
+ * color model" 경고만 찍고 조용히 무시된다. `SmtZoneFloor.material.color.setStyle()` 을 부를 때는
+ * 반드시 이 함수를 거쳐 콤마 문법으로 바꾼 뒤 넘긴다.
+ */
+export function threeHslStyle(cssHsl: string): string {
+  return cssHsl.replace(/^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/, 'hsl($1,$2%,$3%)');
+}
+
+export function buildSmtLines(T: typeof THREE, zones: readonly SmtZoneInput[] = []): SmtLineModel {
   const W = SMT_FLOOR_WIDTH, D = SMT_FLOOR_DEPTH;
   const world = new T.Group();
 
@@ -101,6 +145,50 @@ export function buildSmtLines(T: typeof THREE): SmtLineModel {
     const sprite = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(c), transparent: true, depthWrite: false }));
     sprite.position.copy(tag); sprite.scale.set(width, 2.05 * scale, 1); sprite.renderOrder = 21; parent.add(sprite);
     return sprite;
+  }
+  /** Flat billboard readout above a zone tile — no elbow leader line, unlike `label()`'s equipment tags. */
+  function zoneLabelSprite(parent: THREE.Object3D, x: number, z: number, y = 1.35) {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 176;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const texture = new T.CanvasTexture(canvas);
+    const sprite = new T.Sprite(new T.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }));
+    sprite.position.set(x, y, z); sprite.scale.set(4.2, 1.45, 1); sprite.renderOrder = 22;
+    parent.add(sprite);
+    return { canvas, ctx, texture };
+  }
+  function paintZoneLabel(readout: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture },
+    name: string, reading: string, color: string) {
+    const { canvas, ctx, texture } = readout;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(6,14,20,.72)'; ctx.strokeStyle = color; ctx.lineWidth = 5;
+    ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 20); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#eef7fb'; ctx.font = '600 38px Segoe UI'; ctx.fillText(name, 26, 68);
+    ctx.fillStyle = color; ctx.font = '700 54px Segoe UI'; ctx.fillText(reading, 26, 142);
+    texture.needsUpdate = true;
+  }
+  /** Zone floor tiles, independent of the 4 lines above — see SMT_ZONE_COLUMNS/ROWS doc comment. */
+  function buildZoneFloors(zoneInputs: readonly SmtZoneInput[]): SmtZoneFloor[] {
+    const cellWidth = W / SMT_ZONE_COLUMNS, cellDepth = D / SMT_ZONE_ROWS;
+    const tileWidth = cellWidth - ZONE_TILE_GAP, tileDepth = cellDepth - ZONE_TILE_GAP;
+    return zoneInputs.slice(0, SMT_ZONE_COUNT).map((zone, index) => {
+      const row = Math.floor(index / SMT_ZONE_COLUMNS), column = index % SMT_ZONE_COLUMNS;
+      const x = column * cellWidth + cellWidth / 2, z = row * cellDepth + cellDepth / 2;
+      // Own material per zone (never shared) so color.setStyle() on one never touches another.
+      const material = new T.MeshBasicMaterial({ color: 0x3a4650, transparent: true, opacity: .85, toneMapped: false });
+      const mesh = new T.Mesh(BOX, material);
+      mesh.position.set(x, ZONE_TILE_BASE_Y + ZONE_TILE_HEIGHT / 2, z);
+      mesh.scale.set(tileWidth, ZONE_TILE_HEIGHT, tileDepth);
+      mesh.name = `zone-floor:${zone.id}`;
+      world.add(mesh);
+      const readout = zoneLabelSprite(world, x, z);
+      return {
+        id: zone.id, name: zone.name, index, mesh, material,
+        bounds: { x, z, width: tileWidth, depth: tileDepth },
+        paintLabel(reading: string, color: string) { if (readout) paintZoneLabel(readout, zone.name, reading, color); },
+      };
+    });
   }
   function feet(g: THREE.Object3D, x: number, z: number, w: number, d: number) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1])
@@ -229,6 +317,7 @@ export function buildSmtLines(T: typeof THREE): SmtLineModel {
     box(world, M.dark, 69, .1, 4.5 + i * 4.8, 2.7, .12, 1.5);
   }
   label(world, 'MATERIAL BUFFER', 69, 3.2, 21, '#56d7e5', .65, '자재 대기 구역');
+  const zoneFloors = buildZoneFloors(zones);
 
-  return { root: world, lines };
+  return { root: world, lines, zones: zoneFloors };
 }

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
-import type { SmtLine } from './smtLine/smtLineModel';
+import { threeHslStyle, type SmtLine, type SmtZoneFloor } from './smtLine/smtLineModel';
+import { environmentHeatmapDomain, environmentTemperatureColor } from './environmentHeatmap';
+import { environmentReadingStatus, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT } from './zoneEnvironment';
 import styles from './smtLineExplorer.module.css';
 
 /**
@@ -23,15 +25,33 @@ const CAMERA_FOV = 46;
 type ViewMode = 'orbit' | 'walk';
 interface LineButton { index: number; z: number; stations: readonly string[]; center: readonly [number, number, number] }
 
+/** 온습도 구역 바닥 색을 칠한다 — 2D 히트맵과 같은 색 규칙(environmentHeatmap.ts)을 그대로 쓴다.
+ * 씬을 다시 만들지 않고 재질 색과 라벨 텍스트만 갱신한다. */
+function paintZoneFloors(zones: readonly SmtZoneFloor[], data: readonly EnvironmentZone[]) {
+  const domain = environmentHeatmapDomain(data);
+  for (const floor of zones) {
+    const zone = data.find(item => item.id === floor.id) ?? null;
+    const status = zone ? environmentReadingStatus(zone.temperature, zone.temperatureRange) : 'missing';
+    const temperature = status === 'missing' ? null : zone!.temperature;
+    const { color } = environmentTemperatureColor(temperature, domain);
+    floor.material.color.setStyle(threeHslStyle(color));
+    floor.paintLabel(temperature === null ? '--' : `${temperature.toFixed(1)}℃`, color);
+  }
+}
+
 /** 사용자가 직접 조작하는 장면이라, 조작이 시작되면 필름 시계를 멈춰 화면이 저절로
  * 다음 장면으로 넘어가지 않게 한다. FactoryExplorer3D 와 같은 규약이다. */
-export function SmtLineExplorer({ onManual }: { onManual?: () => void }) {
+export function SmtLineExplorer({ onManual, environment }: { onManual?: () => void; environment?: ZoneEnvironmentData }) {
   const host = useRef<HTMLDivElement>(null);
   const goOverview = useRef(() => {});
   const goLine = useRef((_line: LineButton) => {});
   const enterWalk = useRef(() => {});
   const manual = useRef(onManual);
   manual.current = onManual;
+  // 마운트 시점의 스냅샷일 뿐이다 — 갱신은 아래 별도 useEffect(zoneFloorsRef 경유)가 맡는다.
+  const environmentRef = useRef(environment);
+  environmentRef.current = environment;
+  const zoneFloorsRef = useRef<readonly SmtZoneFloor[]>([]);
   const [mode, setModeState] = useState<ViewMode>('orbit');
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -66,10 +86,13 @@ export function SmtLineExplorer({ onManual }: { onManual?: () => void }) {
       Object.assign(sun.shadow.camera, { left: -65, right: 65, top: 65, bottom: -65, near: 5, far: 140 });
       sun.shadow.camera.updateProjectionMatrix();
       scene.add(sun);
-      const model = buildSmtLines(T);
+      const zoneSource = (environmentRef.current?.zones ?? []).slice(0, ZONE_COUNT);
+      const model = buildSmtLines(T, zoneSource.map(zone => ({ id: zone.id, name: zone.name })));
       scene.add(model.root);
       setLines(model.lines.map((line: SmtLine) => ({ index: line.index, z: line.z, stations: line.stations,
         center: [line.center.x, line.center.y, line.center.z] })));
+      paintZoneFloors(model.zones, zoneSource);
+      zoneFloorsRef.current = model.zones;
 
       const orbit = new OrbitControls(camera, renderer.domElement);
       orbit.target.set(...OVERVIEW_POSE.target);
@@ -160,11 +183,18 @@ export function SmtLineExplorer({ onManual }: { onManual?: () => void }) {
         sun.shadow.map?.dispose();
         renderer.dispose(); renderer.domElement.remove();
         goOverview.current = () => {}; goLine.current = () => {}; enterWalk.current = () => {};
+        zoneFloorsRef.current = [];
       };
     }
     void start().catch(error => { if (!stopped) setStatus(`3D 초기화 실패: ${error instanceof Error ? error.message : String(error)}`); });
     return () => { stopped = true; cleanup(); };
   }, []);
+
+  // 실시간으로 바뀌는 온습도 데이터: 씬은 그대로 두고 구역 재질 색과 라벨만 다시 칠한다.
+  useEffect(() => {
+    if (!environment || !zoneFloorsRef.current.length) return;
+    paintZoneFloors(zoneFloorsRef.current, environment.zones.slice(0, ZONE_COUNT));
+  }, [environment]);
 
   return <div className={styles.overlay}>
     <div ref={host} className={styles.viewport} data-mode={mode} />
