@@ -27,6 +27,8 @@
   text-shadow: 0 1px 3px rgba(0, 10, 18, .85);
   font: 11px/1.5 var(--font-label), var(--font-korean), sans-serif;
 }
+/* 제목 영역을 잡고 끌면 패널이 따라온다(Round 3-5) — 장면 메뉴 구체와 같은 드래그 규약. */
+.handle { cursor: move; touch-action: none; }
 .title { margin: 0; font-size: 13px; letter-spacing: .1em; color: var(--film-accent-soft); }
 .subtitle { margin: 4px 0 14px; color: var(--film-muted); font-size: 10px; }
 

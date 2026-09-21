@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type * as THREE from 'three';
 import { smtHeatmapColorAt, type SmtHeatmapFloor, type SmtHeatmapSample, type SmtLine } from './smtLine/smtLineModel';
 import { smtHotspotOrder, smtHotspotTour, type SmtHotspotEntry } from './smtLine/smtHotspotTour';
+import { clampSmtPanelPosition, isSmtPanelDrag } from './smtLine/smtPanelDrag';
 import { environmentHeatmapDomain } from './environmentHeatmap';
 import {
   environmentReadingStatus, ENVIRONMENT_FILM_SECONDS, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT,
@@ -83,6 +84,76 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState('SMT 4개 라인 구성 중');
+
+  // 좌측 패널 드래그 이동(Round 3-5) — 장면 메뉴 구체(useFilmMenuGlobe.ts)와 같은 규약이다: 짧은
+  // 클릭은 드래그가 아니고, pointermove 마다 getBoundingClientRect 를 다시 읽지 않으며(강제
+  // 레이아웃 방지), 실제 스타일 반영은 rAF 로 프레임당 한 번만 한다. React state 가 아니라 ref +
+  // 직접 DOM 스타일 쓰기를 쓰는 이유도 같다 — 드래그 중 리렌더를 만들지 않기 위해서다.
+  const panelRef = useRef<HTMLElement>(null);
+  const panelDragRef = useRef<{ pointerId: number; origin: { x: number; y: number }; rect: DOMRect;
+    baseDx: number; baseDy: number; moved: boolean } | null>(null);
+  const panelOffsetRef = useRef({ x: 0, y: 0 });
+  const panelPendingRef = useRef<string | null>(null);
+  const panelFrameRef = useRef(0);
+  const applyPanelTransform = () => {
+    panelFrameRef.current = 0;
+    if (panelPendingRef.current === null || !panelRef.current) return;
+    panelRef.current.style.transform = panelPendingRef.current;
+    panelPendingRef.current = null;
+  };
+  const schedulePanelTransform = () => {
+    if (!panelFrameRef.current) panelFrameRef.current = requestAnimationFrame(applyPanelTransform);
+  };
+  const onPanelHandlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation(); // 3D 캔버스의 OrbitControls 로 새지 않게 한다.
+    if (!event.isPrimary || event.button !== 0 || !panelRef.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    panelDragRef.current = { pointerId: event.pointerId, origin: { x: event.clientX, y: event.clientY }, rect,
+      baseDx: panelOffsetRef.current.x, baseDy: panelOffsetRef.current.y, moved: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onPanelHandlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    const dragging = panelDragRef.current;
+    if (!dragging || dragging.pointerId !== event.pointerId) return;
+    const point = { x: event.clientX, y: event.clientY };
+    // 총 이동거리가 임계값을 넘기 전까지는 짧은 클릭으로 다룬다 — 여기서 아무 것도 옮기지 않는다.
+    if (!dragging.moved && !isSmtPanelDrag(dragging.origin, point)) return;
+    dragging.moved = true;
+    const raw = { x: dragging.rect.left + (point.x - dragging.origin.x), y: dragging.rect.top + (point.y - dragging.origin.y) };
+    // window.innerWidth/Height 는 강제 레이아웃 없이 읽을 수 있다 — getBoundingClientRect 는
+    // pointerdown 때 한 번만 쟀다(위 원칙: pointermove 마다 다시 재지 않는다).
+    const clamped = clampSmtPanelPosition(raw, { width: dragging.rect.width, height: dragging.rect.height },
+      { width: window.innerWidth, height: window.innerHeight });
+    panelOffsetRef.current = { x: dragging.baseDx + (clamped.x - dragging.rect.left),
+      y: dragging.baseDy + (clamped.y - dragging.rect.top) };
+    panelPendingRef.current = `translate(${panelOffsetRef.current.x}px, ${panelOffsetRef.current.y}px)`;
+    schedulePanelTransform();
+  };
+  const endPanelDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    panelDragRef.current = null;
+  };
+
+  // DESIGN.md 223행과 같은 규약 — 화면 크기가 바뀌면 이전 드래그 좌표를 버리고 기본 위치로
+  // 되돌린다. 같은 크기에서는(예: 도크가 접히며 발생하는 다른 레이아웃 변화) 유지한다.
+  useEffect(() => {
+    let lastViewport = { width: window.innerWidth, height: window.innerHeight };
+    const onResize = () => {
+      const next = { width: window.innerWidth, height: window.innerHeight };
+      if (next.width !== lastViewport.width || next.height !== lastViewport.height) {
+        panelOffsetRef.current = { x: 0, y: 0 }; panelPendingRef.current = null;
+        if (panelRef.current) panelRef.current.style.transform = '';
+      }
+      lastViewport = next;
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (panelFrameRef.current) cancelAnimationFrame(panelFrameRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     let stopped = false;
@@ -296,9 +367,12 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
 
   return <div className={styles.overlay}>
     <div ref={host} className={styles.viewport} data-mode={mode} />
-    <aside className={styles.panel}>
-      <h2 className={styles.title}>SMT PRODUCTION FLOOR</h2>
-      <p className={styles.subtitle}>{status} · 76 × 44 m</p>
+    <aside className={styles.panel} ref={panelRef}>
+      <div className={styles.handle} onPointerDown={onPanelHandlePointerDown} onPointerMove={onPanelHandlePointerMove}
+        onPointerUp={endPanelDrag} onPointerCancel={endPanelDrag} onLostPointerCapture={() => { panelDragRef.current = null; }}>
+        <h2 className={styles.title}>SMT PRODUCTION FLOOR</h2>
+        <p className={styles.subtitle}>{status} · 76 × 44 m</p>
+      </div>
       <nav className={styles.modes} aria-label="시점 모드">
         <button type="button" aria-pressed={mode === 'orbit'} onClick={() => goOverview.current()}>둘러보기</button>
         <button type="button" aria-pressed={mode === 'walk'} onClick={() => enterWalk.current()}>내부 걷기</button>

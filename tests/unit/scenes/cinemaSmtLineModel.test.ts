@@ -4,6 +4,7 @@ import {
   buildSmtLines, SMT_FLOOR_DEPTH, SMT_FLOOR_WIDTH, SMT_LINE_COUNT, SMT_ZONE_COUNT, smtHeatmapColorAt, threeHslStyle,
 } from '@/cinema/smtLine/smtLineModel';
 import { smtHotspotOrder, smtHotspotTour, type SmtHotspotPose } from '@/cinema/smtLine/smtHotspotTour';
+import { clampSmtPanelPosition, isSmtPanelDrag, SMT_PANEL_DRAG_THRESHOLD, SMT_PANEL_MIN_VISIBLE } from '@/cinema/smtLine/smtPanelDrag';
 import { environmentHeatmapDomain, environmentTemperatureColor } from '@/cinema/environmentHeatmap';
 import { ENVIRONMENT_HOTSPOT_DWELL } from '@/cinema/environmentHeatmapProjection';
 import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_TIMING } from '@/cinema/zoneEnvironment';
@@ -184,5 +185,49 @@ describe('SMT 3D 고온 구역 비행 연출 (Round 3-2: 2D 히트맵이 사라�
     expect(frame.active).toBeNull();
     expect(frame.pose.position[0]).toBeCloseTo(OVERVIEW.position[0], 5);
     expect(frame.pose.target[0]).toBeCloseTo(OVERVIEW.target[0], 5);
+  });
+});
+
+describe('SMT 3D 좌측 패널 드래그 (Round 3-5)', () => {
+  it('임계값(7px) 이하 이동은 드래그가 아니라 짧은 클릭으로 판정한다', () => {
+    const origin = { x: 100, y: 100 };
+    expect(isSmtPanelDrag(origin, { x: 100, y: 100 })).toBe(false);
+    expect(isSmtPanelDrag(origin, { x: 104, y: 103 })).toBe(false); // hypot(4,3)=5 < 7
+    expect(isSmtPanelDrag(origin, { x: 100 + SMT_PANEL_DRAG_THRESHOLD, y: 100 })).toBe(false); // 경계값은 아직 드래그가 아니다
+    expect(isSmtPanelDrag(origin, { x: 108, y: 100 })).toBe(true);
+  });
+
+  it('화면 안에 있는 좌표는 그대로 둔다', () => {
+    const position = { x: 200, y: 150 };
+    const clamped = clampSmtPanelPosition(position, { width: 300, height: 400 }, { width: 1280, height: 800 });
+    expect(clamped).toEqual(position);
+  });
+
+  it('화면 왼쪽/위로 나가는 좌표는 손잡이가 화면 안에 남도록 안으로 당겨진다', () => {
+    const size = { width: 300, height: 400 };
+    const viewport = { width: 1280, height: 800 };
+    const farLeft = clampSmtPanelPosition({ x: -9999, y: 100 }, size, viewport);
+    expect(farLeft.x).toBe(SMT_PANEL_MIN_VISIBLE - size.width); // 손잡이 쪽 SMT_PANEL_MIN_VISIBLE 만큼만 화면에 남는다
+    expect(farLeft.x).toBeGreaterThan(-9999);
+    const farUp = clampSmtPanelPosition({ x: 100, y: -9999 }, size, viewport);
+    expect(farUp.y).toBe(0); // 제목이 있는 상단은 화면 위로 넘어가지 않는다
+  });
+
+  it('화면 오른쪽/아래로 나가는 좌표도 최소 손잡이만큼 화면 안에 남긴다', () => {
+    const size = { width: 300, height: 400 };
+    const viewport = { width: 1280, height: 800 };
+    const farRight = clampSmtPanelPosition({ x: 99999, y: 100 }, size, viewport);
+    expect(farRight.x).toBe(viewport.width - SMT_PANEL_MIN_VISIBLE);
+    const farDown = clampSmtPanelPosition({ x: 100, y: 99999 }, size, viewport);
+    expect(farDown.y).toBe(viewport.height - SMT_PANEL_MIN_VISIBLE);
+  });
+
+  it('뷰포트가 극단적으로 작아도(0×0 등 레이아웃 측정 전 순간) 유한한 값을 돌려준다', () => {
+    const size = { width: 300, height: 400 };
+    for (const viewport of [{ width: 0, height: 0 }, { width: -10, height: -10 }, { width: 5, height: 5 }]) {
+      const clamped = clampSmtPanelPosition({ x: 50, y: 50 }, size, viewport);
+      expect(Number.isFinite(clamped.x), `viewport=${JSON.stringify(viewport)}`).toBe(true);
+      expect(Number.isFinite(clamped.y), `viewport=${JSON.stringify(viewport)}`).toBe(true);
+    }
   });
 });
