@@ -24,6 +24,13 @@ const WALK_START_POSITION: readonly [number, number, number] = [8, 1.72, 11];
 const WALK_START_LOOKAT: readonly [number, number, number] = [20, 1.2, 11];
 const WALK_EYE_HEIGHT = 1.72;
 const CAMERA_FOV = 46;
+// Round 3-3: 약 15도 위에서 내려다보며 공장을 중심으로 천천히 도는 자동 회전. OVERVIEW_POSE 와
+// 비슷한 수평거리(약 66m)를 반경으로 잡아 15도 앙각의 높이를 구했다 — 한 바퀴 60초는 "눈이 편한
+// 정도"로 잡은 값이라, 실제 화면에서 보고 조정할 수 있게 상수로 뒀다.
+const ORBIT_TOUR_RADIUS = 66;
+const ORBIT_TOUR_ELEVATION = Math.PI / 12; // 15도
+const ORBIT_TOUR_HEIGHT = ORBIT_TOUR_RADIUS * Math.tan(ORBIT_TOUR_ELEVATION);
+const ORBIT_TOUR_PERIOD_SECONDS = 60;
 
 type ViewMode = 'orbit' | 'walk';
 interface LineButton { index: number; z: number; stations: readonly string[]; center: readonly [number, number, number] }
@@ -52,6 +59,8 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
   const goOverview = useRef(() => {});
   const goLine = useRef((_line: LineButton) => {});
   const enterWalk = useRef(() => {});
+  const startOrbitTour = useRef(() => {});
+  const stopAutoDrive = useRef(() => {});
   const manual = useRef(onManual);
   manual.current = onManual;
   // 마운트 시점의 스냅샷일 뿐이다 — 갱신은 아래 별도 useEffect(heatmapRef 경유)가 맡는다.
@@ -67,8 +76,9 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
   const hotspotOrderRef = useRef<SmtHotspotEntry[]>([]);
   // 카메라를 스스로 움직이는 두 자동 연출(고온 구역 순회 · 15도 자동 회전)은 동시에 돌지 않는다 —
   // 하나가 켜지면 다른 하나를 끄고, 사용자가 드래그·휠 등으로 직접 조작하면 둘 다 꺼진다.
-  const autoDriveRef = useRef<'hotspot' | null>(null);
+  const autoDriveRef = useRef<'hotspot' | 'orbit' | null>(null);
   const [hotspot, setHotspot] = useState<{ name: string; temperature: number; rank: number; total: number; phase: string } | null>(null);
+  const [orbitTouring, setOrbitTouring] = useState(false);
   const [mode, setModeState] = useState<ViewMode>('orbit');
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -154,14 +164,15 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
       const beginTransition = (pose: { position: readonly [number, number, number]; target: readonly [number, number, number] }) => {
         position.set(...pose.position); target.set(...pose.target); transitioning = true;
       };
-      const interrupt = () => { transitioning = false; autoDriveRef.current = null; setHotspot(null); manual.current?.(); };
+      const stopAuto = () => { autoDriveRef.current = null; setHotspot(null); setOrbitTouring(false); };
+      const interrupt = () => { transitioning = false; stopAuto(); manual.current?.(); };
       orbit.addEventListener('start', interrupt);
 
       goOverview.current = () => {
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
         camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
-        autoDriveRef.current = null; setHotspot(null);
+        stopAuto();
         setSelected(null); manual.current?.();
         beginTransition(OVERVIEW_POSE);
       };
@@ -169,15 +180,33 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
         camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
-        autoDriveRef.current = null; setHotspot(null);
+        stopAuto();
         setSelected(line.index); manual.current?.();
         beginTransition({ position: [0, 24, line.z + 28], target: line.center });
       };
       enterWalk.current = () => {
-        transitioning = false; autoDriveRef.current = null; setHotspot(null);
+        transitioning = false; stopAuto();
         setModeState('walk'); modeRef.current = 'walk'; orbit.enabled = false; manual.current?.();
         camera.position.set(...WALK_START_POSITION); camera.lookAt(...WALK_START_LOOKAT);
       };
+      // Round 3-3: 약 15도 위에서 공장을 도는 자동 회전. 시작 각도를 지금 카메라 위치에서 구해
+      // beginTransition 으로 그 지점까지 매끄럽게 이동한 뒤(경과시간 기반 lerp), transitioning 이
+      // 끝나면 아래 render() 의 'orbit' 분기가 넘겨받아 매 프레임 delta 만큼 각도를 흘린다.
+      let orbitAngle = 0;
+      startOrbitTour.current = () => {
+        walk.unlock();
+        setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
+        camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
+        setHotspot(null); setSelected(null);
+        orbitAngle = Math.atan2(camera.position.z - FLOOR_CENTER[2], camera.position.x - FLOOR_CENTER[0]);
+        autoDriveRef.current = 'orbit'; setOrbitTouring(true); manual.current?.();
+        beginTransition({
+          position: [FLOOR_CENTER[0] + Math.cos(orbitAngle) * ORBIT_TOUR_RADIUS, ORBIT_TOUR_HEIGHT,
+            FLOOR_CENTER[2] + Math.sin(orbitAngle) * ORBIT_TOUR_RADIUS],
+          target: FLOOR_CENTER,
+        });
+      };
+      stopAutoDrive.current = () => { stopAuto(); manual.current?.(); };
 
       const resize = () => {
         const { width, height } = node.getBoundingClientRect();
@@ -216,6 +245,12 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
             setHotspot(tour.active ? { name: tour.active.name, temperature: tour.active.temperature,
               rank: tour.rank, total: tour.total, phase: tour.phase } : null);
           }
+        } else if (modeRef.current === 'orbit' && autoDriveRef.current === 'orbit') {
+          // 경과시간(delta) 기반 각속도 — 프레임레이트가 흔들려도 한 바퀴 도는 실제 시간은 같다.
+          orbitAngle += (2 * Math.PI / ORBIT_TOUR_PERIOD_SECONDS) * delta;
+          camera.position.set(FLOOR_CENTER[0] + Math.cos(orbitAngle) * ORBIT_TOUR_RADIUS, ORBIT_TOUR_HEIGHT,
+            FLOOR_CENTER[2] + Math.sin(orbitAngle) * ORBIT_TOUR_RADIUS);
+          orbit.target.set(...FLOOR_CENTER);
         }
         orbit.update(); renderer.render(scene, camera); frame = requestAnimationFrame(render);
       };
@@ -244,6 +279,7 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
         sun.shadow.map?.dispose();
         renderer.dispose(); renderer.domElement.remove();
         goOverview.current = () => {}; goLine.current = () => {}; enterWalk.current = () => {};
+        startOrbitTour.current = () => {}; stopAutoDrive.current = () => {};
       };
     }
     void start().catch(error => { if (!stopped) setStatus(`3D 초기화 실패: ${error instanceof Error ? error.message : String(error)}`); });
@@ -266,6 +302,10 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
       <nav className={styles.modes} aria-label="시점 모드">
         <button type="button" aria-pressed={mode === 'orbit'} onClick={() => goOverview.current()}>둘러보기</button>
         <button type="button" aria-pressed={mode === 'walk'} onClick={() => enterWalk.current()}>내부 걷기</button>
+      </nav>
+      <nav className={styles.modes} aria-label="자동 회전">
+        <button type="button" aria-pressed={orbitTouring} onClick={() => startOrbitTour.current()}>자동 회전</button>
+        <button type="button" onClick={() => stopAutoDrive.current()}>정지</button>
       </nav>
       {hotspot && <div className={styles.hotspot} aria-live="polite">
         <b>HOTSPOT {hotspot.rank}/{hotspot.total}</b>
