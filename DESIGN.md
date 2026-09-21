@@ -13,6 +13,26 @@
 - 2026-09-21: 공장 이미지의 센서 카드는 설비 환경 태그로 표시한다. 카드에는 실제 구역명·센서 ID·온도·습도·상태만 사용하고, 별도 설비 ID는 만들지 않는다. 카드 하단에서 이미지 속 설치점까지 꺾인 연결선을 그리며 정보상자는 반투명 글래스 톤을 유지한다. 미연결 슬롯은 같은 연결 구조를 쓰되 값은 `—`로 표시한다. 영향 경로: EnvironmentFloorMonitor.tsx → environmentFloorMonitor.module.css → cinemaFloorMonitor.test.ts.
 - 배경 제작: 내장 imagegen 편집, 원 시안 구조/재질 보존, 모든 UI/문자/차트/센서 핀 제거 프롬프트. 배포용 자산은 public/cinema에 보관한다.
 
+### 2026-09-21 대체: 35초부터 SMT 4라인 3D 공간
+
+- 위 "90초부터 정적 이미지, WebGL을 실행하지 않는다"는 규정을 대체한다. 35초(`ENVIRONMENT_TIMING.heatmapStart`)부터 장면 끝까지 실제 WebGL 3D 공간을 띄우고, 그 바닥에 온도 히트맵을 그린다. `EnvironmentFloorMonitor`는 더 이상 마운트하지 않으며 컴포넌트 파일은 남겨 둔다. `/cinema/studio` 시제품은 제거했고 그 렌더 파이프라인(OrbitControls·PMREM·dispose·경과시간 보간)은 `FactoryExplorer3D.tsx`가 이어받았다.
+- 공간은 76×44m 바닥에 4개 평행 라인이며 라인마다 58m 8공정(Loader → Printer → SPI → Mounter ×2 → Reflow → AOI → ICT)이다. 설비마다 시그널 타워·조작 모니터·유리창·컨베이어를 둔다. 원본은 `artifacts/smt-4line-space/scene.html` 시안이고 형상을 임의로 바꾸지 않는다.
+- 히트맵은 사각 타일이 아니라 **연속 색번짐**이다. 바닥 전체를 덮는 한 장의 CanvasTexture(256×148, Linear 필터)에 픽셀마다 `environmentTemperatureAt`(거리 가중 보간)으로 온도를 구하고 `environmentTemperatureColor`로 칠한다. 색 규칙은 2D 히트맵과 같은 단일 소스를 쓰며 여기서 새 스케일을 만들지 않는다. 바닥색과 섞고 불투명도를 낮춰 흰 설비가 묻히지 않게 한다. 데이터가 바뀌면 캔버스만 다시 그리고 `needsUpdate`만 세운다 — 텍스처·재질을 새로 만들지 않는다.
+- `three.js Color.setStyle()`은 `environmentTemperatureColor`가 돌려주는 CSS4 공백 hsl 문법을 파싱하지 못해 흰색에 머문다. `smtLineModel.ts`의 `threeHslStyle()`로 변환해 넘긴다. 색 규칙 파일은 고치지 않는다.
+- 자동 연출은 두 가지이며 **동시에 돌지 않는다.** 진입하면 고온 구역 순회가 먼저 돌고(온도 높은 순, 구역당 4.8초 — 1.4초 진입·2.2초 판독·1.2초 후퇴; 순서와 타이밍은 `environmentHeatmapProjection.ts`의 것을 그대로 쓴다), 순회가 끝나면 15도 위에서 천천히 공전하는 자동 회전으로 이어진다. 버튼으로 시작한 순회도 같은 흐름을 탄다. 사용자가 드래그·휠로 조작하면 둘 다 멈춘다. 상태는 `autoDriveRef` 하나가 소유하고 버튼 표시(`aria-pressed`)도 그 단일 상태만 본다 — 독립 상태 두 개로 판정하면 전환 구간에 어느 것도 눌리지 않은 것처럼 보인다.
+- 자동 연출은 **자체 시계**로 돈다. 필름 재생 여부에 묶으면, 연출 시작이 필름을 멈추는 순간 자기 자신도 얼어붙는다.
+- 좌측 패널은 제목을 잡아 드래그로 옮긴다. 장면 메뉴 구체와 같은 규약을 쓴다(포인터 캡처, 7px 짧은 클릭 판정, 창 크기 변경 시 기본 위치 복귀, `pointermove`마다 레이아웃을 읽지 않고 rAF로 프레임당 한 번 반영). 패널·안내창은 `backdrop-filter` 없이 낮은 불투명도·얇은 밝은 테두리·정적 반사로 유리감을 낸다(공통 규정). 조작 안내는 상단 재생 컨트롤 왼쪽에 두되 폭을 고정값으로 추측하지 않고 `ResizeObserver`로 실측해 맞춘다.
+- 세로 화면도 같은 3D를 쓴다. `drawWaveFilm`의 세로 판정이 35초 판정보다 앞서면 세로에서 옛 2D로 빠지므로 순서를 지킨다(`waveFilmMode(width, height, elapsed)`). 35초 이전 세로 배치는 그대로다. 저사양(`data-film-perf=low`)에서는 그림자맵 2048→1024, 픽셀비율 1.75→1로 낮춘다. 히트맵 캔버스 해상도는 비주기 비용이라 낮추지 않는다.
+- 영향 경로: `smtLine/smtLineModel.ts`(형상·재질·히트맵 텍스처) / `smtLine/smtHotspotTour.ts`(순회 스케줄) / `smtLine/smtPanelDrag.ts`(클램프·짧은 클릭) → `SmtLineExplorer.tsx` / `smtLineExplorer.module.css` → `SignalFilm.tsx`; `drawWaveFilm.ts`(세로·35초 분기) → `components/drawEnvironmentMobile.ts`. 검증: `cinemaSmtLineModel.test.ts`, `cinemaEnvironmentMobile.test.ts`.
+- 렌더 루프 안의 타이밍·조건 결함은 이 프로젝트 vitest(node, jsdom 없음)로 재현되지 않는다. 순수 함수로 뽑을 수 있는 부분만 테스트하고, 나머지는 실제 화면 확인으로 검증한다.
+
+### 2026-09-21: 필름 마지막 장면 — 조작 가능한 공장 3D
+
+- 필름 맨 끝에 `space3d` 장면을 둔다(45초). 방 10개·벽·통로·문·설비를 갖춘 공장을 조감도로 보여주고, 드래그 회전·휠 확대·"내부 진입"으로 통로 1인칭 시점 전환을 제공한다. 온습도의 SMT 공간과는 별개 모델이다.
+- 시점 전환 보간은 **경과 시간 기반**이다. 프레임당 고정 비율로 하면 필름 렌더와 화면을 나눠 쓰는 동안 전환이 몇 초씩 늘어진다. `OrbitControls.maxPolarAngle`은 목표 시점의 극각보다 커야 한다 — 작으면 카메라가 매 프레임 되밀려 목적지에 닿지 못한다.
+- 사용자가 조작을 시작하면 필름 시계를 멈춰 화면이 저절로 넘어가지 않게 한다.
+- 영향 경로: `stage/factoryLayout.ts` / `stage/factoryModel.ts` → `FactoryExplorer3D.tsx` / `factoryExplorer3d.module.css` → `SignalFilm.tsx`, `filmProgram.ts`(장면 등록) / `drawSignalFilm.ts`(배경만 채우는 렌더러) / `FilmChapterIcon.tsx`. 검증: `cinemaFactoryExplorer3d.test.ts`, `cinemaFactoryModel.test.ts`, `cinemaGallery.test.ts`.
+
 ## 렌더링 구조
 
 - 렌더러는 세 층이며 WebGL/Three.js는 쓰지 않는다(2026-09-08 구체 설계, 2026-09-10 재확인). (1) Canvas 2D + 자체 원근 투영: 모든 장면·리액터·비행 연출. (2) CSS 3D 변환: 메뉴 큐브·구체·HUD 프레임·자이로처럼 접근성 트리와 포커스가 필요한 입체 위젯. (3) SVG/React DOM: 아이콘·게이지·텍스트. 카메라가 거의 고정된 얕은 원근이므로 Canvas 2D가 충분하며, 자유 카메라·조명·재질이 필요해지기 전에는 엔진을 추가하지 않는다.
@@ -280,7 +300,7 @@
 
 - PCB 불량 분석(machine) 구현 기준: 기본 대상은 SMT PCB, 자동차는 연출 설정에서 명시적으로 선택할 때만 표시한다. PCB 순회 종료나 전체 연속 재생이 대상을 자동차로 바꾸지 않는다. 기존 machine ID·36초·16개 메뉴/538초 순서는 유지한다. 부품은 참조번호 ID를 가진 배열이며 기판·부품·불량 타깃이 같은 3D 좌표/투영을 공유한다. 0~4초 전체 스캔, 4~28초 불량 부품 접근·판독·후퇴, 28~34.5초 전체 집계, 36초 종료다. 정상/불량/미검사 집계는 전달 데이터에서만 파생하고, 시연 형상/판정과 실제 검사 출처를 구분한다. 세로 화면에서는 보드와 판독 영역을 위아래로 재배치한다. 아래 자동차 전용 machine 설명은 수동 자동차 옵션의 보존 규칙으로 적용한다. 영향 경로: pcbInspectionData.ts / pcbInspectionFields.ts → pcbInspection.ts / sceneDataRegistry.ts → pcbInspectionLayout.ts / components/drawPcbAssembly.ts / components/drawPcbInspectionReadout.ts → drawPcbInspectionFilm.ts / drawTransparentMachineFilm.ts → drawSignalFilm.ts / useFilmPlayback.ts → FilmMachineControls.tsx / FilmControls.tsx. 상세 승인 명세: docs/superpowers/specs/2026-09-08-smt-pcb-defect-film-design.md.
 
-- 온습도 연출은 화면 가로/세로 비율이 0.85 미만이면 세로형 440×1040 논리 배치를 사용한다. 10개 ZONE은 2열 5행, 온도·습도 계기는 상단에 배치하며 계기 전체를 균일 확대/축소해 글자와 링의 비율을 유지한다. 21.5~23초에 카드를 위로 재배치하고 각 카드 아래에 공통 눈금의 24시간 그래프를 전개한다. 히트맵은 기존 공장 비행·센서 보간을 상단 공간도에 유지하고 아래에는 읽기 쉬운 구역별 온도와 같은 온도 범례를 표시한다. 바닥 앵커와 선택 안내 공간을 제외하고 배치하며 데스크톱/가로 화면은 기존 구성을 유지한다. 영향 경로: environmentMobileLayout.ts(공유 세로 배치·DPR 독립 변환) → drawWaveFilm.ts / components/drawEnvironmentMobile.ts(세로 화면 조립), environmentSceneObjects.ts → environmentSelection.ts → useEnvironmentSelection.ts / EnvironmentZoneInteraction.tsx(동일 좌표로 터치 선택). 원본 데이터·자동 순회·역방향 탐색·선택 단계는 바꾸지 않는다. 검증: cinemaEnvironmentMobile.test.ts의 화면 경계·카드/그래프 간격·DPR 1/2/3 선택·주입 데이터·가로 배치 유지.
+- 온습도 연출은 화면 가로/세로 비율이 0.85 미만이면 세로형 440×1040 논리 배치를 사용한다. 10개 ZONE은 2열 5행, 온도·습도 계기는 상단에 배치하며 계기 전체를 균일 확대/축소해 글자와 링의 비율을 유지한다. 21.5~23초에 카드를 위로 재배치하고 각 카드 아래에 공통 눈금의 24시간 그래프를 전개한다. 35초부터의 히트맵 구간은 가로와 같은 SMT 4라인 3D 공간으로 대체됐다(2026-09-21, 위 대체 섹션 참조). 세로 전용 2D 히트맵 배치는 더 이상 쓰지 않는다. 바닥 앵커와 선택 안내 공간을 제외하고 배치하며 데스크톱/가로 화면은 기존 구성을 유지한다. 영향 경로: environmentMobileLayout.ts(공유 세로 배치·DPR 독립 변환) → drawWaveFilm.ts / components/drawEnvironmentMobile.ts(세로 화면 조립), environmentSceneObjects.ts → environmentSelection.ts → useEnvironmentSelection.ts / EnvironmentZoneInteraction.tsx(동일 좌표로 터치 선택). 원본 데이터·자동 순회·역방향 탐색·선택 단계는 바꾸지 않는다. 검증: cinemaEnvironmentMobile.test.ts의 화면 경계·카드/그래프 간격·DPR 1/2/3 선택·주입 데이터·가로 배치 유지.
 
 - 온습도 ZONE 객체 선택 1단계: 카드의 기존 ZONE ID를 사용해 수동 선택한다. 카드 클릭·방향키로 선택하고 빈 공간 클릭·Esc로 해제한다. 수동 선택은 자동 센서 순회보다 우선하여 카드 외곽·접점과 중앙 계기 값·연결선을 갱신한다. 재생은 계속되며 하단 재생·정지 버튼을 사용한다. 중앙 계기의 기존 2.5~21.5초 표시 시간과 이후 그래프·히트맵 전환은 유지하므로 계기가 없는 구간에서는 카드 선택 강조만 표시한다. 35초 히트맵 시작, 선택 카드가 보이지 않는 시점으로 탐색, 다른 장면·메인 메뉴 진입, 재시작 시 선택을 해제한다. 실제 Canvas에 그린 상태의 부유·배율·기울기·절단 모서리를 클릭 판정과 공유하고 겹친 카드는 마지막 그리기 순서 우선으로 선택한다. 카드 값과 관리 범위는 수정하지 않는다. 영향 경로: zoneEnvironment.ts(선택 우선순위·가시성) → environmentLayout.ts(윤곽·그리기 순서) → environmentSceneObjects.ts(객체 ID·경계·선택·CSS/DPR 좌표) → environmentSelection.ts / useEnvironmentSelection.ts(선택 세션) → useFilmPlayback.ts → drawSignalFilm.ts / drawWaveFilm.ts → components/drawZoneEnvironment.ts. 입력 UI는 SignalFilm.tsx → EnvironmentZoneInteraction.tsx / environmentInteraction.module.css. 검증: cinemaEnvironmentSelection.test.ts, cinemaFrameState.test.ts.
 
@@ -548,6 +568,18 @@
 
 - 큐브의 관리/AI는 HatcheryAiOverlay 내부에서 전환한다. SignalFilm은 계속 마운트된 상태를 유지하며 화면으로/닫기/ESC는 오버레이만 닫는다. 독립 관리 URL의 링크와 오버레이 콜백을 구분한다.
 
+### TypeSafe / Jev 명령 판단 설정
+- 특정 화면을 직접 선택하면 재생 방식은 해당 화면 반복으로 전환한다. 전체 연속 재생은 사용자가 명시한 현재 세션에서만 적용하고 다음 접속에는 복원하지 않는다.
+- AI 설정 상단에 별도 Jev 섹션을 둔다. 기존 프로바이더 선택은 유지하며, 적용 모드(끄기/평가만/명령 실행)·모델·비밀번호형 키 입력·연결 테스트·Jev 전용 저장을 제공한다.
+- 기존 hatcheryAdmin의 HUD 색상·글꼴·반응형 grid·버튼 스타일을 사용한다. 인증 상태와 현재 적용 모드를 입력값과 구분한다. 테스트와 저장 중에는 입력을 잠그고 결과를 status 영역으로 알린다.
+- 서버 저장 키는 브라우저에 반환하지 않는다. 빈 키는 기존 키를 유지한다. 키 없이 활성 모드를 저장하지 못하게 하며 연결 테스트는 저장 없이 실제 API를 한 번 호출한다.
+- 영향: typesafeConfig → feedConfig/hatcheryConfig → typesafeRuntime → admin/typesafe API → TypesafeSettings → HatcheryAiSettings. 실행: screenCommands → commandDecision/commandRouter → useJarvisLocalVoice 및 jarvisRealtimeSession/useJarvisVoice.
+- 명령 실행 모드의 Realtime은 route_command로 전사 원문을 판단하며 한 발화의 실행 결과를 재사용한다. 분석 위임은 읽기 전용이다. 세부 정책·검증·운영 절차는 docs/guides/typesafe-integration.md를 따른다.
+- 비용 경계: 로컬 명령 해석 뒤 남은 문장 중 명시적인 화면 대상과 조작 동사가 함께 있는 문장만 Jev로 보낸다. 질문·설명·요약·인사는 Jev를 건너뛰고 선택한 텍스트 AI로 바로 전달한다. Jev에는 문장 영역에 맞는 후보만 보낸다(메뉴/재생/차트 스타일/홈/화면). 영역을 판별할 수 없는 명시적 조작만 전체 유한 후보를 사용한다. Realtime은 한 발화에서 만든 판단 Promise를 재사용해 같은 전사에 Jev를 중복 호출하지 않는다.
+- 공통 턴 조정: `agentTurn.ts`가 텍스트·브라우저 음성·Realtime 발화를 대화, 분석, 화면 조작, 화면 조작 후 분석으로 분류한다. 화면 조작 후 분석은 먼저 실제 화면 실행 결과를 얻고, 같은 원문을 읽기 전용 분석에 한 번 전달해 두 결과를 순서대로 응답한다. 실행 결과 없이 완료를 만들거나 분석 응답이 화면을 다시 조작하지 못하게 한다.
+- 후속 발화 문맥: Jev에는 현재 장면·재생 여부·기본/터빈/큐브 메뉴 상태·현재 차트 형식만 전달한다. `그 메뉴`, `현재 차트` 같은 지시 표현의 근거로 사용하되 API 키와 프롬프트 등 다른 설정은 제외한다. 조작 후 분석은 화면 상태를 다시 조회하고 실제 실행 결과와 함께 읽기 전용 분석에 전달한다.
+- 복합 요청 표시: 화면 조작 절만 추출해 Jev에 전달하고 전체 원문은 분석에 사용한다. 장면 전환 직후에는 장면 피드 브리핑을 표시하며 분석 답변이 도착하면 해당 장면의 TEXT BRIEFING에 유지한다. 앱이 표시하는 실행 결과는 분석 모델이 반복하지 않는다.
+
 ### 음성/분석 역할 분리
 - prompt/instructions는 분석모델, voicePrompt/voiceInstructions는 음성모델 전용. 기존 프롬프트는 분석 쪽에 보존한다.
 - 일반 대화는 Realtime이 직접 응답한다. 업무 요청은 delegate_analysis 도구로 전사 원문을 텍스트 분석모델에 전달하고 분석 결과를 읽는다. 음성 세션에는 화면 조작 도구를 노출하지 않는다.
@@ -555,3 +587,10 @@
 
 
 - 음성 직접 조작: realtimeScreenTool이 허용한 화면/재생/메뉴/표시 설정만 control_screen으로 실행한다. 원인 분석과 복합 판단은 delegate_analysis로 위임한다. 함수 호출 ID 중복 방지, 인자 검증, 실패 후 후속 조작 중단, 완료 후 도구 재호출 차단을 적용한다. 조회 후 상대 변경만 추가 도구 호출을 허용한다.
+- 온습도 ZONE 카드는 수평 5행 × 2열로 정렬하며 부유·기울기·선택 확대를 사용하지 않는다. 중앙 소형 계기로 순회한 뒤 21.5–23초에 카드가 좌우로 이동하고 안쪽 연결선에서 24시간 온도 이력의 선·면적이 시간순으로 펼쳐진다. 온도값을 합산하지 않으며 누락 구간은 연결하지 않는다. 35초부터 공간 순찰, 89–90초에 카드·차트로 복귀하고 90초부터 고정 모니터링 화면을 유지한다. 현재 장면 반복에서는 온습도 끝에서 시계를 멈춰 머물고, 전체 연속 재생에서는 멈추지 않고 다음 장면으로 흘러간다(2026-09-21 변경 — 온습도가 첫 장면이라 여기서 멈추면 연속 재생이 뒤 장면에 닿지 못했다). 두 경우 모두 피드 수신은 계속하고 데이터 변경 시 다시 그린다. 시연/전달 데이터 구분을 유지한다. 다른 장면은 이번 적용 대상에서 제외한다. 영향: zoneEnvironment.ts → environmentLayout.ts / drawZoneEnvironment.ts / drawZoneTemperatureHistory.ts / environmentMobileLayout.ts / drawWaveFilm.ts; filmProgram.ts → useFilmPlayback.ts / filmFrameGate.ts / drawSignalFilm.ts. 검증: cinemaZoneEnvironment·EnvironmentGauge·EnvironmentMobile·EnvironmentSelection·TemperatureHistory 테스트.
+- 공통 재생 제어는 우측 상단의 선형 아이콘(중지·시작·현재 장면 재시작·느리게·현재 배속·빠르게)으로 표시한다. 좌우 중앙 이동은 박스 없는 꺾쇠 아이콘이며 명시적으로 이전/다음 장면으로 이동한다. 온습도 종료 상태에는 MONITORING 표시를 둔다. 영향: FilmQuickMenu.tsx / filmQuickMenu.module.css → SignalFilm.tsx. 검증: cinemaQuickMenu.test.ts 및 Aside 실제 화면.
+### 에이전트 대화 연속성
+
+- 화면 대상이 모호하지만 현재 상태로 한 가지 동작을 제안할 수 있으면, 에이전트는 실행하지 않고 확인 질문을 먼저 표시한다.
+- 확인 질문의 검증된 화면 명령은 2분 동안만 유지한다. `응`, `그래`, `진행해` 같은 짧은 긍정은 그 명령을 한 번 실행하고, `아니`, `취소`는 실행 없이 폐기한다.
+- 확인 질문 뒤에 다른 지시가 오면 이전 제안을 폐기하고 새 요청으로 판단한다. 이 규칙은 텍스트, 브라우저 음성, Realtime 음성에 동일하게 적용한다.
