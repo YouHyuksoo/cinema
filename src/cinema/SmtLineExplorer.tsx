@@ -237,9 +237,11 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
       startOrbitTour.current = () => { manual.current?.(); beginTransition(orbitTourPose()); };
       stopAutoDrive.current = () => { stopAuto(); manual.current?.(); };
 
-      // 필름이 재생 중이면 자동으로 순회한다(온도 높은 순) — 사용자가 조작하는 순간 꺼지고,
-      // 이 마운트에서는 다시 스스로 켜지지 않는다(재개 수단은 버튼).
-      autoDriveRef.current = hotspotOrderRef.current.length ? 'hotspot' : null;
+      // Round 4-2: 자동 회전을 기본값으로 시작한다. 고온 구역 순회는 이제 버튼으로만 켠다 — 마운트
+      // 시점에 둘 다 자동으로 켜면 "동시에 돌면 안 된다" 규약과 충돌한다. 카메라가 이미
+      // OVERVIEW_POSE 에 있어 전환 없이 그 자리에서 바로 궤도를 시작해도 화면이 튀지 않는다.
+      const startPose = orbitTourPose();
+      camera.position.set(...startPose.position); orbit.target.set(...startPose.target);
 
       const resize = () => {
         const { width, height } = node.getBoundingClientRect();
