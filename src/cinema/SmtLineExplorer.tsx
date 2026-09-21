@@ -69,8 +69,14 @@ export function SmtLineExplorer({ onManual, environment }: {
   // 카메라를 스스로 움직이는 두 자동 연출(고온 구역 순회 · 15도 자동 회전)은 동시에 돌지 않는다 —
   // 하나가 켜지면 다른 하나를 끄고, 사용자가 드래그·휠 등으로 직접 조작하면 둘 다 꺼진다.
   const autoDriveRef = useRef<'hotspot' | 'orbit' | null>(null);
+  // 버그(Round 7): 버튼 aria-pressed 를 hotspot(활성 구역 정보) 유무와 orbitTouring 두 개로
+  // 따로 판정했더니, 고온 순회가 마지막 구역을 지나 상공으로 복귀하는 구간(active=null, 아직
+  // autoDriveRef 는 'hotspot')에는 hotspot 이 null 이면서 orbitTouring 도 아직 false 라 "둘러보기"
+  // 가 잠깐 눌린 것처럼 보였다 — 전환 중인데 아무 자동 연출도 안 켜진 것처럼 표시된 것이다.
+  // autoDriveRef 를 그대로 비추는 상태 하나(autoDriveMode)로 버튼 표시를 판정해 이 틈을 없앤다.
+  // hotspot(활성 구역 읽기용 정보)은 정보창 표시 전용으로 남기고 버튼 판정에는 더 쓰지 않는다.
+  const [autoDriveMode, setAutoDriveMode] = useState<'hotspot' | 'orbit' | null>(null);
   const [hotspot, setHotspot] = useState<{ name: string; temperature: number; rank: number; total: number; phase: string } | null>(null);
-  const [orbitTouring, setOrbitTouring] = useState(false);
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState('SMT 4개 라인 구성 중');
@@ -231,7 +237,7 @@ export function SmtLineExplorer({ onManual, environment }: {
       };
       // heatmapFull 로부터 흐른 시간(초) — 고온 순회 전용 자체 시계. 필름 재생 여부와 무관하다.
       const hotspotClockRef = { current: 0 };
-      const stopAuto = () => { autoDriveRef.current = null; setHotspot(null); setOrbitTouring(false); };
+      const stopAuto = () => { autoDriveRef.current = null; setAutoDriveMode(null); setHotspot(null); };
       const interrupt = () => { transitioning = false; stopAuto(); manual.current?.(); };
       orbit.addEventListener('start', interrupt);
 
@@ -258,7 +264,7 @@ export function SmtLineExplorer({ onManual, environment }: {
       startHotspotTour.current = () => {
         setSelected(null);
         hotspotClockRef.current = 0;
-        autoDriveRef.current = 'hotspot'; setOrbitTouring(false); manual.current?.();
+        autoDriveRef.current = 'hotspot'; setAutoDriveMode('hotspot'); manual.current?.();
         beginTransition(smtHotspotTour(hotspotElapsed(), hotspotOrderRef.current, OVERVIEW_POSE).pose);
       };
       // Round 3-3: 약 15도 위에서 공장을 도는 자동 회전. 시작 각도를 지금 카메라 위치에서 구한다 —
@@ -268,7 +274,7 @@ export function SmtLineExplorer({ onManual, environment }: {
       let orbitAngle = 0;
       const orbitTourPose = () => {
         orbitAngle = Math.atan2(camera.position.z - FLOOR_CENTER[2], camera.position.x - FLOOR_CENTER[0]);
-        autoDriveRef.current = 'orbit'; setOrbitTouring(true); setHotspot(null); setSelected(null);
+        autoDriveRef.current = 'orbit'; setAutoDriveMode('orbit'); setHotspot(null); setSelected(null);
         return {
           position: [FLOOR_CENTER[0] + Math.cos(orbitAngle) * ORBIT_TOUR_RADIUS, ORBIT_TOUR_HEIGHT,
             FLOOR_CENTER[2] + Math.sin(orbitAngle) * ORBIT_TOUR_RADIUS] as const,
@@ -282,7 +288,7 @@ export function SmtLineExplorer({ onManual, environment }: {
       // 잇는다(전환은 아래 render() 의 'hotspot' 분기가 tour.finished 를 보고 한다). 순회할 구역이
       // 하나도 없어도(온도값 전부 결측) smtHotspotTour 가 곧바로 finished 를 돌려주므로 별도 분기
       // 없이 첫 프레임에서 바로 자동 회전으로 넘어간다 — 카메라는 이미 OVERVIEW_POSE 에 있다.
-      autoDriveRef.current = 'hotspot';
+      autoDriveRef.current = 'hotspot'; setAutoDriveMode('hotspot');
 
       const resize = () => {
         const { width, height } = node.getBoundingClientRect();
@@ -376,11 +382,11 @@ export function SmtLineExplorer({ onManual, environment }: {
         <p className={styles.subtitle}>{status} · 76 × 44 m</p>
       </div>
       <nav className={styles.modes} aria-label="시점 모드">
-        <button type="button" aria-pressed={selected === null && !orbitTouring && !hotspot} onClick={() => goOverview.current()}>둘러보기</button>
-        <button type="button" aria-pressed={!!hotspot} onClick={() => startHotspotTour.current()}>고온 구역 순회</button>
+        <button type="button" aria-pressed={selected === null && autoDriveMode === null} onClick={() => goOverview.current()}>둘러보기</button>
+        <button type="button" aria-pressed={autoDriveMode === 'hotspot'} onClick={() => startHotspotTour.current()}>고온 구역 순회</button>
       </nav>
       <nav className={styles.modes} aria-label="자동 회전">
-        <button type="button" aria-pressed={orbitTouring} onClick={() => startOrbitTour.current()}>자동 회전</button>
+        <button type="button" aria-pressed={autoDriveMode === 'orbit'} onClick={() => startOrbitTour.current()}>자동 회전</button>
         <button type="button" onClick={() => stopAutoDrive.current()}>정지</button>
       </nav>
       {hotspot && <div className={styles.hotspot} aria-live="polite">
