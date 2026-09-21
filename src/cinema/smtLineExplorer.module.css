@@ -101,3 +101,9 @@
   .panel { padding: 10px 12px; }
   .panel button, .lines button { padding: 6px 8px; }
 }
+
+/* Round 6: 세로(모바일) 화면 — 기능은 그대로 두고 폭만 줄여 3D 가 더 많이 보이게 한다.
+   드래그(Round 3-5)로 옮길 수 있으니 자리를 완전히 가리지도 않는다. */
+@media (max-width: 480px) {
+  .panel { width: min(78vw, 280px); }
+}

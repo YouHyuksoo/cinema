@@ -10,6 +10,23 @@ import { pad2 } from './filmMath';
 
 export const WAVE_FILM_SECONDS = ENVIRONMENT_FILM_SECONDS;
 
+export type WaveFilmMode = 'overlay3d' | 'mobile' | 'desktop';
+
+/**
+ * 어느 2D 콘텐츠를 그릴지(또는 3D 오버레이를 위해 배경만 채울지) 결정하는 순수 판정 — three.js·캔버스에
+ * 의존하지 않아 노드 테스트에서 그대로 검증된다. **35초(heatmapStart) 판정이 세로(portrait) 판정보다
+ * 먼저다**: SmtLineExplorer(3D, SignalFilm.tsx 가 화면비와 무관하게 마운트)가 그 시점부터 화면을
+ * 완전히 덮으므로, 세로 화면도 그 이후로는 화면비와 무관하게 배경만 채워야 한다.
+ *
+ * Round 6 버그: 이 순서가 뒤집혀 있었다 — 세로 판정이 먼저라 35초를 넘겨도 계속 'mobile' 로 판정해,
+ * drawEnvironmentMobile 이 옛 2D 히트맵을 그렸다(3D 오버레이는 이미 떠 있었지만, 그 위에서 낭비적으로
+ * 계속 그려지고 있었다). 아래 테스트(cinemaEnvironmentMobile.test.ts)가 이 순서를 고정한다.
+ */
+export function waveFilmMode(width: number, height: number, elapsed: number): WaveFilmMode {
+  if (elapsed >= ENVIRONMENT_TIMING.heatmapStart) return 'overlay3d';
+  return isEnvironmentPortrait(width, height) ? 'mobile' : 'desktop';
+}
+
 /**
  * Stable chapter ID. 이 함수가 2D 로 그리는 것은 구역 순회(2.5~21.5s)와 이력 차트(23~34s) 뿐이다.
  * ENVIRONMENT_TIMING.heatmapStart(35s) 부터 장면 끝까지는 SmtLineExplorer(3D, SignalFilm.tsx 가 마운트)
@@ -26,16 +43,18 @@ export function drawWaveFilm(ctx: CanvasRenderingContext2D, width: number, heigh
   fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, data: ZoneEnvironmentData = DEFAULT_ENVIRONMENT_DATA,
   frame?: ZoneEnvironmentState | null) {
   const state = frame ?? zoneEnvironmentState(time, data);
-  if (isEnvironmentPortrait(width, height)) {
-    drawEnvironmentMobile(ctx, width, height, fonts, state, data, data === DEFAULT_ENVIRONMENT_DATA, insets);
-    return;
-  }
-  const view = beginFilmViewport(ctx, width, height, insets);
-  if (state.elapsed >= ENVIRONMENT_TIMING.heatmapStart) {
+  const mode = waveFilmMode(width, height, state.elapsed);
+  if (mode === 'overlay3d') {
+    const view = beginFilmViewport(ctx, width, height, insets);
     ctx.fillStyle = '#07101a'; // smtLine/smtLineModel.ts 의 scene.background 와 맞춘 톤.
     fillFilmViewport(ctx, view);
     return;
   }
+  if (mode === 'mobile') {
+    drawEnvironmentMobile(ctx, width, height, fonts, state, data, data === DEFAULT_ENVIRONMENT_DATA, insets);
+    return;
+  }
+  const view = beginFilmViewport(ctx, width, height, insets);
   drawCornerField(ctx, view, state.elapsed, state.focus * .35);
   const text = (value: string, x: number, y: number, size: number, alpha = 1, mono = false, heat = 0) =>
     filmText(ctx, fonts, value, x, y, size, alpha * state.reveal, mono, 'left', signalColor(heat, 1));

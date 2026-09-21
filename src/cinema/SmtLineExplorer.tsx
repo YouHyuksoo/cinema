@@ -6,6 +6,7 @@ import { smtHeatmapColorAt, type SmtHeatmapFloor, type SmtHeatmapSample, type Sm
 import { smtHotspotOrder, smtHotspotTour, type SmtHotspotEntry } from './smtLine/smtHotspotTour';
 import { clampSmtPanelPosition, isSmtPanelDrag } from './smtLine/smtPanelDrag';
 import { environmentHeatmapDomain } from './environmentHeatmap';
+import { isLowPerformance } from './filmPerformanceMode';
 import {
   environmentReadingStatus, ENVIRONMENT_TIMING, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT,
 } from './zoneEnvironment';
@@ -186,8 +187,13 @@ export function SmtLineExplorer({ onManual, environment }: {
       ]);
       if (stopped || !host.current) return;
       const node = host.current;
+      // Round 6: 모바일 세로 화면에서도 이 장면이 뜨면서, 저사양 기기(DESIGN.md 의 data-film-perf=low
+      // 규칙)에서 GPU 여력이 적은 문제가 새로 생겼다. 픽셀 비율과 그림자맵은 매 프레임 비용(그림자맵은
+      // 전체 SMT 지오메트리를 광원 시점으로 한 번 더 그린다)이라 낮췄다 — 히트맵 캔버스 해상도는
+      // 데이터가 바뀔 때만 한 번 다시 그리는 비주기 비용이라(Round 2 참고) 낮추지 않았다.
+      const lowPerf = isLowPerformance();
       const renderer = new T.WebGLRenderer({ antialias: true, alpha: false });
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+      renderer.setPixelRatio(Math.min(devicePixelRatio, lowPerf ? 1 : 1.75));
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
       renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.18;
       node.appendChild(renderer.domElement);
@@ -199,7 +205,8 @@ export function SmtLineExplorer({ onManual, environment }: {
       camera.position.set(...OVERVIEW_POSE.position);
       scene.add(new T.HemisphereLight(0xcce8ff, 0x172434, 2.4));
       const sun = new T.DirectionalLight(0xfff7e9, 3);
-      sun.position.set(28, 54, 22); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      sun.position.set(28, 54, 22); sun.castShadow = true;
+      sun.shadow.mapSize.set(lowPerf ? 1024 : 2048, lowPerf ? 1024 : 2048);
       Object.assign(sun.shadow.camera, { left: -65, right: 65, top: 65, bottom: -65, near: 5, far: 140 });
       sun.shadow.camera.updateProjectionMatrix();
       scene.add(sun);

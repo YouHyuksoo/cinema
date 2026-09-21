@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { ENVIRONMENT_PORTRAIT, environmentMobileHistoryLayout, environmentMobileState, environmentViewportTransform,
   isEnvironmentPortrait } from '@/cinema/environmentMobileLayout';
 import { filmViewportTransform } from '@/cinema/filmViewport';
-import { DEFAULT_ENVIRONMENT_DATA, zoneEnvironmentState } from '@/cinema/zoneEnvironment';
+import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_TIMING, zoneEnvironmentState } from '@/cinema/zoneEnvironment';
 import { environmentCanvasPoint, environmentSceneObjects } from '@/cinema/environmentSceneObjects';
 import { createEnvironmentSelection } from '@/cinema/environmentSelection';
+import { waveFilmMode } from '@/cinema/drawWaveFilm';
 
 describe('portrait environment composition', () => {
   it.each([[320, 640], [390, 844], [430, 932], [768, 1024]])('fills portrait %s x %s above the dock', (width, height) => {
@@ -70,5 +71,22 @@ describe('portrait environment composition', () => {
     session.update(40); session.pick({ x: 110, y: 124 }, true);
     expect(session.selectedId).toBeNull();
     expect(environmentMobileState(zoneEnvironmentState(8, { title: '', zones: [] })).zones).toEqual([]);
+  });
+
+  // Round 6: 세로 화면에서도 35초부터는 3D(SmtLineExplorer)가 덮으므로, drawWaveFilm 이 옛 2D
+  // 히트맵(drawEnvironmentMobile)으로 계속 빠지면 안 된다 — 버그였던 그 순서를 고정한다.
+  it.each([[390, 844], [430, 932], [320, 640]])('세로 %sx%s 도 35초부터는 overlay3d 로 판정한다(2D 로 새지 않는다)', (width, height) => {
+    expect(isEnvironmentPortrait(width, height)).toBe(true); // 전제 확인 — 이 크기는 실제로 세로다.
+    expect(waveFilmMode(width, height, ENVIRONMENT_TIMING.heatmapStart - .1)).toBe('mobile');
+    expect(waveFilmMode(width, height, ENVIRONMENT_TIMING.heatmapStart)).toBe('overlay3d');
+    expect(waveFilmMode(width, height, ENVIRONMENT_TIMING.heatmapStart + .1)).toBe('overlay3d');
+    // 90초(모니터링) 이후에도 — 여전히 3D 가 화면을 덮는다. 2D 로 되돌아가면 안 된다.
+    expect(waveFilmMode(width, height, ENVIRONMENT_TIMING.monitoringStart)).toBe('overlay3d');
+  });
+
+  it('가로 화면은 기존과 같은 경계(35초)에서 desktop → overlay3d 로 바뀐다', () => {
+    expect(isEnvironmentPortrait(1280, 800)).toBe(false);
+    expect(waveFilmMode(1280, 800, ENVIRONMENT_TIMING.heatmapStart - .1)).toBe('desktop');
+    expect(waveFilmMode(1280, 800, ENVIRONMENT_TIMING.heatmapStart)).toBe('overlay3d');
   });
 });
