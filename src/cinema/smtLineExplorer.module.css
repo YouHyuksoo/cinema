@@ -5,8 +5,9 @@
 
 .panel {
   position: absolute;
+  /* 좌상단에는 필름의 리액터 아이콘과 AI 음성 배지가 이미 자리잡고 있다. 그 아래에서 시작한다. */
   left: clamp(16px, 3vw, 42px);
-  top: clamp(16px, 3vh, 32px);
+  top: clamp(168px, 16vh, 210px);
   z-index: 2;
   width: min(300px, calc(100% - 32px));
   max-height: calc(100% - var(--film-content-inset, 220px) - 48px);
