@@ -7,7 +7,7 @@ import { smtHotspotOrder, smtHotspotTour, type SmtHotspotEntry } from './smtLine
 import { clampSmtPanelPosition, isSmtPanelDrag } from './smtLine/smtPanelDrag';
 import { environmentHeatmapDomain } from './environmentHeatmap';
 import {
-  environmentReadingStatus, ENVIRONMENT_FILM_SECONDS, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT,
+  environmentReadingStatus, ENVIRONMENT_TIMING, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT,
 } from './zoneEnvironment';
 import styles from './smtLineExplorer.module.css';
 
@@ -49,8 +49,8 @@ function paintHeatmap(heatmap: SmtHeatmapFloor, zones: readonly EnvironmentZone[
 
 /** 사용자가 직접 조작하는 장면이라, 조작이 시작되면 필름 시계를 멈춰 화면이 저절로
  * 다음 장면으로 넘어가지 않게 한다. FactoryExplorer3D 와 같은 규약이다. */
-export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
-  onManual?: () => void; environment?: ZoneEnvironmentData; elapsed?: number; playing?: boolean;
+export function SmtLineExplorer({ onManual, environment }: {
+  onManual?: () => void; environment?: ZoneEnvironmentData;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const goOverview = useRef(() => {});
@@ -64,12 +64,6 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
   const environmentRef = useRef(environment);
   environmentRef.current = environment;
   const heatmapRef = useRef<SmtHeatmapFloor | null>(null);
-  // 필름의 절대 경과시간·재생 여부 — 렌더 루프(60fps)는 이 값을 매 프레임 delta 만큼 미리 흘려보고,
-  // prop 이 실제로 갱신될 때(레퍼런스가 바뀔 때)마다 여기서 다시 맞춰(resync) 오차를 없앤다.
-  const elapsedRef = useRef(0);
-  const playingRef = useRef(true);
-  useEffect(() => { if (typeof elapsed === 'number') elapsedRef.current = elapsed; }, [elapsed]);
-  useEffect(() => { playingRef.current = playing ?? true; }, [playing]);
   const hotspotOrderRef = useRef<SmtHotspotEntry[]>([]);
   // 카메라를 스스로 움직이는 두 자동 연출(고온 구역 순회 · 15도 자동 회전)은 동시에 돌지 않는다 —
   // 하나가 켜지면 다른 하나를 끄고, 사용자가 드래그·휠 등으로 직접 조작하면 둘 다 꺼진다.
@@ -197,6 +191,8 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
       const beginTransition = (pose: { position: readonly [number, number, number]; target: readonly [number, number, number] }) => {
         position.set(...pose.position); target.set(...pose.target); transitioning = true;
       };
+      // heatmapFull 로부터 흐른 시간(초) — 고온 순회 전용 자체 시계. 필름 재생 여부와 무관하다.
+      const hotspotClockRef = { current: 0 };
       const stopAuto = () => { autoDriveRef.current = null; setHotspot(null); setOrbitTouring(false); };
       const interrupt = () => { transitioning = false; stopAuto(); manual.current?.(); };
       orbit.addEventListener('start', interrupt);
@@ -214,11 +210,18 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
       // Round 4-1: "내부 걷기" 대신 고온 구역 순회 비행(smtHotspotTour, Round 3-2)을 버튼으로도
       // 시작할 수 있게 한다. 지금 시점의 스케줄 포즈로 매끄럽게 이동한 뒤(beginTransition), 전환이
       // 끝나면 아래 render() 의 'hotspot' 분기가 넘겨받아 매 프레임 스케줄을 이어 계산한다.
+      //
+      // 버그(Round 5-1): 자체 시계 없이 필름의 elapsed/playing 을 그대로 썼더니, 이 버튼이 부르는
+      // manual.current?.() 가 player.pause 로 필름을 멈추고 → playing prop 이 false 가 되고 →
+      // "재생 중일 때만 시계를 흘린다"는 조건 때문에 순회가 스스로를 멈추는 구조였다. 자동 회전이
+      // orbitAngle 이라는 자체 시계로 도는 것과 같은 방식으로, 고온 순회도 필름 재생 여부와 무관한
+      // 자체 시계(hotspotClockRef)로 돌린다. 버튼을 누를 때마다 처음(온도 1위 구역)부터 다시 보여준다.
+      const hotspotElapsed = () => ENVIRONMENT_TIMING.heatmapFull + hotspotClockRef.current;
       startHotspotTour.current = () => {
         setSelected(null);
-        const tour = smtHotspotTour(elapsedRef.current, hotspotOrderRef.current, OVERVIEW_POSE);
+        hotspotClockRef.current = 0;
         autoDriveRef.current = 'hotspot'; setOrbitTouring(false); manual.current?.();
-        beginTransition(tour.pose);
+        beginTransition(smtHotspotTour(hotspotElapsed(), hotspotOrderRef.current, OVERVIEW_POSE).pose);
       };
       // Round 3-3: 약 15도 위에서 공장을 도는 자동 회전. 시작 각도를 지금 카메라 위치에서 구한다 —
       // 마운트 기본값(아래)은 카메라가 이미 OVERVIEW_POSE 에 있으므로 전환 없이 그 자리에서 바로
@@ -262,8 +265,9 @@ export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
             camera.position.copy(position); orbit.target.copy(target); transitioning = false;
           }
         } else if (autoDriveRef.current === 'hotspot') {
-          if (playingRef.current) elapsedRef.current = Math.min(ENVIRONMENT_FILM_SECONDS, elapsedRef.current + delta);
-          const tour = smtHotspotTour(elapsedRef.current, hotspotOrderRef.current, OVERVIEW_POSE);
+          // 자동 회전(orbitAngle)과 같은 방식 — 필름 재생 여부와 무관하게 매 프레임 delta 만큼 흐른다.
+          hotspotClockRef.current += delta;
+          const tour = smtHotspotTour(hotspotElapsed(), hotspotOrderRef.current, OVERVIEW_POSE);
           camera.position.set(...tour.pose.position); orbit.target.set(...tour.pose.target);
           const signature = tour.active ? `${tour.active.id}:${tour.rank}:${tour.phase}` : `overview:${tour.phase}`;
           if (signature !== hotspotSignature) {
