@@ -134,7 +134,8 @@ export function SignalFilm() {
         {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime < ENVIRONMENT_TIMING.heatmapStart
           && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} />}
         {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime >= ENVIRONMENT_TIMING.heatmapStart
-          && <SmtLineExplorer onManual={player.pause} environment={player.sceneData.environment} />}
+          && <SmtLineExplorer onManual={player.pause} environment={player.sceneData.environment}
+            elapsed={player.position.localTime} playing={player.playing} />}
         {!preview && player.ready && player.position.chapter.id === 'cctv'
           && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
         {!preview && player.ready && player.position.chapter.id === 'space3d' && <FactoryExplorer3D onManual={player.pause} />}

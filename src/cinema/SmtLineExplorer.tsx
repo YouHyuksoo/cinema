@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 import { smtHeatmapColorAt, type SmtHeatmapFloor, type SmtHeatmapSample, type SmtLine } from './smtLine/smtLineModel';
+import { smtHotspotOrder, smtHotspotTour, type SmtHotspotEntry } from './smtLine/smtHotspotTour';
 import { environmentHeatmapDomain } from './environmentHeatmap';
-import { environmentReadingStatus, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT } from './zoneEnvironment';
+import {
+  environmentReadingStatus, ENVIRONMENT_FILM_SECONDS, type EnvironmentZone, type ZoneEnvironmentData, ZONE_COUNT,
+} from './zoneEnvironment';
 import styles from './smtLineExplorer.module.css';
 
 /**
@@ -42,7 +45,9 @@ function paintHeatmap(heatmap: SmtHeatmapFloor, zones: readonly EnvironmentZone[
 
 /** 사용자가 직접 조작하는 장면이라, 조작이 시작되면 필름 시계를 멈춰 화면이 저절로
  * 다음 장면으로 넘어가지 않게 한다. FactoryExplorer3D 와 같은 규약이다. */
-export function SmtLineExplorer({ onManual, environment }: { onManual?: () => void; environment?: ZoneEnvironmentData }) {
+export function SmtLineExplorer({ onManual, environment, elapsed, playing }: {
+  onManual?: () => void; environment?: ZoneEnvironmentData; elapsed?: number; playing?: boolean;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const goOverview = useRef(() => {});
   const goLine = useRef((_line: LineButton) => {});
@@ -53,6 +58,17 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
   const environmentRef = useRef(environment);
   environmentRef.current = environment;
   const heatmapRef = useRef<SmtHeatmapFloor | null>(null);
+  // 필름의 절대 경과시간·재생 여부 — 렌더 루프(60fps)는 이 값을 매 프레임 delta 만큼 미리 흘려보고,
+  // prop 이 실제로 갱신될 때(레퍼런스가 바뀔 때)마다 여기서 다시 맞춰(resync) 오차를 없앤다.
+  const elapsedRef = useRef(0);
+  const playingRef = useRef(true);
+  useEffect(() => { if (typeof elapsed === 'number') elapsedRef.current = elapsed; }, [elapsed]);
+  useEffect(() => { playingRef.current = playing ?? true; }, [playing]);
+  const hotspotOrderRef = useRef<SmtHotspotEntry[]>([]);
+  // 카메라를 스스로 움직이는 두 자동 연출(고온 구역 순회 · 15도 자동 회전)은 동시에 돌지 않는다 —
+  // 하나가 켜지면 다른 하나를 끄고, 사용자가 드래그·휠 등으로 직접 조작하면 둘 다 꺼진다.
+  const autoDriveRef = useRef<'hotspot' | null>(null);
+  const [hotspot, setHotspot] = useState<{ name: string; temperature: number; rank: number; total: number; phase: string } | null>(null);
   const [mode, setModeState] = useState<ViewMode>('orbit');
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -94,6 +110,10 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
         center: [line.center.x, line.center.y, line.center.z] })));
       paintHeatmap(model.heatmap, zoneSource);
       heatmapRef.current = model.heatmap;
+      hotspotOrderRef.current = smtHotspotOrder(zoneSource, model.heatmap.pins);
+      // 필름이 재생 중이면 자동으로 순회한다(온도 높은 순) — 사용자가 조작하는 순간 꺼지고,
+      // 이 마운트에서는 다시 스스로 켜지지 않는다(재개 수단은 Round 3-3 자동 회전 버튼).
+      autoDriveRef.current = hotspotOrderRef.current.length ? 'hotspot' : null;
 
       const orbit = new OrbitControls(camera, renderer.domElement);
       orbit.target.set(...OVERVIEW_POSE.target);
@@ -134,13 +154,14 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
       const beginTransition = (pose: { position: readonly [number, number, number]; target: readonly [number, number, number] }) => {
         position.set(...pose.position); target.set(...pose.target); transitioning = true;
       };
-      const interrupt = () => { transitioning = false; manual.current?.(); };
+      const interrupt = () => { transitioning = false; autoDriveRef.current = null; setHotspot(null); manual.current?.(); };
       orbit.addEventListener('start', interrupt);
 
       goOverview.current = () => {
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
         camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
+        autoDriveRef.current = null; setHotspot(null);
         setSelected(null); manual.current?.();
         beginTransition(OVERVIEW_POSE);
       };
@@ -148,11 +169,12 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
         camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
+        autoDriveRef.current = null; setHotspot(null);
         setSelected(line.index); manual.current?.();
         beginTransition({ position: [0, 24, line.z + 28], target: line.center });
       };
       enterWalk.current = () => {
-        transitioning = false;
+        transitioning = false; autoDriveRef.current = null; setHotspot(null);
         setModeState('walk'); modeRef.current = 'walk'; orbit.enabled = false; manual.current?.();
         camera.position.set(...WALK_START_POSITION); camera.lookAt(...WALK_START_LOOKAT);
       };
@@ -164,6 +186,7 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
       const observer = new ResizeObserver(resize); observer.observe(node); resize();
 
       let frame = 0; let last = performance.now();
+      let hotspotSignature = '';
       const render = () => {
         const now = performance.now();
         const delta = Math.min(.1, (now - last) / 1000);
@@ -183,6 +206,16 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
           camera.position.y = WALK_EYE_HEIGHT;
           camera.position.x = T.MathUtils.clamp(camera.position.x, 1, 75);
           camera.position.z = T.MathUtils.clamp(camera.position.z, 1, 43);
+        } else if (modeRef.current === 'orbit' && autoDriveRef.current === 'hotspot') {
+          if (playingRef.current) elapsedRef.current = Math.min(ENVIRONMENT_FILM_SECONDS, elapsedRef.current + delta);
+          const tour = smtHotspotTour(elapsedRef.current, hotspotOrderRef.current, OVERVIEW_POSE);
+          camera.position.set(...tour.pose.position); orbit.target.set(...tour.pose.target);
+          const signature = tour.active ? `${tour.active.id}:${tour.rank}:${tour.phase}` : `overview:${tour.phase}`;
+          if (signature !== hotspotSignature) {
+            hotspotSignature = signature;
+            setHotspot(tour.active ? { name: tour.active.name, temperature: tour.active.temperature,
+              rank: tour.rank, total: tour.total, phase: tour.phase } : null);
+          }
         }
         orbit.update(); renderer.render(scene, camera); frame = requestAnimationFrame(render);
       };
@@ -217,10 +250,12 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
     return () => { stopped = true; cleanup(); };
   }, []);
 
-  // 실시간으로 바뀌는 온습도 데이터: 씬은 그대로 두고 히트맵 캔버스와 라벨만 다시 칠한다.
+  // 실시간으로 바뀌는 온습도 데이터: 씬은 그대로 두고 히트맵 캔버스·라벨과 순회 순서만 다시 만든다.
   useEffect(() => {
     if (!environment || !heatmapRef.current) return;
-    paintHeatmap(heatmapRef.current, environment.zones.slice(0, ZONE_COUNT));
+    const zones = environment.zones.slice(0, ZONE_COUNT);
+    paintHeatmap(heatmapRef.current, zones);
+    hotspotOrderRef.current = smtHotspotOrder(zones, heatmapRef.current.pins);
   }, [environment]);
 
   return <div className={styles.overlay}>
@@ -232,6 +267,11 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
         <button type="button" aria-pressed={mode === 'orbit'} onClick={() => goOverview.current()}>둘러보기</button>
         <button type="button" aria-pressed={mode === 'walk'} onClick={() => enterWalk.current()}>내부 걷기</button>
       </nav>
+      {hotspot && <div className={styles.hotspot} aria-live="polite">
+        <b>HOTSPOT {hotspot.rank}/{hotspot.total}</b>
+        {hotspot.name} · {hotspot.temperature.toFixed(1)}℃
+        <small>{hotspot.phase}</small>
+      </div>}
       <div className={styles.lines} role="group" aria-label="생산 라인 선택">
         {lines.map(line => <button key={line.index} type="button" className={selected === line.index ? styles.active : undefined}
           aria-pressed={selected === line.index} onClick={() => goLine.current(line)}>

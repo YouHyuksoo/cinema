@@ -3,8 +3,10 @@ import * as T from 'three';
 import {
   buildSmtLines, SMT_FLOOR_DEPTH, SMT_FLOOR_WIDTH, SMT_LINE_COUNT, SMT_ZONE_COUNT, smtHeatmapColorAt, threeHslStyle,
 } from '@/cinema/smtLine/smtLineModel';
+import { smtHotspotOrder, smtHotspotTour, type SmtHotspotPose } from '@/cinema/smtLine/smtHotspotTour';
 import { environmentHeatmapDomain, environmentTemperatureColor } from '@/cinema/environmentHeatmap';
-import { DEFAULT_ENVIRONMENT_DATA } from '@/cinema/zoneEnvironment';
+import { ENVIRONMENT_HOTSPOT_DWELL } from '@/cinema/environmentHeatmapProjection';
+import { DEFAULT_ENVIRONMENT_DATA, ENVIRONMENT_TIMING } from '@/cinema/zoneEnvironment';
 
 /** "Mounter ×2" 는 실제로는 두 대다 — 시안 station 목록은 라벨 하나로 두 대를 요약한다. */
 function physicalStationCount(stations: readonly string[]): number {
@@ -113,5 +115,74 @@ describe('SMT 3D 바닥의 환경 히트맵 (Round 2: 사각 타일이 아니라
     // 캔버스 픽셀 색을 만들 때(readRgb) 이 함수를 거치지 않으면 전부 흰 바닥이 된다.
     expect(new T.Color(0x123456).setStyle('hsl(45.32 88% 55%)').getHexString()).toBe('123456');
     expect(new T.Color(0x123456).setStyle(threeHslStyle('hsl(45.32 88% 55%)')).getHexString()).not.toBe('123456');
+  });
+});
+
+describe('SMT 3D 고온 구역 비행 연출 (Round 3-2: 2D 히트맵이 사라지며 함께 빠졌던 순회를 3D 로 복원)', () => {
+  const zoneInputs = DEFAULT_ENVIRONMENT_DATA.zones.map(zone => ({ id: zone.id, name: zone.name }));
+  const model = buildSmtLines(T, zoneInputs);
+  const OVERVIEW: SmtHotspotPose = { position: [-19, 34, 56], target: [38, 0, 22] };
+
+  it('온도가 가장 높은 구역부터 순서가 매겨진다', () => {
+    const ordered = smtHotspotOrder(DEFAULT_ENVIRONMENT_DATA.zones, model.heatmap.pins);
+    // DEFAULT_ENVIRONMENT_DATA 온도: [23.2,22.8,24.1,25.3,26.7,29.4,24.8,23.9,23.1,22.6] — index 5(29.4)가 최고.
+    expect(ordered[0].id).toBe(DEFAULT_ENVIRONMENT_DATA.zones[5].id);
+    for (let i = 1; i < ordered.length; i++) expect(ordered[i - 1].temperature).toBeGreaterThanOrEqual(ordered[i].temperature);
+  });
+
+  it('온도를 바꾸면 순회 순서도 따라 바뀐다', () => {
+    const hotter = DEFAULT_ENVIRONMENT_DATA.zones.map((zone, index) => index === 0 ? { ...zone, temperature: 99 } : zone);
+    const ordered = smtHotspotOrder(hotter, model.heatmap.pins);
+    expect(ordered[0].id).toBe(DEFAULT_ENVIRONMENT_DATA.zones[0].id);
+  });
+
+  const ordered = smtHotspotOrder(DEFAULT_ENVIRONMENT_DATA.zones, model.heatmap.pins);
+  const DWELL = ENVIRONMENT_HOTSPOT_DWELL;
+
+  it('heatmapFull 이전에는 상공 평면에 머문다', () => {
+    const frame = smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull - 1, ordered, OVERVIEW);
+    expect(frame.touring).toBe(false);
+    expect(frame.active).toBeNull();
+    expect(frame.pose).toEqual(OVERVIEW);
+  });
+
+  it('heatmapFull 직후에는 온도가 가장 높은 첫 구역이 활성이다(1/10)', () => {
+    const frame = smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull + .1, ordered, OVERVIEW);
+    expect(frame.touring).toBe(true);
+    expect(frame.active?.id).toBe(ordered[0].id);
+    expect(frame.rank).toBe(1);
+    expect(frame.total).toBe(ordered.length);
+  });
+
+  it('구역당 dwell(4.8초)을 다 채우면 다음 구역으로 넘어간다', () => {
+    const justBefore = smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull + DWELL - .01, ordered, OVERVIEW);
+    const justAfter = smtHotspotTour(ENVIRONMENT_TIMING.heatmapFull + DWELL + .01, ordered, OVERVIEW);
+    expect(justBefore.active?.id).toBe(ordered[0].id);
+    expect(justAfter.active?.id).toBe(ordered[1].id);
+    expect(justAfter.rank).toBe(2);
+  });
+
+  it('진입 구간은 사각 점프가 아니라 이전 구역 포즈와 다음 구역 포즈 사이를 부드럽게 지난다', () => {
+    // index 1 은 실제 "이전 구역"이 있어 두 서로 다른 3D 지점 사이를 잇는 보간을 검증할 수 있다.
+    const enterStart = ENVIRONMENT_TIMING.heatmapFull + DWELL; // index=1 진입 시작(local=0)
+    const early = smtHotspotTour(enterStart + .01, ordered, OVERVIEW);
+    const mid = smtHotspotTour(enterStart + .7, ordered, OVERVIEW); // 진입(1.4초)의 절반 지점
+    const late = smtHotspotTour(enterStart + 1.4, ordered, OVERVIEW); // 진입 완료 → 판독 시작
+    // 뚝 끊겨 둘 중 하나의 값과 같아지는 게 아니라, 그 사이의 새로운 좌표를 지나야 "부드러운 진입"이다.
+    expect(mid.pose.position[0]).not.toBeCloseTo(early.pose.position[0], 3);
+    expect(mid.pose.position[0]).not.toBeCloseTo(late.pose.position[0], 3);
+    const minX = Math.min(early.pose.position[0], late.pose.position[0]);
+    const maxX = Math.max(early.pose.position[0], late.pose.position[0]);
+    expect(mid.pose.position[0]).toBeGreaterThan(minX);
+    expect(mid.pose.position[0]).toBeLessThan(maxX);
+  });
+
+  it('전체 구역을 다 돈 뒤에는 상공으로 복귀해 그 자리에 머문다', () => {
+    const afterAll = ENVIRONMENT_TIMING.heatmapFull + DWELL * ordered.length + 10;
+    const frame = smtHotspotTour(afterAll, ordered, OVERVIEW);
+    expect(frame.touring).toBe(false);
+    expect(frame.active).toBeNull();
+    expect(frame.pose.position[0]).toBeCloseTo(OVERVIEW.position[0], 5);
+    expect(frame.pose.target[0]).toBeCloseTo(OVERVIEW.target[0], 5);
   });
 });

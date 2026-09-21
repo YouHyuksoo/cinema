@@ -26,6 +26,15 @@
 .subtitle { margin: 4px 0 14px; color: var(--film-muted); font-size: 10px; }
 
 .modes { display: flex; gap: 6px; margin-bottom: 13px; }
+.hotspot {
+  margin: 0 0 12px; padding: 8px 10px;
+  border: 1px solid var(--film-accent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--film-accent) 14%, transparent);
+  font-size: 10px;
+}
+.hotspot b { display: block; color: var(--film-accent-soft); letter-spacing: .08em; margin-bottom: 2px; font-size: 9px; }
+.hotspot small { display: block; color: var(--film-muted); margin-top: 2px; }
 .lines { display: grid; gap: 5px; margin-bottom: 4px; }
 .lines button { display: flex; justify-content: space-between; width: 100%; }
 .lines small { color: var(--film-muted); }
