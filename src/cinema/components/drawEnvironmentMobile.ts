@@ -36,6 +36,17 @@ function drawMobileFocus(ctx: CanvasRenderingContext2D, fonts: FilmFonts, state:
  */
 export function drawEnvironmentMobile(ctx: CanvasRenderingContext2D, width: number, height: number,
   fonts: FilmFonts, frame: ZoneEnvironmentState, data: ZoneEnvironmentData, demo: boolean, insets?: FilmViewportInsets) {
+  // 세로 구성은 가로의 drawCornerField 처럼 배경을 깔아 주는 함수를 거치지 않는다 — 여기서 직접
+  // 물리 픽셀 전체를 불투명하게 덮어야 한다. environmentViewportTransform 은 scale/offset 만 주고
+  // beginFilmViewport 처럼 화면 끝까지 늘린 경계를 주지 않으므로, 변환을 걸기 전 항등 좌표계에서
+  // 채운다. 이 한 줄이 없으면 캔버스가 프레임마다 초기화되지 않아, 질감 패스(블룸 screen 합성·그레인)가
+  // 반투명하게 덧칠한 결과가 계속 누적되어 1초 안에 화면 전체가 하얗게 탈색된다
+  // ("모바일 온습도 화면 색상이상"의 원인). 색은 drawCornerField 의 기본 배경과 같은 값이다.
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#040b10';
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
   const view = environmentViewportTransform(width, height, insets);
   ctx.setTransform(view.scale, 0, 0, view.scale, view.offsetX, view.offsetY);
   const state = environmentMobileState(frame);

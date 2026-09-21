@@ -215,4 +215,23 @@ describe('ten-zone temperature and humidity scene', () => {
     expect(six.manualSelectedId).toBe(changed.zones[5].id);
     expect(six.zones.every(z => z.tilt === 0 && z.anchor.scale === 1)).toBe(true);
   });
+  // 세로 경로는 가로의 drawCornerField 를 거치지 않아 배경을 채우는 코드가 없었다 — 캔버스가 프레임마다
+  // 초기화되지 않으니 질감 패스(블룸 screen 합성·그레인)가 반투명하게 덧칠한 결과가 누적돼 1초 안에
+  // 화면이 하얗게 탈색됐다. 물리 픽셀 전체를 덮는 불투명 채움이 첫 칠로 들어가는지 고정한다.
+  it('paints an opaque backdrop over every physical pixel before the portrait composition', () => {
+    const portrait = canvasFixture();
+    drawWaveFilm(portrait.ctx, 780, 1688, 10);
+    const first = portrait.fills[0];
+    expect(first.fillStyle).toBe('#040b10');
+    expect(first.rect).toEqual([0, 0, 780, 1688]);
+    expect(first.globalAlpha).toBe(1);
+    expect(first.globalCompositeOperation).toBe('source-over');
+
+    // 가로는 drawCornerField 가 이미 채우고 있었다 — 이 수정이 가로 프레임을 바꾸지 않았는지 같이 고정한다.
+    const landscape = canvasFixture();
+    drawWaveFilm(landscape.ctx, 1280, 720, 10);
+    const opening = landscape.fills[0];
+    expect(opening.fillStyle).toBe('#040b10');
+    expect(opening.globalAlpha).toBe(1);
+  });
 });
