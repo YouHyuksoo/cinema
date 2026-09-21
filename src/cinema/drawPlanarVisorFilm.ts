@@ -9,7 +9,7 @@ import { focusEnvelope } from './filmFocus';
 
 /** An uninterrupted viewpoint: acquisition, object lock, closer inspection, then release. */
 export function drawPlanarVisorFilm(ctx: CanvasRenderingContext2D, width: number, height: number, t: number,
-  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets) {
+  fonts: FilmFonts = DEFAULT_FONTS, insets?: FilmViewportInsets, stage: boolean = false) {
   const view = beginVisorViewport(ctx, width, height, insets);
   const release = 1 - smooth(29.5, 32, t);
   const focus = focusEnvelope(t, { enter: [7, 11], exit: [26.7, 29.2] });
@@ -17,7 +17,7 @@ export function drawPlanarVisorFilm(ctx: CanvasRenderingContext2D, width: number
   const telemetry = visorTelemetry(t);
   const { heat, temperature, recovering, stable } = telemetry;
   const reveal = smooth(.15, 1.6, t) * release;
-  const { target, detail, driftX, driftY } = drawInspectionPanorama(ctx, fonts, t, focus, heat, view);
+  const { target, detail, driftX, driftY } = drawInspectionPanorama(ctx, fonts, t, focus, heat, view, stage);
 
   // The scan is a light sweep over the same scene, then contracts into object tracking.
   const sweep = smooth(1.3, 5.5, t);

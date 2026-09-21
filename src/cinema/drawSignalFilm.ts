@@ -39,7 +39,8 @@ const renderers: Record<FilmId, Renderer> = {
   gears: drawGearFilm, scan: drawScanFilm, unfold: drawUnfoldFilm, trace: drawTraceFilm,
   console: drawConsoleFilm, visor: (ctx, width, height, time, fonts, insets, _charts, factory, _environment, _data, _machine, _cctv, stage) =>
     drawVisorFilm(ctx, width, height, time, fonts, 'space', insets, factory, stage),
-  visorPan: drawPlanarVisorFilm,
+  visorPan: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, _data, _machine, _cctv, stage) =>
+    drawPlanarVisorFilm(ctx, width, height, time, fonts, insets, stage),
   bars: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) =>
     drawMounterAnalysisFilm(ctx, width, height, time, fonts, insets, data.mounter),
   pie: (ctx, width, height, time, fonts, insets, charts, _factory, _environment, data) =>
