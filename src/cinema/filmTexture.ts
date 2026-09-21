@@ -36,6 +36,41 @@ const VIEW_WIDTH = 1280;
 const VIEW_HEIGHT = 720;
 type ColorMapper = ReturnType<typeof createFilmColorMapper>;
 
+/**
+ * Round 8: 이 파일의 물리 픽셀 스케일(아래)은 16:9 근처 화면비를 전제한다 — x/y 를 따로
+ * `width/VIEW_WIDTH`, `height/VIEW_HEIGHT` 로 계산해서, 16:9 에 가까우면 사실상 균일하지만
+ * 세로 화면(예: 390×844, 비율 0.46)에서는 x 는 0.3배, y 는 1.17배로 축마다 크게 달라진다.
+ * 대각선 그라디언트·그레인 패턴·블룸 흐림 반경이 축마다 다르게 늘어나 세로 줄무늬가 된다 —
+ * 이것이 "모바일에서 온습도 테마색이 다 깨짐" 버그의 원인이었다(온습도뿐 아니라 이 파일을 쓰는
+ * 모든 장면에 해당한다). `environmentMobileLayout.ts`의 `isEnvironmentPortrait`와 같은 기준
+ * (가로:세로 < .85)으로 세로를 가려, 세로에서만 균일(cover) 스케일로 화면 중앙에 맞춘다.
+ * **가로(16:9 근처) 화면은 이 분기 이전과 완전히 같은 계산이라 픽셀이 바뀌지 않는다.**
+ */
+const TEXTURE_PORTRAIT_ASPECT = .85;
+
+export interface FilmTextureMatrix { a: number; b: number; c: number; d: number; e: number; f: number }
+
+/** three.js 없이 순수 계산이라 노드 테스트에서 그대로 검증된다 — filmTextureTransform/filmBloomSurfaceSize 모두. */
+export function filmTextureTransform(width: number, height: number): FilmTextureMatrix {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  if (width / height >= TEXTURE_PORTRAIT_ASPECT) return { a: width / VIEW_WIDTH, b: 0, c: 0, d: height / VIEW_HEIGHT, e: 0, f: 0 };
+  const uniform = Math.max(width / VIEW_WIDTH, height / VIEW_HEIGHT);
+  return { a: uniform, b: 0, c: 0, d: uniform, e: (width - VIEW_WIDTH * uniform) / 2, f: (height - VIEW_HEIGHT * uniform) / 2 };
+}
+
+/**
+ * 블룸 중간 표면 크기. 가로(16:9 근처)는 항상 기존 그대로 320×180 — 재할당이 전혀 일어나지 않는다.
+ * 세로는 같은 총 픽셀 예산(320×180=57,600)을 화면비에 맞게 나눠, `blur(3px)`를 최종 화면 크기로
+ * 늘릴 때 가로·세로 유효 흐림 반경이 같아지게 한다(방향에 따라 다르게 번지는 줄무늬를 없앤다).
+ * 16:9 정확히 일 때는 이 식도 정확히 320×180 을 돌려준다(계산으로 검증, 아래 테스트 참고).
+ */
+export function filmBloomSurfaceSize(width: number, height: number): { width: number; height: number } {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return { width: 320, height: 180 };
+  if (width / height >= TEXTURE_PORTRAIT_ASPECT) return { width: 320, height: 180 };
+  const budget = 320 * 180, aspect = width / height;
+  return { width: Math.max(1, Math.round(Math.sqrt(budget * aspect))), height: Math.max(1, Math.round(Math.sqrt(budget / aspect))) };
+}
+
 function surface(width: number, height: number) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -187,22 +222,29 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
     ctx.setLineDash([]);
 
     if (settings.style === 'underwater' || settings.style === 'space') {
-      ctx.setTransform(width / VIEW_WIDTH, 0, 0, height / VIEW_HEIGHT, 0, 0);
+      const m = filmTextureTransform(width, height);
+      ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
       drawAmbient(ctx, settings.style, t, intensity);
       ctx.restore();
       return;
     }
 
     if (bloomContext && options?.bloom !== false && !options?.cheap) {
+      // 가로(16:9 근처)는 이 크기가 항상 기존 320×180 이라 재할당이 일어나지 않는다 — 세로에서만,
+      // 그것도 화면비가 실제로 바뀔 때만(320×180 과 다를 때만) canvas.width/height 를 다시 잡는다.
+      const bloomSize = filmBloomSurfaceSize(width, height);
+      if (bloom.width !== bloomSize.width || bloom.height !== bloomSize.height) {
+        bloom.width = bloomSize.width; bloom.height = bloomSize.height;
+      }
       const now = options?.now;
       const refresh = now === undefined || !previousBloom || previousBloom.context !== ctx
         || previousBloom.width !== width || previousBloom.height !== height || previousBloom.style !== settings.style
         || t < previousBloom.time || t - previousBloom.time > .2
         || now < previousBloom.now || now - previousBloom.now >= 1000 / 30;
       if (refresh) {
-        bloomContext.clearRect(0, 0, 320, 180);
+        bloomContext.clearRect(0, 0, bloom.width, bloom.height);
         bloomContext.filter = 'blur(3px)';
-        bloomContext.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, 320, 180);
+        bloomContext.drawImage(ctx.canvas, 0, 0, width, height, 0, 0, bloom.width, bloom.height);
         previousBloom = { context: ctx, width, height, time: t, now: now ?? 0, style: settings.style };
       }
       ctx.globalCompositeOperation = 'screen';
@@ -212,7 +254,10 @@ export function createFilmTextureRenderer(theme: FilmThemeId = DEFAULT_FILM_THEM
 
     // Physical pixel dimensions above make the pass independent of scene scale;
     // normalized coordinates below keep material detail consistent across DPRs.
-    ctx.setTransform(width / VIEW_WIDTH, 0, 0, height / VIEW_HEIGHT, 0, 0);
+    // Round 8: 가로(16:9 근처)는 filmTextureTransform() 이 이전과 같은 비균일 스케일을 그대로
+    // 돌려줘 픽셀이 바뀌지 않는다 — 세로만 균일(cover) 스케일로 화면 중앙에 맞춘다.
+    const m = filmTextureTransform(width, height);
+    ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
     ctx.globalCompositeOperation = 'source-over';
     if (settings.style === 'glass') {
       ctx.globalAlpha = intensity;

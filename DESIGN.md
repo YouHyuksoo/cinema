@@ -80,6 +80,8 @@
 
 - 질감 영향 경로: FilmTextureControls.tsx(선택·강도) → useFilmPlayback.ts(설정 상태와 공통 재생 시간) → filmTexture.ts(Canvas 최종 합성). 전용 렌더러는 화면 전체의 유리 반사·필름 입자·홀로그램 결을 표현하며, 설비 개별 면의 물리 기반 재질은 적용하지 않는다. 생성한 패턴과 작은 합성용 Canvas를 재사용하고 질감 움직임도 공용 시계를 따른다.
 
+- 질감 세로 화면 예외(2026-09-21, Round 8): filmTexture.ts의 물리 픽셀 스케일(`width/1280`, `height/720`을 x/y에 따로 적용)과 블룸 중간 표면(320×180 고정)은 16:9 근처 화면비를 전제한다. 가로:세로 비가 0.85 미만(세로/좁은 화면, `environmentMobileLayout.ts`의 `isEnvironmentPortrait`와 같은 기준)이면 x/y 스케일이 크게 달라져 대각선 그라디언트·그레인·블룸 흐림 반경이 방향마다 다르게 늘어나 줄무늬가 됐다. 세로에서만 `filmTextureTransform()`이 균일(cover) 스케일로 화면 중앙에 맞추고, `filmBloomSurfaceSize()`가 같은 총 픽셀 예산(320×180)을 화면비에 맞게 나눈 블룸 표면을 쓴다. **가로(0.85 이상)는 이 예외 이전과 완전히 같은 값을 낸다** — 블룸 표면도 캔버스 비율이 바뀔 때만(가로에서는 사실상 결코) 재할당한다. 영향: filmTexture.ts(filmTextureTransform·filmBloomSurfaceSize) → createFilmTextureRenderer. 검증: cinemaFilmTexturePortrait.test.ts, cinemaFilmTextureBloom.test.ts(가로 회귀 고정).
+
 - 전체 화면 영향 경로: SignalFilm.tsx / film.module.css(모든 장면에 동일한 전체 화면 Canvas) → useFilmPlayback.ts(도크 높이를 실제 Canvas 픽셀로 환산) → drawSignalFilm.ts(inset 전달) → filmViewport.ts(균일 배율과 실제 화면의 역투영 경계) → 각 draw*Film.ts / drawChartStage.ts(전체 배경·광원). visorViewport.ts는 같은 함수를 재내보내 바이저도 동일 규칙을 사용한다. 차트는 6번째 presentation과 7번째 inset을 구분해 전달한다. 정보는 도크 위에 배치하고 배경·질감·장면 전환 암전은 도크 뒤까지 전체 물리 Canvas를 덮는다. 영화·유리·홀로그램 모두 외곽 사각 테두리를 그리지 않는다.
 
 ## 데이터 · 관리 화면
