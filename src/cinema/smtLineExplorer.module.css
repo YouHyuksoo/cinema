@@ -3,6 +3,9 @@
 .viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .viewport[data-mode="walk"] canvas { cursor: none; }
 
+/* 청색 투명 글래스(DESIGN.md, environmentFloorMonitor.module.css 의 .sensor 와 같은 언어) —
+   backdrop-filter 와 반복 애니메이션 없이, 대각선 정적 반사 그라디언트 + 얇은 밝은 테두리 +
+   inset 하이라이트 + 글자 그림자로만 표현한다. 성능상 이유로 규정된 것이라 blur 를 되살리지 않는다. */
 .panel {
   position: absolute;
   /* 좌상단에는 필름의 리액터 아이콘과 AI 음성 배지가 이미 자리잡고 있다. 그 아래에서 시작한다. */
@@ -14,12 +17,14 @@
   overflow: auto;
   padding: 14px 16px;
   color: var(--film-ink);
-  background: color-mix(in srgb, var(--film-panel) 88%, transparent);
-  border: 1px solid var(--film-line);
+  background: linear-gradient(135deg, rgba(235, 252, 255, .16), rgba(14, 39, 53, .42) 40%, rgba(5, 24, 37, .64));
+  border: 1px solid rgba(213, 245, 252, .4);
   border-top-color: var(--film-accent);
   border-radius: 3px;
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--film-bg) 45%, transparent);
-  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .32), inset 1px 0 0 rgba(255, 255, 255, .08),
+    0 8px 28px rgba(0, 12, 20, .4);
+  text-shadow: 0 1px 3px rgba(0, 10, 18, .85);
   font: 11px/1.5 var(--font-label), var(--font-korean), sans-serif;
 }
 .title { margin: 0; font-size: 13px; letter-spacing: .1em; color: var(--film-accent-soft); }
@@ -63,10 +68,12 @@
   z-index: 2;
   margin: 0;
   padding: 9px 13px;
-  background: color-mix(in srgb, var(--film-panel) 85%, transparent);
-  border: 1px solid var(--film-line);
+  background: linear-gradient(135deg, rgba(235, 252, 255, .14), rgba(14, 39, 53, .4) 45%, rgba(5, 24, 37, .6));
+  border: 1px solid rgba(213, 245, 252, .35);
   border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 4px 14px rgba(0, 12, 20, .32);
   color: var(--film-muted);
+  text-shadow: 0 1px 3px rgba(0, 10, 18, .85);
   font: 10px/1.7 var(--font-label), var(--font-korean), sans-serif;
 }
 .help b { color: var(--film-ink); }
