@@ -32,7 +32,7 @@ import { playFilmTransitionSound } from './filmTransitionSound';
 import { applyPerformanceMode } from './filmPerformanceMode';
 import { FilmQuickMenu } from './FilmQuickMenu';
 import { ENVIRONMENT_TIMING } from './zoneEnvironment';
-import { EnvironmentFloorMonitor } from './EnvironmentFloorMonitor';
+import { SmtLineExplorer } from './SmtLineExplorer';
 
 export function SignalFilm() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -131,10 +131,10 @@ export function SignalFilm() {
           : `${description.title}: ${description.subtitle} 시뮬레이션 연출.`} />
         {!preview && player.ready && player.position.chapter.id === 'visor'
           && <SmtFactoryExplorer canvas={canvas} controller={player.factory} onAuto={player.resumeTour} />}
-        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime < ENVIRONMENT_TIMING.monitoringStart
-          && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} monitoring={player.position.localTime >= ENVIRONMENT_TIMING.monitoringStart} />}
-        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime >= ENVIRONMENT_TIMING.monitoringStart
-          && <EnvironmentFloorMonitor data={player.sceneData.environment} feedStatus={player.feedStatus} />}
+        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime < ENVIRONMENT_TIMING.heatmapStart
+          && <EnvironmentZoneInteraction canvas={canvas} controller={player.environment} />}
+        {!preview && player.ready && player.position.chapter.id === 'wave' && player.position.localTime >= ENVIRONMENT_TIMING.heatmapStart
+          && <SmtLineExplorer onManual={player.pause} />}
         {!preview && player.ready && player.position.chapter.id === 'cctv'
           && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
         {!preview && player.ready && player.position.chapter.id === 'space3d' && <FactoryExplorer3D onManual={player.pause} />}
