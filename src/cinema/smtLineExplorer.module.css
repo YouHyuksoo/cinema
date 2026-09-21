@@ -64,10 +64,14 @@
 .panel button:focus-visible { outline: 2px solid var(--film-accent); outline-offset: 2px; }
 
 .help {
-  position: absolute;
-  left: clamp(16px, 3vw, 42px);
-  bottom: calc(var(--film-content-inset, 220px) + 10px);
-  z-index: 2;
+  /* 상단 우측 재생 컨트롤(filmQuickMenu .menu) 바로 왼쪽에 붙인다.
+     그쪽은 position:fixed 이므로 같은 기준을 쓴다. --smt-help-gap 은 컨트롤 폭 + 간격. */
+  --smt-help-gap: 268px;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(clamp(12px, 2.5vw, 36px) + var(--smt-help-gap));
+  max-width: min(300px, calc(100vw - var(--smt-help-gap) - 60px));
+  z-index: 4;
   margin: 0;
   padding: 9px 13px;
   background: linear-gradient(135deg, rgba(235, 252, 255, .14), rgba(14, 39, 53, .4) 45%, rgba(5, 24, 37, .6));
@@ -79,6 +83,18 @@
   font: 10px/1.7 var(--font-label), var(--font-korean), sans-serif;
 }
 .help b { color: var(--film-ink); }
+/* 컨트롤이 화면 폭을 다 쓰는 좁은 화면에서는 겹치므로 원래 자리(좌하단)로 되돌린다. */
+@media (max-width: 1100px) {
+  .help {
+    position: absolute;
+    top: auto;
+    right: auto;
+    left: clamp(16px, 3vw, 42px);
+    bottom: calc(var(--film-content-inset, 220px) + 10px);
+    max-width: min(300px, calc(100vw - 32px));
+    z-index: 2;
+  }
+}
 
 .crosshair { display: none; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; z-index: 2; pointer-events: none; }
 .crosshair[data-active="true"] { display: block; }
