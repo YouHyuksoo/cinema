@@ -10,8 +10,11 @@ import styles from './factoryExplorer3d.module.css';
  * 렌더 파이프라인(그림자·PMREM·리사이즈·dispose)은 studio/FactoryStudio.tsx 를 그대로 옮겼다.
  */
 const BUILDING_CENTER: readonly [number, number, number] = [30, 2.2, 20];
-const BIRD_EYE_POSE = { position: [-60, 50, 66], target: BUILDING_CENTER } as const;
-const INSIDE_POSE = { position: [3, 1.7, 3], target: [9, 1.1, 14] } as const;
+const BIRD_EYE_POSE = { position: [-44, 40, 54], target: BUILDING_CENTER } as const;
+// 건물 한가운데를 가로지르는 통로(z 18~22) 안에 서서 동쪽 끝을 바라보는 시점.
+// 시선이 거의 수평이면 OrbitControls 의 maxPolarAngle 에 걸려 카메라가 매 프레임 되밀리므로,
+// 눈높이를 목표보다 충분히 높여 극각에 여유를 둔다.
+const INSIDE_POSE = { position: [8, 2.6, 20], target: [50, 1.2, 20] } as const;
 const CAMERA_FOV = 42;
 
 export default function FactoryExplorer3D() {
@@ -46,7 +49,7 @@ export default function FactoryExplorer3D() {
       controls.target.set(...BIRD_EYE_POSE.target);
       controls.enableDamping = true; controls.dampingFactor = .07;
       // 조감도 거리(약 112) 보다 조금 더 물러날 수 있게, 벽 안까지는 바싹 붙을 수 있게 잡았다.
-      controls.minDistance = 1.5; controls.maxDistance = 150; controls.maxPolarAngle = Math.PI * .48;
+      controls.minDistance = 1.5; controls.maxDistance = 150; controls.maxPolarAngle = Math.PI * .495; // 내부 시점은 시선이 거의 수평이라 .48 로는 도달하지 못한다
       const model = buildFactoryModel(T); scene.add(model.root);
       const key = new T.DirectionalLight('#fff2dc', 3.8);
       key.position.set(10, 46, 55);
@@ -73,8 +76,20 @@ export default function FactoryExplorer3D() {
       const resize = () => { const { width, height } = node.getBoundingClientRect(); renderer.setSize(width, height); camera.aspect = width / Math.max(1, height); camera.updateProjectionMatrix(); };
       const observer = new ResizeObserver(resize); observer.observe(node); resize();
       let frame = 0;
+      // 필름 루프와 한 화면을 나눠 쓰므로 프레임이 고르지 않다. 프레임당 고정 비율로 보간하면
+      // 느린 기기에서 전환이 몇 초씩 늘어져 목표 시점에 도착하기 전처럼 보인다. 경과 시간으로 맞춘다.
+      let last = performance.now();
       const render = () => {
-        if (transition) { camera.position.lerp(position, .055); controls.target.lerp(target, .055); if (camera.position.distanceTo(position) < .01) transition = false; }
+        const now = performance.now();
+        const delta = Math.min(.1, (now - last) / 1000);
+        last = now;
+        if (transition) {
+          const k = 1 - Math.pow(.02, delta); // 1초에 98% 접근
+          camera.position.lerp(position, k); controls.target.lerp(target, k);
+          if (camera.position.distanceTo(position) < .05) {
+            camera.position.copy(position); controls.target.copy(target); transition = false;
+          }
+        }
         controls.update(); renderer.render(scene, camera); frame = requestAnimationFrame(render);
       };
       render(); setStatus('드래그로 회전 · 휠로 확대 · 우클릭으로 이동');
@@ -97,7 +112,6 @@ export default function FactoryExplorer3D() {
     <div ref={host} className={styles.viewport} />
     <div className={styles.panel}>
       <p className={styles.status}>{status}</p>
-      <p className={styles.hint}>드래그로 회전 · 휠로 확대/축소 · 우클릭으로 이동</p>
       <nav className={styles.actions} aria-label="3D 시점">
         <button type="button" aria-pressed={!inside} onClick={() => { setInside(false); choose.current(false); }}>조감도</button>
         <button type="button" aria-pressed={inside} onClick={() => { setInside(true); choose.current(true); }}>내부 진입 ↗</button>
