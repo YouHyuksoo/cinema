@@ -63,13 +63,15 @@
 .panel button:focus-visible { outline: 2px solid var(--film-accent); outline-offset: 2px; }
 
 .help {
-  /* 상단 우측 재생 컨트롤(filmQuickMenu .menu) 바로 왼쪽에 붙인다.
-     그쪽은 position:fixed 이므로 같은 기준을 쓴다. --smt-help-gap 은 컨트롤 폭 + 간격. */
-  --smt-help-gap: 268px;
+  /* 상단 우측 재생 컨트롤(filmQuickMenu .menu, data-scene-quick-menu) 바로 왼쪽에 붙인다.
+     그 메뉴는 MONITORING 라벨(90초 이후)이 붙으면 폭이 늘어나 고정값으로는 겹친다(Round 5-2) —
+     --smt-help-gap 은 SmtLineExplorer.tsx 가 메뉴의 실제 렌더 폭을 재서 인라인으로 덮어쓴다.
+     아래 값은 JS 가 아직 재기 전 첫 페인트 순간에만 쓰이는 대략치다. */
+  --smt-help-gap: calc(clamp(12px, 2.5vw, 36px) + 268px);
   position: fixed;
   top: calc(12px + env(safe-area-inset-top));
-  right: calc(clamp(12px, 2.5vw, 36px) + var(--smt-help-gap));
-  max-width: min(300px, calc(100vw - var(--smt-help-gap) - 60px));
+  right: var(--smt-help-gap);
+  max-width: min(300px, calc(100vw - var(--smt-help-gap) - 24px));
   z-index: 4;
   margin: 0;
   padding: 9px 13px;

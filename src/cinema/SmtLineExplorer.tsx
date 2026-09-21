@@ -73,6 +73,7 @@ export function SmtLineExplorer({ onManual, environment }: {
   const [lines, setLines] = useState<LineButton[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState('SMT 4개 라인 구성 중');
+  const helpRef = useRef<HTMLParagraphElement>(null);
 
   // 좌측 패널 드래그 이동(Round 3-5) — 장면 메뉴 구체(useFilmMenuGlobe.ts)와 같은 규약이다: 짧은
   // 클릭은 드래그가 아니고, pointermove 마다 getBoundingClientRect 를 다시 읽지 않으며(강제
@@ -141,6 +142,36 @@ export function SmtLineExplorer({ onManual, environment }: {
     return () => {
       window.removeEventListener('resize', onResize);
       if (panelFrameRef.current) cancelAnimationFrame(panelFrameRef.current);
+    };
+  }, []);
+
+  // 조작 안내(.help)는 상단 우측 재생 컨트롤(FilmQuickMenu, data-scene-quick-menu) 바로 왼쪽에
+  // 붙는다(c0d86ac). 그 메뉴는 MONITORING 라벨(온습도 90초 이후, ENVIRONMENT_TIMING.monitoringStart)이
+  // 붙으면 폭이 늘어나는데, 고정 px 간격을 정적으로 추측하면(옛 --smt-help-gap: 268px) 라벨이
+  // 붙는 순간 겹친다(Round 5-2 — 사용자가 스크린샷으로 지적). 값을 더 크게 추측하는 대신 실제
+  // 폭을 매번 재서 그 자리에 붙인다 — 라벨 유무·재생 속도 자릿수·테마·언어가 바뀌어도 안 겹친다.
+  // 1100px 미만에서는 CSS 미디어쿼리가 .help 를 좌하단으로 되돌리므로 인라인 값을 지워 그대로 둔다.
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1101px)');
+    let observer: ResizeObserver | null = null;
+    const reposition = () => {
+      const help = helpRef.current;
+      if (!help) return;
+      if (!wide.matches) { help.style.removeProperty('--smt-help-gap'); return; }
+      const menu = document.querySelector<HTMLElement>('[data-scene-quick-menu="true"]');
+      if (!menu) { help.style.removeProperty('--smt-help-gap'); return; }
+      // right/max-width 둘 다 CSS의 --smt-help-gap 하나만 본다 — 여기서 그 값만 실제 폭으로 덮어쓴다.
+      help.style.setProperty('--smt-help-gap', `${Math.max(0, window.innerWidth - menu.getBoundingClientRect().left + 12)}px`);
+    };
+    reposition();
+    const menu = document.querySelector<HTMLElement>('[data-scene-quick-menu="true"]');
+    if (menu) { observer = new ResizeObserver(reposition); observer.observe(menu); }
+    window.addEventListener('resize', reposition);
+    wide.addEventListener('change', reposition);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', reposition);
+      wide.removeEventListener('change', reposition);
     };
   }, []);
 
@@ -352,6 +383,6 @@ export function SmtLineExplorer({ onManual, environment }: {
           : <><b>LINE {selected}</b>{lines.find(line => line.index === selected)?.stations.join(' → ')}</>}
       </div>
     </aside>
-    <p className={styles.help}><b>둘러보기</b> 드래그 회전 · 휠 확대<br /><b>고온 구역 순회</b> 온도 높은 구역부터 차례로 비행<br /><b>자동 회전</b> 15도 위에서 천천히 공전</p>
+    <p className={styles.help} ref={helpRef}><b>둘러보기</b> 드래그 회전 · 휠 확대<br /><b>고온 구역 순회</b> 온도 높은 구역부터 차례로 비행<br /><b>자동 회전</b> 15도 위에서 천천히 공전</p>
   </div>;
 }
