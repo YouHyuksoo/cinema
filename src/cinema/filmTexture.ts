@@ -59,16 +59,29 @@ export function filmTextureTransform(width: number, height: number): FilmTexture
 }
 
 /**
+ * 320/1280 과 180/720 은 둘 다 정확히 1/4 — 즉 기존 블룸 표면은 "기준 해상도(1280×720)를 4배
+ * 축소"라는 하나의 배율로 이미 설명된다. 이 4배 축소가 `blur(3px)`와 합쳐져 밝은 요소를 얼마나
+ * 흐려/옅게 만드는지(= screen 합성으로 되돌렸을 때 얼마나 밝아지는지)를 정하므로, 세로에서도
+ * 같은 배율을 지켜야 가로와 같은 밝기 톤이 나온다.
+ */
+const BLOOM_DOWNSCALE = VIEW_HEIGHT / 180; // = VIEW_WIDTH / 320 = 4, 기존 320×180 이 이미 쓰던 배율.
+
+/**
  * 블룸 중간 표면 크기. 가로(16:9 근처)는 항상 기존 그대로 320×180 — 재할당이 전혀 일어나지 않는다.
- * 세로는 같은 총 픽셀 예산(320×180=57,600)을 화면비에 맞게 나눠, `blur(3px)`를 최종 화면 크기로
- * 늘릴 때 가로·세로 유효 흐림 반경이 같아지게 한다(방향에 따라 다르게 번지는 줄무늬를 없앤다).
- * 16:9 정확히 일 때는 이 식도 정확히 320×180 을 돌려준다(계산으로 검증, 아래 테스트 참고).
+ *
+ * 버그(Round 8 수정): 처음엔 "가로 320×180 과 같은 총 픽셀 수, 화면비만 맞춤"으로 짰다. 그런데
+ * 그 식은 세로(예: 390×844)에서 표면 크기를 163×353 정도로 만들어, 세로 축 축소율이 844/353≈2.4배로
+ * 기존 세로 방향의 844/180≈4.7배보다 훨씬 약해졌다 — 밝은 요소가 덜 옅어진 채 screen 합성으로
+ * 돌아와 화면이 하얗게 날아갔다(줄무늬는 없앴지만 새 버그를 만든 것). "같은 픽셀 수"가 아니라
+ * "같은 축소 배율(4배, 위 BLOOM_DOWNSCALE)"을 두 축 모두에 그대로 적용해야, 세로에서도 가로와
+ * 같은 밝기로 흐려진다 — 동시에 두 축이 같은 배율이므로 등방(방향에 따라 다르지 않은 흐림)도
+ * 여전히 지켜진다. 16:9 정확히 일 때는 이 식도 정확히 320×180 을 돌려준다(계산으로 검증, 아래
+ * 테스트 참고).
  */
 export function filmBloomSurfaceSize(width: number, height: number): { width: number; height: number } {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return { width: 320, height: 180 };
   if (width / height >= TEXTURE_PORTRAIT_ASPECT) return { width: 320, height: 180 };
-  const budget = 320 * 180, aspect = width / height;
-  return { width: Math.max(1, Math.round(Math.sqrt(budget * aspect))), height: Math.max(1, Math.round(Math.sqrt(budget / aspect))) };
+  return { width: Math.max(1, Math.round(width / BLOOM_DOWNSCALE)), height: Math.max(1, Math.round(height / BLOOM_DOWNSCALE)) };
 }
 
 function surface(width: number, height: number) {

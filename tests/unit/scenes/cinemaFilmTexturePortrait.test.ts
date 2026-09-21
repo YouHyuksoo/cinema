@@ -27,12 +27,23 @@ describe('filmTexture 세로(portrait) 보정 — Round 8', () => {
     expect(m.a).not.toBeCloseTo(legacy.a, 2);
   });
 
-  it.each([[390, 844], [430, 932], [320, 640]])('세로 %sx%s 의 블룸 표면은 화면비를 유지하면서 원래와 비슷한 총 픽셀 예산(320×180)을 쓴다', (width, height) => {
+  // Round 8 수정: "같은 총 픽셀 수" 로 세로 표면 크기를 정했더니(첫 시도) 세로 축소율이 기존
+  // 844/180≈4.7배에서 2.4배로 약해져, 밝은 요소가 덜 옅어진 채 screen 합성으로 돌아와 화면이
+  // 하얗게 날아갔다. "같은 축소 배율(4배)" 로 고쳤다 — 이 테스트가 그 배율을 고정한다.
+  it.each([[390, 844], [430, 932], [320, 640], [645, 1350]])('세로 %sx%s 의 블룸 축소 배율은 가로(320/1280=180/720=4배)와 같다 — 밝기 톤이 가로와 같아야 한다', (width, height) => {
     const size = filmBloomSurfaceSize(width, height);
-    expect(size.width * size.height).toBeLessThanOrEqual(320 * 180 * 1.05); // 반올림 오차만 허용 — 비용을 늘리지 않는다.
-    expect(size.width * size.height).toBeGreaterThanOrEqual(320 * 180 * .95);
-    // 표면 자체의 가로세로 비가 실제 화면비와 같아야 늘렸을 때 흐림 반경이 등방(균일)이 된다.
-    expect(size.width / size.height).toBeCloseTo(width / height, 1);
+    // 정수 반올림 오차만 허용한다(표면 크기는 정수 픽셀이라 4배에서 최대 0.5px 어긋날 수 있다).
+    expect(width / size.width).toBeCloseTo(4, 1);
+    expect(height / size.height).toBeCloseTo(4, 1);
+    // 두 축의 축소율이 같아야(등방) 흐림 반경도 방향과 무관하게 같다 — 줄무늬 수정은 그대로 유지한다.
+    expect(width / size.width).toBeCloseTo(height / size.height, 1);
+  });
+
+  it('세로 표면은 가로(320×180=57,600픽셀)보다 오히려 작다 — 비용을 늘리지 않는다', () => {
+    for (const [width, height] of [[390, 844], [430, 932], [320, 640], [645, 1350]] as const) {
+      const size = filmBloomSurfaceSize(width, height);
+      expect(size.width * size.height).toBeLessThanOrEqual(320 * 180);
+    }
   });
 
   it('16:9 를 벗어나도 가로 판정 경계(.85)에 딱 걸치면 여전히 기존 공식이다', () => {
