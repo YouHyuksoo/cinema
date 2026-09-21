@@ -184,7 +184,8 @@ export function useFilmPlayback(canvasRef: RefObject<HTMLCanvasElement | null>,
         if (stage && pose) stage.compose(themed.ctx, node.width, node.height, pose);
         // Manual CCTV browsing pauses the film clock but the feeds keep running on wall-clock time.
         drawSignalFilm(themed.ctx, node.width, node.height, current.time, fonts, viewport, current.charts, factoryState, environmentFrame, data,
-          { subject: current.machineSubject, provenance: store.provenance('pcb') }, cctvState ? { ...cctvState, live: now / 1000 } : null);
+          { subject: current.machineSubject, provenance: store.provenance('pcb') },
+          cctvState ? { ...cctvState, live: now / 1000 } : null, !!(stage && pose));
       }
       let drawTexture = textureRenderers.get(current.theme);
       if (!drawTexture) {

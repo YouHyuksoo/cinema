@@ -10,8 +10,8 @@ export { drawPlanarVisorFilm } from './drawPlanarVisorFilm';
 /** Keep the two visor menu entries independent while retaining the renderer API. */
 export function drawVisorFilm(ctx: CanvasRenderingContext2D, width: number, height: number, time: number,
   fonts: FilmFonts = DEFAULT_FONTS, viewMode: 'space' | 'pan' = 'space', insets?: FilmViewportInsets,
-  interaction?: FactoryInteraction | null) {
+  interaction?: FactoryInteraction | null, stage: boolean = false) {
   if (viewMode === 'pan') drawPlanarVisorFilm(ctx, width, height, time, fonts, insets);
-  else if (interaction) drawSmtExploreFilm(ctx, width, height, time, fonts, insets, interaction);
-  else drawVisorTourFilm(ctx, width, height, time, fonts, insets);
+  else if (interaction) drawSmtExploreFilm(ctx, width, height, time, fonts, insets, interaction, stage);
+  else drawVisorTourFilm(ctx, width, height, time, fonts, insets, stage);
 }
