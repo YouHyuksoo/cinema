@@ -22,7 +22,6 @@ export interface FilmFrameKey {
   theme: FilmThemeId; texture: FilmTextureSettings; charts: FilmChartSettings; subject: MachineSubject;
   factory: unknown; cctvManual: boolean; selectedZone: string | null; data: unknown; provenance: unknown;
   /** 무대 카메라 포즈의 문자열 서명. 무대가 꺼져 있으면 null. 포즈 객체는 매 프레임 새로 만들어져 identity 비교가 통하지 않는다. */
-  stagePose: string | null;
 }
 
 /** True when the next frame must be painted; manual CCTV browsing runs feeds on the wall clock, so it always paints. */
@@ -34,6 +33,5 @@ export function filmFrameChanged(previous: FilmFrameKey | null, next: FilmFrameK
     || previous.texture.style !== next.texture.style || !Object.is(previous.texture.intensity, next.texture.intensity)
     || previous.charts !== next.charts || previous.subject !== next.subject
     || previous.factory !== next.factory || previous.selectedZone !== next.selectedZone
-    || previous.data !== next.data || previous.provenance !== next.provenance
-    || previous.stagePose !== next.stagePose;
+    || previous.data !== next.data || previous.provenance !== next.provenance;
 }
