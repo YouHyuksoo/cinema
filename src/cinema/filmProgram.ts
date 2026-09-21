@@ -66,7 +66,11 @@ export function chapterAt(time: number) {
 
 export function advanceFilm(time: number, seconds: number, mode: PlaybackMode) {
   const { chapter, start, localTime } = chapterAt(time);
-  if (chapter.id === 'wave') return start + Math.max(0, Math.min(ENVIRONMENT_TIMING.monitoringStart, localTime + seconds));
+  // 온습도는 모니터링 시점에서 시계를 멈춰 대시보드처럼 머문다. 다만 이 챕터가 필름의 첫 장면이라,
+  // 전체 연속 재생에서까지 멈추면 뒤의 어떤 장면에도 닿지 못한다. 연속 재생은 끝까지 흘려보낸다.
+  if (chapter.id === 'wave' && mode !== 'sequence') {
+    return start + Math.max(0, Math.min(ENVIRONMENT_TIMING.monitoringStart, localTime + seconds));
+  }
   if (mode === 'sequence') return (time + seconds) % FILM_SECONDS;
   if ('loop' in chapter) {
     const next = localTime + seconds;

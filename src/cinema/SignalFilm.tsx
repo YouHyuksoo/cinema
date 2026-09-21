@@ -137,7 +137,7 @@ export function SignalFilm() {
           && <EnvironmentFloorMonitor data={player.sceneData.environment} feedStatus={player.feedStatus} />}
         {!preview && player.ready && player.position.chapter.id === 'cctv'
           && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
-        {!preview && player.ready && player.position.chapter.id === 'space3d' && <FactoryExplorer3D />}
+        {!preview && player.ready && player.position.chapter.id === 'space3d' && <FactoryExplorer3D onManual={player.pause} />}
         {!preview && !['visor', 'wave', 'cctv', 'space3d'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
           aria-label={player.playing ? '연출 화면 일시정지' : '연출 화면 재생'}
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}

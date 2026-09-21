@@ -17,9 +17,15 @@ const BIRD_EYE_POSE = { position: [-44, 40, 54], target: BUILDING_CENTER } as co
 const INSIDE_POSE = { position: [8, 2.6, 20], target: [50, 1.2, 20] } as const;
 const CAMERA_FOV = 42;
 
-export default function FactoryExplorer3D() {
+/**
+ * 사용자가 직접 조작하는 장면이라, 조작이 시작되면 필름 시계를 멈춰 화면이 저절로
+ * 다음 장면으로 넘어가지 않게 한다. 바이저 장면이 쓰는 것과 같은 규약이다.
+ */
+export default function FactoryExplorer3D({ onManual }: { onManual?: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   const choose = useRef<(inside: boolean) => void>(() => {});
+  const manual = useRef(onManual);
+  manual.current = onManual;
   const [inside, setInside] = useState(false);
   const [status, setStatus] = useState('3D 공장 준비 중');
   useEffect(() => {
@@ -71,7 +77,7 @@ export default function FactoryExplorer3D() {
         target.set(pose.target[0], pose.target[1], pose.target[2]);
         transition = true;
       };
-      const interrupt = () => { transition = false; };
+      const interrupt = () => { transition = false; manual.current?.(); };
       controls.addEventListener('start', interrupt);
       const resize = () => { const { width, height } = node.getBoundingClientRect(); renderer.setSize(width, height); camera.aspect = width / Math.max(1, height); camera.updateProjectionMatrix(); };
       const observer = new ResizeObserver(resize); observer.observe(node); resize();
