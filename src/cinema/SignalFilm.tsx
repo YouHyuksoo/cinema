@@ -17,6 +17,7 @@ import { JarvisMain } from './JarvisMain';
 import { SmtFactoryExplorer } from './SmtFactoryExplorer';
 import { EnvironmentZoneInteraction } from './EnvironmentZoneInteraction';
 import { CctvExplorer } from './CctvExplorer';
+import FactoryExplorer3D from './FactoryExplorer3D';
 import { MACHINE_PRESENTATIONS } from './machinePresentation';
 import styles from './film.module.css';
 import { useScreenCommands } from './useScreenCommands';
@@ -136,7 +137,8 @@ export function SignalFilm() {
           && <EnvironmentFloorMonitor data={player.sceneData.environment} feedStatus={player.feedStatus} />}
         {!preview && player.ready && player.position.chapter.id === 'cctv'
           && <CctvExplorer canvas={canvas} controller={player.cctv} onAuto={player.resumeTour} />}
-        {!preview && !['visor', 'wave', 'cctv'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
+        {!preview && player.ready && player.position.chapter.id === 'space3d' && <FactoryExplorer3D />}
+        {!preview && !['visor', 'wave', 'cctv', 'space3d'].includes(player.position.chapter.id) && <button type="button" className={styles.screenToggle} disabled={!player.ready}
           aria-label={player.playing ? '연출 화면 일시정지' : '연출 화면 재생'}
           title={player.playing ? '화면을 클릭하면 일시정지' : '화면을 클릭하면 이어서 재생'}
           onClick={player.togglePlay} />}

@@ -19,7 +19,7 @@ import { drawCctvFilm } from './drawCctvFilm';
 import type { CctvFrameInput } from './cctvScene';
 import { DEFAULT_FONTS, filmText, signalColor, smooth, type FilmFonts } from './drawGearTrain';
 import { chapterAt, FILM_CHAPTER_BOUNDARIES, FILM_SECONDS, type FilmId } from './filmProgram';
-import type { FilmViewportInsets } from './filmViewport';
+import { beginFilmViewport, fillFilmViewport, type FilmViewportInsets } from './filmViewport';
 import { DEFAULT_FILM_CHARTS, type FilmChartSettings } from './chartPresentation';
 import type { FactoryInteraction } from './smtFactoryInteraction';
 import type { ZoneEnvironmentState } from './zoneEnvironment';
@@ -51,6 +51,12 @@ const renderers: Record<FilmId, Renderer> = {
   product: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawProductInspectionFilm(ctx, width, height, time, fonts, insets, data.product),
   spc: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, data) => drawSpcFilm(ctx, width, height, time, fonts, insets, data.spc),
   cctv: (ctx, width, height, time, fonts, insets, _charts, _factory, _environment, _data, _machine, cctv) => drawCctvFilm(ctx, width, height, time, fonts, insets, cctv),
+  // FactoryExplorer3D 가 이 위를 완전히 덮으므로 배경만 채운다. 톤은 studio/FactoryStudio 의
+  // 씬 배경색과 맞췄다 — 3D 뷰가 마운트되기 전 잠깐 보일 수 있는 색이 씬 배경과 이어지도록.
+  space3d: (ctx, width, height, _time, _fonts, insets) => {
+    const view = beginFilmViewport(ctx, width, height, insets);
+    ctx.fillStyle = '#17232a'; fillFilmViewport(ctx, view);
+  },
 };
 
 /** Paint a fresh frame independently of the preceding scene's fades and light effects. */

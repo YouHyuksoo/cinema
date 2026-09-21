@@ -1,0 +1,45 @@
+.overlay { position: absolute; inset: 0; z-index: 1; background: #17232a; color: #f0eee7; }
+.viewport { position: absolute; inset: 0; }
+.viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.panel {
+  position: absolute;
+  left: clamp(16px, 3vw, 42px);
+  bottom: calc(var(--film-content-inset, 220px) + 10px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 12px 14px;
+  color: var(--film-ink);
+  background: color-mix(in srgb, var(--film-panel) 88%, transparent);
+  border: 1px solid var(--film-line);
+  border-top-color: var(--film-accent);
+  border-radius: 3px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--film-bg) 45%, transparent);
+  backdrop-filter: blur(12px);
+  font: 11px/1.5 var(--font-label), var(--font-korean), sans-serif;
+}
+
+.status { margin: 0; letter-spacing: .04em; color: var(--film-accent-soft); }
+.hint { margin: 0; color: var(--film-muted); }
+
+.actions { display: flex; gap: 8px; }
+.actions button {
+  min-height: 32px;
+  padding: 7px 14px;
+  border: 1px solid var(--film-line);
+  border-radius: 2px;
+  color: var(--film-ink);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.actions button[aria-pressed="true"] { background: var(--film-accent); color: #17232a; border-color: var(--film-accent); }
+.actions button:focus-visible { outline: 2px solid var(--film-accent); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  .panel { padding: 10px 12px; gap: 6px; }
+  .actions button { padding: 6px 12px; }
+}

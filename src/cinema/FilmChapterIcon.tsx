@@ -92,6 +92,11 @@ const CHAPTER_ICONS: Record<FilmId, ReactNode> = {
     <path d="M4 13h4v6H4Zm20 0h4v6h-4ZM16 20v4m-3 0h6" />
     <path d="M24 12.5h1.5" strokeWidth="2" />
   </>,
+  space3d: <>
+    <path d="M6 12 16 6l10 6-10 6Z" />
+    <path d="M6 12v10l10 6 10-6V12M16 18v10" />
+    <path d="M3 22a13 8 0 0 0 26 0" opacity=".45" strokeDasharray="2 3" />
+  </>,
 };
 
 export function FilmChapterIcon({ id, className }: { id: FilmId; className?: string }) {
