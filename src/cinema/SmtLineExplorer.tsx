@@ -108,6 +108,26 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
       addEventListener('keydown', onKeyDown); addEventListener('keyup', onKeyUp);
       const onCanvasClick = () => { if (modeRef.current === 'walk' && !walk.isLocked) walk.lock(); };
       renderer.domElement.addEventListener('click', onCanvasClick);
+      // 걷기 중 휠: orbit 은 walk 에서 꺼져 있어(zoom 없음) 대신 시야각(FOV) 을 좁힌다 — 1인칭에서
+      // 흔한 "스코프 줌"에 해당한다. 포인터가 잠긴 상태에서도 wheel 이벤트는 정상적으로 온다.
+      const onWheel = (event: WheelEvent) => {
+        if (modeRef.current !== 'walk') return;
+        event.preventDefault();
+        camera.fov = T.MathUtils.clamp(camera.fov + Math.sign(event.deltaY) * 2, 22, CAMERA_FOV);
+        camera.updateProjectionMatrix();
+      };
+      renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+      // 버그(Round 3-1): PointerLockControls 는 브라우저가 ESC/포커스 이탈 등으로 포인터 락을
+      // 강제로 풀 때 'unlock' 이벤트를 쏘는데, 여기 아무도 듣고 있지 않았다. 그래서 ESC 로 걷기를
+      // 빠져나가도 modeRef/orbit.enabled 가 'walk'/false 에 그대로 남아, 이후 드래그 회전도 휠
+      // 확대도 먹지 않는(= "확대 축소가 안 되고 시스템 제어가 안 됨") 채로 굳어졌다. 잠금 해제가
+      // 어떤 경로로 오든(ESC, 버튼, 포커스 이탈) 여기서 한 곳에 모아 orbit 으로 되돌린다.
+      const onWalkUnlock = () => {
+        modeRef.current = 'orbit'; orbit.enabled = true; setModeState('orbit');
+        camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
+        manual.current?.();
+      };
+      walk.addEventListener('unlock', onWalkUnlock);
 
       const modeRef = { current: 'orbit' as ViewMode };
       const position = new T.Vector3(); const target = new T.Vector3(); let transitioning = false;
@@ -120,12 +140,14 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
       goOverview.current = () => {
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
+        camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
         setSelected(null); manual.current?.();
         beginTransition(OVERVIEW_POSE);
       };
       goLine.current = (line: LineButton) => {
         walk.unlock();
         setModeState('orbit'); modeRef.current = 'orbit'; orbit.enabled = true;
+        camera.fov = CAMERA_FOV; camera.updateProjectionMatrix();
         setSelected(line.index); manual.current?.();
         beginTransition({ position: [0, 24, line.z + 28], target: line.center });
       };
@@ -170,6 +192,8 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
         cancelAnimationFrame(frame); observer.disconnect();
         removeEventListener('keydown', onKeyDown); removeEventListener('keyup', onKeyUp);
         renderer.domElement.removeEventListener('click', onCanvasClick);
+        renderer.domElement.removeEventListener('wheel', onWheel);
+        walk.removeEventListener('unlock', onWalkUnlock);
         if (walk.isLocked) walk.unlock(); // 챕터가 넘어가도 마우스 포인터가 붙잡힌 채로 남지 않게 한다.
         orbit.removeEventListener('start', interrupt);
         orbit.dispose(); walk.dispose();
@@ -220,7 +244,9 @@ export function SmtLineExplorer({ onManual, environment }: { onManual?: () => vo
           : <><b>LINE {selected}</b>{lines.find(line => line.index === selected)?.stations.join(' → ')}</>}
       </div>
     </aside>
-    <p className={styles.help}><b>둘러보기</b> 드래그 회전 · 휠 확대<br /><b>내부 걷기</b> 화면 클릭 · WASD 이동 · ESC 해제</p>
+    <p className={styles.help}>{mode === 'walk'
+      ? <><b>내부 걷기</b> WASD 이동 · 휠 시야 확대<br /><b>ESC 로 언제든 해제됩니다</b></>
+      : <><b>둘러보기</b> 드래그 회전 · 휠 확대<br /><b>내부 걷기</b> 화면 클릭 · WASD 이동 · ESC 해제</>}</p>
     <div className={styles.crosshair} data-active={mode === 'walk'} />
   </div>;
 }
